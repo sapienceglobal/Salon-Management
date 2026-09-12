@@ -1,0 +1,178 @@
+@import "tailwindcss";
+
+/* ============================================
+   SALON PRO — Tailwind v4 Design System
+   CSS-first configuration with Dark/Light mode
+   ============================================ */
+
+@theme {
+  /* === Brand Colors (shared across themes) === */
+  --color-brand: #e74a8a;
+  --color-brand-light: #f472b6;
+  --color-brand-dark: #c2185b;
+
+  /* === Admin Theme Colors (defaults — overridden by data-theme-mode) === */
+  --color-admin-bg: #0f0f1a;
+  --color-admin-surface: #1a1a2e;
+  --color-admin-surface-light: #232340;
+  --color-admin-surface-hover: #2a2a4a;
+  --color-admin-card: #1e1e35;
+  --color-admin-card-hover: #252545;
+  --color-admin-sidebar: #12122a;
+  --color-admin-border: rgba(255, 255, 255, 0.06);
+  --color-admin-border-light: rgba(255, 255, 255, 0.1);
+  --color-admin-text: #f1f5f9;
+  --color-admin-text-secondary: #94a3b8;
+  --color-admin-text-muted: #64748b;
+
+  /* === Accent Colors === */
+  --color-accent-green: #22c55e;
+  --color-accent-blue: #3b82f6;
+  --color-accent-yellow: #f59e0b;
+  --color-accent-red: #ef4444;
+  --color-accent-purple: #a855f7;
+  --color-accent-cyan: #06b6d4;
+
+  /* === Fonts === */
+  --font-heading: 'Outfit', 'Inter', sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* === Sidebar === */
+  --spacing-sidebar: 260px;
+  --spacing-sidebar-collapsed: 80px;
+  --spacing-header: 70px;
+}
+
+/* ============================================
+   DARK MODE (default)
+   ============================================ */
+html[data-theme-mode="dark"] {
+  --color-admin-bg: #0f0f1a;
+  --color-admin-surface: #1a1a2e;
+  --color-admin-surface-light: #232340;
+  --color-admin-surface-hover: #2a2a4a;
+  --color-admin-card: #1e1e35;
+  --color-admin-card-hover: #252545;
+  --color-admin-sidebar: #12122a;
+  --color-admin-border: rgba(255, 255, 255, 0.06);
+  --color-admin-border-light: rgba(255, 255, 255, 0.1);
+  --color-admin-text: #f1f5f9;
+  --color-admin-text-secondary: #94a3b8;
+  --color-admin-text-muted: #64748b;
+}
+
+/* ============================================
+   LIGHT MODE
+   ============================================ */
+html[data-theme-mode="light"] {
+  --color-admin-bg: #f4f6fb;
+  --color-admin-surface: #ffffff;
+  --color-admin-surface-light: #f1f5f9;
+  --color-admin-surface-hover: #e8ecf4;
+  --color-admin-card: #ffffff;
+  --color-admin-card-hover: #f8fafc;
+  --color-admin-sidebar: #ffffff;
+  --color-admin-border: rgba(0, 0, 0, 0.08);
+  --color-admin-border-light: rgba(0, 0, 0, 0.12);
+  --color-admin-text: #0f172a;
+  --color-admin-text-secondary: #475569;
+  --color-admin-text-muted: #94a3b8;
+}
+
+/* ---- Base Resets ---- */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-sans);
+  }
+
+  /* Admin dropdown option styling — dark */
+  html[data-theme-mode="dark"] [data-theme="admin"] select option {
+    background-color: var(--color-admin-card);
+    color: var(--color-admin-text);
+  }
+
+  /* Admin dropdown option styling — light */
+  html[data-theme-mode="light"] [data-theme="admin"] select option {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+
+  /* === Global Scrollbar (Pink Theme) === */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-brand, #e74a8a);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-brand-light, #f472b6);
+  }
+  .custom-scrollbar {
+    /* Kept for backward compatibility if used anywhere */
+  }
+}
+
+/* ---- Custom Utilities ---- */
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .text-gradient-brand {
+    background: linear-gradient(135deg, #e74a8a, #c2185b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* ---- Animations ---- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOpacity {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}

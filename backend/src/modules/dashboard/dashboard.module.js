@@ -1,0 +1,372 @@
+import { db } from '../../config/database.js';
+import { cache } from '../../utils/cache.js';
+import { asyncHandler } from '../../utils/asyncHandler.js';
+import { ApiResponse } from '../../utils/ApiResponse.js';
+import { Router } from 'express';
+import { authenticate } from '../../middlewares/authenticate.js';
+import { authorize, businessScope } from '../../middlewares/authorize.js';
+
+// ===== DASHBOARD SERVICE =====
+class DashboardService {
+
+  /**
+   * Main dashboard summary — stat cards data
+   */
+  async getSummary(businessId) {
+    const cacheKey = `dashboard:summary:${businessId}`;
+
+    return cache.getOrSet(cacheKey, async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const startOfMonth = `${today.substring(0, 7)}-01`;
+
+      // Today's revenue stats
+      const [todayStats] = await db('invoices')
+        .where({ business_id: businessId })
+        .where('created_at', '>=', `${today} 00:00:00`)
+        .where('created_at', '<=', `${today} 23:59:59`)
+        .whereNot('status', 'cancelled')
+        .select(
+          db.raw('COUNT(*) as today_invoices'),
+          db.raw('COALESCE(SUM(total_amount), 0) as today_revenue'),
+          db.raw('COALESCE(SUM(paid_amount), 0) as today_collected')
+        );
+
+      // Today's appointment counts
+      const [todayAppointments] = await db('appointments')
+        .where({ business_id: businessId, appointment_date: today })
+        .whereNotIn('status', ['cancelled'])
+        .select(
+          db.raw('COUNT(*) as total'),
+          db.raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed"),
+          db.raw("SUM(CASE WHEN status = 'planned' OR status = 'pending' THEN 1 ELSE 0 END) as upcoming"),
+          db.raw("SUM(CASE WHEN status = 'ongoing' THEN 1 ELSE 0 END) as ongoing")
+        );
+
+      // Monthly stats
+      const [monthlyStats] = await db('invoices')
+        .where({ business_id: businessId })
+        .where('created_at', '>=', `${startOfMonth} 00:00:00`)
+        .whereNot('status', 'cancelled')
+        .select(
+          db.raw('COUNT(*) as monthly_invoices'),
+          db.raw('COALESCE(SUM(total_amount), 0) as monthly_revenue'),
+          db.raw('COALESCE(SUM(paid_amount), 0) as monthly_collected')
+        );
+
+      // Monthly expenses
+      const [monthlyExpenses] = await db('expenses')
+        .where({ business_id: businessId })
+        .where('expense_date', '>=', startOfMonth)
+        .select(db.raw('COALESCE(SUM(amount), 0) as monthly_expenses'));
+
+      // Customer stats
+      const [customerStats] = await db('customers')
+        .where({ business_id: businessId, is_active: true })
+        .select(db.raw('COUNT(*) as total_customers'));
+
+      const [newCustomers] = await db('customers')
+        .where({ business_id: businessId })
+        .where('created_at', '>=', `${startOfMonth} 00:00:00`)
+        .select(db.raw('COUNT(*) as new_customers'));
+
+      // Active staff count
+      const [staffStats] = await db('users')
+        .where({ business_id: businessId, is_active: true })
+        .whereIn('role', ['staff', 'manager', 'receptionist'])
+        .select(db.raw('COUNT(*) as active_staff'));
+
+      // Low stock products
+      const lowStock = await db('products')
+        .where({ business_id: businessId, is_active: true })
+        .whereRaw('stock_quantity <= min_stock_alert')
+        .select('id', 'name', 'category', 'stock_quantity', 'min_stock_alert')
+        .limit(10);
+
+      // Pending commissions
+      let pendingCommissions = { count: 0, total: 0 };
+      try {
+        const [pc] = await db('staff_commissions')
+          .where({ business_id: businessId, status: 'pending' })
+          .select(db.raw('COUNT(*) as count'), db.raw('COALESCE(SUM(commission_amount), 0) as total'));
+        pendingCommissions = pc;
+      } catch { /* table may not exist yet */ }
+
+      return {
+        today: {
+          invoices: parseInt(todayStats.today_invoices || 0),
+          revenue: parseFloat(todayStats.today_revenue || 0),
+          collected: parseFloat(todayStats.today_collected || 0),
+          appointments: {
+            total: parseInt(todayAppointments.total || 0),
+            completed: parseInt(todayAppointments.completed || 0),
+            upcoming: parseInt(todayAppointments.upcoming || 0),
+            ongoing: parseInt(todayAppointments.ongoing || 0)
+          }
+        },
+        monthly: {
+          invoices: parseInt(monthlyStats.monthly_invoices || 0),
+          revenue: parseFloat(monthlyStats.monthly_revenue || 0),
+          collected: parseFloat(monthlyStats.monthly_collected || 0),
+          expenses: parseFloat(monthlyExpenses.monthly_expenses || 0),
+          net_profit: parseFloat(monthlyStats.monthly_collected || 0) - parseFloat(monthlyExpenses.monthly_expenses || 0)
+        },
+        customers: {
+          total: parseInt(customerStats.total_customers || 0),
+          new_this_month: parseInt(newCustomers.new_customers || 0)
+        },
+        staff: {
+          active: parseInt(staffStats.active_staff || 0)
+        },
+        alerts: {
+          low_stock: lowStock,
+          pending_commissions: pendingCommissions
+        },
+      };
+    }, 60); // 60s cache
+  }
+
+  /**
+   * Revenue chart data — monthly or daily
+   */
+  async getRevenueChart(businessId, period = 'monthly', year = new Date().getFullYear()) {
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    if (period === 'daily') {
+      const startOfMonth = `${year}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`;
+      const rows = await db('invoices')
+        .where({ business_id: businessId }).whereNot('status', 'cancelled')
+        .where('created_at', '>=', startOfMonth)
+        .select(db.raw('DATE(created_at) as date'), db.raw('COALESCE(SUM(total_amount), 0) as revenue'))
+        .groupByRaw('DATE(created_at)').orderBy('date');
+      return rows.map(r => ({ date: r.date, revenue: parseFloat(r.revenue) }));
+    }
+
+    // Monthly for the year
+    const rows = await db('invoices')
+      .where({ business_id: businessId }).whereNot('status', 'cancelled')
+      .whereRaw('YEAR(created_at) = ?', [year])
+      .select(
+        db.raw('MONTH(created_at) as month'),
+        db.raw('COALESCE(SUM(total_amount), 0) as revenue'),
+        db.raw('COUNT(*) as invoice_count')
+      )
+      .groupByRaw('MONTH(created_at)').orderBy('month');
+
+    return rows.map(r => ({
+      month: MONTH_NAMES[(parseInt(r.month) - 1)] || r.month,
+      revenue: parseFloat(r.revenue),
+      invoice_count: parseInt(r.invoice_count)
+    }));
+  }
+
+  /**
+   * Top services by revenue
+   */
+  async getTopServices(businessId) {
+    const startOfMonth = `${new Date().toISOString().substring(0, 7)}-01`;
+
+    try {
+      const rows = await db('invoice_items as ii')
+        .join('invoices as i', 'ii.invoice_id', 'i.id')
+        .leftJoin('salon_services as ss', 'ii.item_id', 'ss.id')
+        .where({ 'i.business_id': businessId, 'ii.item_type': 'service' })
+        .whereNot('i.status', 'cancelled')
+        .where('i.created_at', '>=', startOfMonth)
+        .select('ii.item_name as name', 'ss.category_id', 'ss.id as id', db.raw('SUM(ii.quantity) as count'), db.raw('SUM(ii.total_price) as revenue'))
+        .groupBy('ii.item_name', 'ss.category_id', 'ss.id').orderBy('revenue', 'desc').limit(5);
+
+      if (rows.length > 0) {
+        return rows.map(r => ({ id: r.id, category_id: r.category_id, name: r.name, count: parseInt(r.count), revenue: parseFloat(r.revenue) }));
+      }
+    } catch { /* fallback below */ }
+
+    // Fallback: count by appointments
+    const rows = await db('appointment_services as aps')
+      .join('appointments as a', 'aps.appointment_id', 'a.id')
+      .join('salon_services as s', 'aps.service_id', 's.id')
+      .where({ 'a.business_id': businessId })
+      .whereNotIn('a.status', ['cancelled'])
+      .where('a.appointment_date', '>=', startOfMonth)
+      .select('s.id', 's.category_id', 's.name', db.raw('COUNT(*) as count'), db.raw('SUM(s.price) as revenue'))
+      .groupBy('s.id', 's.category_id', 's.name').orderBy('count', 'desc').limit(5);
+
+    return rows.map(r => ({ id: r.id, category_id: r.category_id, name: r.name, count: parseInt(r.count), revenue: parseFloat(r.revenue || 0) }));
+  }
+
+  /**
+   * Today's appointments with full details
+   */
+  async getTodayAppointments(businessId) {
+    const today = new Date().toISOString().split('T')[0];
+
+    const rows = await db('appointments as a')
+      .join('customers as c', 'a.customer_id', 'c.id')
+      .leftJoin('appointment_services as aps', 'a.id', 'aps.appointment_id')
+      .leftJoin('salon_services as s', 'aps.service_id', 's.id')
+      .leftJoin('staff_members as sm', 'a.staff_member_id', 'sm.id')
+      .leftJoin('users as u', 'sm.user_id', 'u.id')
+      .where({ 'a.business_id': businessId, 'a.appointment_date': today })
+      .whereNotIn('a.status', ['cancelled'])
+      .select(
+        'a.id',
+        'a.start_time',
+        'a.end_time',
+        'a.status',
+        'a.notes',
+        db.raw("CONCAT(c.first_name, ' ', COALESCE(c.last_name, '')) as customer_name"),
+        's.name as service_name',
+        's.price as service_price',
+        db.raw("COALESCE(u.first_name, 'Unassigned') as staff_name")
+      )
+      .orderBy('a.start_time', 'asc');
+
+    return rows;
+  }
+
+  /**
+   * Upcoming appointments (tomorrow + next 7 days)
+   */
+  async getUpcomingAppointments(businessId) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
+    const rows = await db('appointments as a')
+      .join('customers as c', 'a.customer_id', 'c.id')
+      .leftJoin('appointment_services as aps', 'a.id', 'aps.appointment_id')
+      .leftJoin('salon_services as s', 'aps.service_id', 's.id')
+      .where({ 'a.business_id': businessId })
+      .where('a.appointment_date', '>=', tomorrow.toISOString().split('T')[0])
+      .where('a.appointment_date', '<=', nextWeek.toISOString().split('T')[0])
+      .whereNotIn('a.status', ['cancelled', 'completed'])
+      .select(
+        'a.id',
+        'a.appointment_date',
+        'a.start_time',
+        'a.status',
+        db.raw("CONCAT(c.first_name, ' ', COALESCE(c.last_name, '')) as customer_name"),
+        's.name as service_name'
+      )
+      .orderBy([{ column: 'a.appointment_date', order: 'asc' }, { column: 'a.start_time', order: 'asc' }])
+      .limit(5);
+
+    return rows;
+  }
+
+  /**
+   * Staff performance — appointment counts & completion rates this month
+   */
+  async getStaffPerformance(businessId) {
+    const startOfMonth = `${new Date().toISOString().substring(0, 7)}-01`;
+
+    const rows = await db('users as u')
+      .join('staff_members as sm', 'u.id', 'sm.user_id')
+      .leftJoin(
+        db('appointments')
+          .where('appointment_date', '>=', startOfMonth)
+          .whereNotIn('status', ['cancelled'])
+          .select('staff_member_id')
+          .select(db.raw('COUNT(*) as total_appointments'))
+          .select(db.raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_appointments"))
+          .groupBy('staff_member_id')
+          .as('a'),
+        'sm.id', 'a.staff_member_id'
+      )
+      .where({ 'u.business_id': businessId, 'u.is_active': true })
+      .whereIn('u.role', ['staff', 'manager'])
+      .select(
+        'sm.id',
+        'u.first_name as name',
+        'sm.designation as role',
+        db.raw('COALESCE(a.total_appointments, 0) as count'),
+        db.raw('CASE WHEN COALESCE(a.total_appointments, 0) > 0 THEN ROUND((COALESCE(a.completed_appointments, 0) / a.total_appointments) * 100) ELSE 0 END as perf')
+      )
+      .orderBy('count', 'desc')
+      .limit(5);
+
+    return rows.map(r => ({
+      ...r,
+      count: parseInt(r.count),
+      perf: parseInt(r.perf),
+      role: r.role || 'Staff'
+    }));
+  }
+
+  /**
+   * Recent customers — last 5 added
+   */
+  async getRecentCustomers(businessId) {
+    const rows = await db('customers')
+      .where({ business_id: businessId, is_active: true })
+      .select('id', 'first_name', 'last_name', 'phone', 'email', 'created_at')
+      .orderBy('created_at', 'desc')
+      .limit(5);
+
+    return rows;
+  }
+
+  /**
+   * Low stock inventory items
+   */
+  async getLowStockProducts(businessId) {
+    const rows = await db('products')
+      .where({ business_id: businessId, is_active: true })
+      .select('id', 'name', 'category', 'stock_quantity', 'min_stock_alert')
+      .orderBy('stock_quantity', 'asc')
+      .limit(5);
+
+    return rows.map(r => ({
+      ...r,
+      low: r.stock_quantity <= r.min_stock_alert
+    }));
+  }
+}
+
+const dashboardService = new DashboardService();
+
+// ===== ROUTES =====
+const router = Router();
+router.use(authenticate, businessScope(), authorize('super_admin', 'admin', 'manager'));
+
+router.get('/summary', asyncHandler(async (req, res) => {
+  const businessId = req.user.business_id;
+  ApiResponse.ok('Dashboard summary', await dashboardService.getSummary(businessId)).send(res);
+}));
+
+router.get('/revenue-chart', asyncHandler(async (req, res) => {
+  const businessId = req.user.business_id;
+  ApiResponse.ok('Revenue chart', await dashboardService.getRevenueChart(businessId, req.query.period, req.query.year)).send(res);
+}));
+
+router.get('/top-services', asyncHandler(async (req, res) => {
+  const businessId = req.user.business_id;
+  ApiResponse.ok('Top services', await dashboardService.getTopServices(businessId)).send(res);
+}));
+
+router.get('/today-appointments', asyncHandler(async (req, res) => {
+  const businessId = req.user.business_id;
+  ApiResponse.ok("Today's appointments", await dashboardService.getTodayAppointments(businessId)).send(res);
+}));
+
+router.get('/upcoming-appointments', asyncHandler(async (req, res) => {
+  const businessId = req.user.business_id;
+  ApiResponse.ok('Upcoming appointments', await dashboardService.getUpcomingAppointments(businessId)).send(res);
+}));
+
+router.get('/staff-performance', asyncHandler(async (req, res) => {
+  const businessId = req.user.business_id;
+  ApiResponse.ok('Staff performance', await dashboardService.getStaffPerformance(businessId)).send(res);
+}));
+
+router.get('/recent-customers', asyncHandler(async (req, res) => {
+  const businessId = req.user.business_id;
+  ApiResponse.ok('Recent customers', await dashboardService.getRecentCustomers(businessId)).send(res);
+}));
+
+router.get('/inventory-alerts', asyncHandler(async (req, res) => {
+  const businessId = req.user.business_id;
+  ApiResponse.ok('Inventory alerts', await dashboardService.getLowStockProducts(businessId)).send(res);
+}));
+
+export default router;
