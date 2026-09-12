@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
 import api from '@/lib/api';
+import { customerSchema, formatZodErrors } from '@/lib/validations';
 import { RiCloseLine, RiUserLine, RiPhoneLine, RiMailLine, RiMapPinLine, RiCalendarEventLine } from 'react-icons/ri';
 
 export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialData }) {
@@ -64,6 +65,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
     setMounted(true);
   }, []);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const handleClose = () => {
     setIsClosing(true);
@@ -84,11 +86,24 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
+
     try {
       const payload = { ...formData };
-      if (!payload.date_of_birth) delete payload.date_of_birth;
-      if (!payload.anniversary) delete payload.anniversary;
-      
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === '') {
+          delete payload[key];
+        }
+      });
+
+      // Zod Validation
+      const result = customerSchema.safeParse(payload);
+      if (!result.success) {
+        setFieldErrors(formatZodErrors(result.error));
+        setLoading(false);
+        return;
+      }
+
       if (initialData) {
         await api.put(`/customers/${initialData.id}`, payload);
       } else {
@@ -123,7 +138,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
         <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
           {error && <div className="p-3 mb-4 rounded-xl bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm">{error}</div>}
           
-          <form id="customerForm" onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <form id="customerForm" onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
             
             <div className="grid grid-cols-2 gap-4">
               {/* Phone Code & Number */}
@@ -133,18 +148,22 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
                   <select className="bg-admin-surface border border-admin-border rounded-xl px-3 py-2.5 text-sm text-admin-text outline-none focus:border-brand w-20 shrink-0">
                     <option value="+91">+91</option>
                   </select>
-                  <input required name="phone" value={formData.phone} onChange={handleChange}
-                    className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand"
-                    placeholder="9301386917" />
+                  <div className="w-full">
+                    <input name="phone" value={formData.phone} onChange={handleChange}
+                      className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.phone ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
+                      placeholder="9301386917" />
+                    {fieldErrors.phone && <p className="text-accent-red text-xs mt-1">{fieldErrors.phone}</p>}
+                  </div>
                 </div>
               </div>
 
               {/* First Name */}
               <div>
                 <label className="block text-xs font-semibold text-admin-text-secondary mb-1">First name*</label>
-                <input required name="first_name" value={formData.first_name} onChange={handleChange}
-                  className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand"
+                <input name="first_name" value={formData.first_name} onChange={handleChange}
+                  className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.first_name ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                   placeholder="First name" />
+                {fieldErrors.first_name && <p className="text-accent-red text-xs mt-1">{fieldErrors.first_name}</p>}
               </div>
             </div>
 
@@ -153,16 +172,18 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
               <div>
                 <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Email ID</label>
                 <input type="email" name="email" value={formData.email} onChange={handleChange}
-                  className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand"
+                  className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.email ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                   placeholder="Email ID" />
+                {fieldErrors.email && <p className="text-accent-red text-xs mt-1">{fieldErrors.email}</p>}
               </div>
 
               {/* Last Name */}
               <div>
                 <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Last name</label>
                 <input name="last_name" value={formData.last_name} onChange={handleChange}
-                  className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand"
+                  className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.last_name ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                   placeholder="Last name" />
+                {fieldErrors.last_name && <p className="text-accent-red text-xs mt-1">{fieldErrors.last_name}</p>}
               </div>
             </div>
 
@@ -186,8 +207,9 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
               <div>
                 <label className="block text-xs font-semibold text-admin-text-secondary mb-1">GST Number</label>
                 <input name="gst_number" value={formData.gst_number} onChange={handleChange}
-                  className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand"
+                  className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.gst_number ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                   placeholder="GST Number" />
+                {fieldErrors.gst_number && <p className="text-accent-red text-xs mt-1">{fieldErrors.gst_number}</p>}
               </div>
             </div>
 
@@ -197,7 +219,8 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
                 <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Date of birth</label>
                 <div className="relative">
                   <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange}
-                    className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand dark:[color-scheme:dark]" />
+                    className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand dark:[color-scheme:dark] ${fieldErrors.date_of_birth ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} />
+                  {fieldErrors.date_of_birth && <p className="text-accent-red text-xs mt-1">{fieldErrors.date_of_birth}</p>}
                 </div>
               </div>
 
@@ -214,8 +237,9 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
               <div>
                 <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Location</label>
                 <input name="location" value={formData.location} onChange={handleChange}
-                  className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand"
+                  className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.location ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                   placeholder="Location" />
+                {fieldErrors.location && <p className="text-accent-red text-xs mt-1">{fieldErrors.location}</p>}
               </div>
             </div>
 

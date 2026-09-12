@@ -5,6 +5,7 @@ import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
 import { RiCloseLine } from 'react-icons/ri';
 import api from '@/lib/api';
+import { serviceSchema, formatZodErrors } from '@/lib/validations';
 
 export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialData, categories }) {
   const [formData, setFormData] = useState({
@@ -28,6 +29,7 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
     setMounted(true);
   }, []);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const isEditing = !!initialData;
 
@@ -77,6 +79,7 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
 
     try {
       const payload = {
@@ -87,6 +90,13 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
         cost_price: formData.cost_price ? Number(formData.cost_price) : undefined,
         tax_percentage: formData.tax_percentage ? Number(formData.tax_percentage) : 0,
       };
+
+      const result = serviceSchema.safeParse(payload);
+      if (!result.success) {
+        setFieldErrors(formatZodErrors(result.error));
+        setLoading(false);
+        return;
+      }
 
       if (isEditing) {
         await api.put(`/services/${initialData.id}`, payload);
@@ -122,7 +132,7 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
 
         {/* Body (Scrollable) */}
         <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
-          <form id="service-form" onSubmit={handleSubmit} className="space-y-5">
+          <form id="service-form" onSubmit={handleSubmit} noValidate className="space-y-5">
             {error && (
               <div className="p-3 bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm rounded-lg">
                 {error}
@@ -135,26 +145,28 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
                 <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Service Name *</label>
                 <input
                   type="text"
-                  required
+                  name="name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors"
+                  className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.name ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                   placeholder="e.g., Premium Haircut"
                 />
+                {fieldErrors.name && <p className="text-accent-red text-xs mt-1">{fieldErrors.name}</p>}
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Category *</label>
                 <select
-                  required
+                  name="category_id"
                   value={formData.category_id}
                   onChange={e => setFormData({ ...formData, category_id: e.target.value })}
-                  className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors"
+                  className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.category_id ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                 >
                   <option value="" disabled>Select Category</option>
                   {categories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
+                {fieldErrors.category_id && <p className="text-accent-red text-xs mt-1">{fieldErrors.category_id}</p>}
               </div>
             </div>
 
@@ -166,20 +178,21 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
                   type="number"
                   min="0"
                   step="0.01"
-                  required
+                  name="price"
                   value={formData.price}
                   onChange={e => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors"
+                  className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.price ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                   placeholder="0.00"
                 />
+                {fieldErrors.price && <p className="text-accent-red text-xs mt-1">{fieldErrors.price}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Duration (Mins) *</label>
                 <select
-                  required
+                  name="duration_minutes"
                   value={formData.duration_minutes}
                   onChange={e => setFormData({ ...formData, duration_minutes: Number(e.target.value) })}
-                  className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors"
+                  className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.duration_minutes ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                 >
                   <option value={15}>15 Minutes</option>
                   <option value={30}>30 Minutes</option>
@@ -190,6 +203,7 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
                   <option value={150}>2.5 Hours</option>
                   <option value={180}>3 Hours</option>
                 </select>
+                {fieldErrors.duration_minutes && <p className="text-accent-red text-xs mt-1">{fieldErrors.duration_minutes}</p>}
               </div>
             </div>
 

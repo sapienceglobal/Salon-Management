@@ -6,8 +6,10 @@ import { useScrollLock } from '@/hooks/useScrollLock';
 import { RiCloseLine, RiUserStarLine, RiMoneyDollarCircleLine, RiScissorsLine, RiCalendarCheckLine, RiDeleteBinLine, RiPhoneLine, RiMailLine } from 'react-icons/ri';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
+import { useConfirm } from '@/context/ConfirmContext';
 
 export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, onDelete }) {
+  const { confirm } = useConfirm();
   const [mounted, setMounted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [staff, setStaff] = useState(null);
@@ -78,8 +80,13 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
             <div className="p-6 border-b border-admin-border bg-admin-surface/30 shrink-0 relative">
               <div className="absolute top-4 right-4 flex items-center gap-2">
                 <button 
-                  onClick={() => {
-                    if (window.confirm("Are you sure you want to delete this staff member? This cannot be undone.")) {
+                  onClick={async () => {
+                    const isConfirmed = await confirm({
+                      title: 'Delete Staff',
+                      message: 'Are you sure you want to delete this staff member? This cannot be undone.',
+                      confirmText: 'Delete'
+                    });
+                    if (isConfirmed) {
                       onDelete && onDelete(staff.id);
                       handleClose();
                     }

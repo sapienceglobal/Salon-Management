@@ -8,6 +8,7 @@ import AddCustomerModal from '@/components/admin/customers/AddCustomerModal';
 import CustomerProfilePanel from '@/components/admin/customers/CustomerProfilePanel';
 import ImportCustomersModal from '@/components/admin/customers/ImportCustomersModal';
 import CustomerFilterDrawer from '@/components/admin/customers/CustomerFilterDrawer';
+import toast from 'react-hot-toast';
 
 const ALPHABETS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -111,7 +112,7 @@ export default function CustomersPage() {
       const res = await api.get('/customers', { params: { ...cleanFilters, limit: 10000, page: 1 } });
       const exportData = res.data?.customers || res.data || [];
       if (exportData.length === 0) {
-        alert('No customers to export');
+        toast.error('No customers to export');
         return;
       }
 
@@ -147,7 +148,7 @@ export default function CustomersPage() {
       document.body.removeChild(link);
     } catch (error) {
       console.error('Failed to export customers', error);
-      alert('Failed to export customers');
+      toast.error('Failed to export customers');
     } finally {
       setIsExporting(false);
     }
@@ -382,7 +383,7 @@ export default function CustomersPage() {
             fetchCustomers();
           } catch (err) {
             console.error(err);
-            alert('Failed to delete customer');
+            toast.error('Failed to delete customer');
           }
         }}
       />

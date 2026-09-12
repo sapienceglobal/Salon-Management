@@ -16,8 +16,10 @@ import CheckoutModal from '@/components/admin/billing/CheckoutModal';
 import ReceiptModal from '@/components/admin/billing/ReceiptModal';
 import ViewDraftsDrawer from '@/components/admin/billing/ViewDraftsDrawer';
 import { formatCurrency } from '@/lib/utils';
+import { useConfirm } from '@/context/ConfirmContext';
 
 export default function POSPage() {
+  const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState('Services');
   const [staffList, setStaffList] = useState([]);
   const [draftCount, setDraftCount] = useState(0);
@@ -483,9 +485,14 @@ export default function POSPage() {
             <RiFileList3Line /> View draft ({String(draftCount).padStart(2, '0')})
           </div>
           <div 
-            onClick={(e) => { 
+            onClick={async (e) => { 
               e.stopPropagation();
-              if (window.confirm("Are you sure you want to clear the current cart and start a new sale?")) {
+              const isConfirmed = await confirm({
+                title: 'Clear Cart',
+                message: 'Are you sure you want to clear the current cart and start a new sale?',
+                confirmText: 'Clear Cart'
+              });
+              if (isConfirmed) {
                 clearCart();
               }
             }}

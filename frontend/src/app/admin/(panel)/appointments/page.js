@@ -15,6 +15,7 @@ import {
 import AddAppointmentModal from '@/components/admin/appointments/AddAppointmentModal';
 import AppointmentDetailsDrawer from '@/components/admin/appointments/AppointmentDetailsDrawer';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import toast from 'react-hot-toast';
 
 // Configuration
 const HOURS = ['9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM'];
@@ -59,6 +60,7 @@ export default function AppointmentsPage() {
   const [activeTab, setActiveTab] = useState('Today');
   const [appointments, setAppointments] = useState([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+  const [monthAppointments, setMonthAppointments] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [customersList, setCustomersList] = useState([]);
   const [servicesList, setServicesList] = useState([]);
@@ -144,9 +146,16 @@ export default function AppointmentsPage() {
       if (selectedStaff) upcomingQuery += `&staff_id=${selectedStaff}`;
       if (selectedService) upcomingQuery += `&service_id=${selectedService}`;
 
-      const [apptsRes, upcomingRes, staffRes, custRes, servRes] = await Promise.allSettled([
+      // Fetch month appointments for calendar dots
+      const monthStartStr = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1), 'yyyy-MM-dd');
+      const monthEndStr = format(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0), 'yyyy-MM-dd');
+      let monthQuery = `/appointments?from_date=${monthStartStr}&to_date=${monthEndStr}&limit=500`;
+      if (selectedStaff) monthQuery += `&staff_id=${selectedStaff}`;
+
+      const [apptsRes, upcomingRes, monthRes, staffRes, custRes, servRes] = await Promise.allSettled([
         api.get(apptQuery),
         api.get(upcomingQuery),
+        api.get(monthQuery),
         api.get('/staff'),
         api.get('/customers?limit=100'),
         api.get('/services')
@@ -154,6 +163,7 @@ export default function AppointmentsPage() {
 
       if (apptsRes.status === 'fulfilled') setAppointments(apptsRes.value.data?.appointments || apptsRes.value.data || []);
       if (upcomingRes.status === 'fulfilled') setUpcomingAppointments(upcomingRes.value.data?.appointments || upcomingRes.value.data || []);
+      if (monthRes.status === 'fulfilled') setMonthAppointments(monthRes.value.data?.appointments || monthRes.value.data || []);
       if (staffRes.status === 'fulfilled') setStaffList(staffRes.value.data?.users || staffRes.value.data || []);
       if (custRes.status === 'fulfilled') setCustomersList(custRes.value.data?.customers || custRes.value.data || []);
       if (servRes.status === 'fulfilled') setServicesList(servRes.value.data?.services || servRes.value.data || []);
@@ -241,7 +251,7 @@ export default function AppointmentsPage() {
       setItemToDelete(null);
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete appointment');
+      toast.error(err.response?.data?.message || 'Failed to delete appointment');
     }
   };
 
@@ -382,7 +392,7 @@ export default function AppointmentsPage() {
       {/* ====== RIGHT SIDEBAR ====== */}
       <div className="w-full xl:w-[320px] shrink-0 flex flex-col gap-6">
 
-        <MiniCalendar selectedDate={currentDate} onSelectDate={handleCalendarSelect} />
+        <MiniCalendar selectedDate={currentDate} onSelectDate={handleCalendarSelect} appointments={monthAppointments} />
 
 
         {/* Appointment Insights Chart */}

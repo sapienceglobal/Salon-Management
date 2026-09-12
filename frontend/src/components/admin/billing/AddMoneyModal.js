@@ -4,11 +4,13 @@ import { createPortal } from 'react-dom';
 import { RiCloseLine, RiSearchLine, RiAddLine } from 'react-icons/ri';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import { walletTopupSchema, formatZodErrors } from '@/lib/validations';
 
 export default function AddMoneyModal({ isOpen, onClose, onSuccess, preSelectedCustomer }) {
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   useScrollLock(isOpen);
 
   useEffect(() => {
@@ -73,12 +75,22 @@ export default function AddMoneyModal({ isOpen, onClose, onSuccess, preSelectedC
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFieldErrors({});
+
     if (!selectedCustomer) {
       toast.error('Please select a customer');
       return;
     }
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      toast.error('Please enter a valid amount');
+
+    const payload = {
+      amount: parseFloat(formData.amount) || 0,
+      payment_method: formData.payment_method,
+      notes: formData.notes
+    };
+
+    const result = walletTopupSchema.safeParse(payload);
+    if (!result.success) {
+      setFieldErrors(formatZodErrors(result.error));
       return;
     }
 
@@ -86,8 +98,8 @@ export default function AddMoneyModal({ isOpen, onClose, onSuccess, preSelectedC
     try {
       await api.post('/wallet-rewards/wallet/topup', {
         customer_id: selectedCustomer.id,
-        amount: parseFloat(formData.amount),
-        description: formData.notes || `Top-up via ${formData.payment_method}`
+        amount: payload.amount,
+        description: payload.notes || `Top-up via ${payload.payment_method}`
       });
       toast.success('Money added to wallet successfully');
       onSuccess?.();
@@ -165,18 +177,22 @@ export default function AddMoneyModal({ isOpen, onClose, onSuccess, preSelectedC
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="text-sm font-bold text-admin-text mb-1.5 block">Amount (₹)</label>
-              <input 
+            <div className="mt-6">
+              <label className="text-sm font-bold text-admin-text mb-1.5 block">Amount to Add (₹)</label>
+              <input
                 type="number"
+                name="amount"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
                 value={formData.amount}
                 onChange={e => setFormData({...formData, amount: e.target.value})}
-                placeholder="0.00"
-                className="w-full bg-admin-surface border border-admin-border focus:border-brand rounded-xl px-4 py-3 text-lg font-bold text-admin-text outline-none transition-colors"
+                className={`w-full bg-admin-surface border rounded-xl px-4 py-3 text-2xl font-bold text-admin-text outline-none transition-colors ${fieldErrors.amount ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}
               />
+              {fieldErrors.amount && <p className="text-accent-red text-xs mt-1">{fieldErrors.amount}</p>}
             </div>
-            
-            <div>
+
+            <div className="mt-4">
               <label className="text-sm font-bold text-admin-text mb-1.5 block">Payment Method</label>
               <div className="grid grid-cols-3 gap-2">
                 {['upi', 'card', 'cash'].map(method => (
@@ -190,20 +206,23 @@ export default function AddMoneyModal({ isOpen, onClose, onSuccess, preSelectedC
                         : 'border-admin-border text-admin-text-secondary hover:border-admin-text-muted hover:text-admin-text'
                     }`}
                   >
-                    {method}
+                    {method.toUpperCase()}
                   </button>
                 ))}
               </div>
+              {fieldErrors.payment_method && <p className="text-accent-red text-xs mt-1">{fieldErrors.payment_method}</p>}
             </div>
 
-            <div>
-              <label className="text-sm font-bold text-admin-text mb-1.5 block">Internal Notes (Optional)</label>
-              <textarea 
+            <div className="mt-4">
+              <label className="text-sm font-bold text-admin-text mb-1.5 block">Notes (Optional)</label>
+              <textarea
+                name="notes"
+                placeholder="e.g. Added as promotional offer"
                 value={formData.notes}
                 onChange={e => setFormData({...formData, notes: e.target.value})}
-                placeholder="Any references or details"
-                className="w-full bg-admin-surface border border-admin-border focus:border-brand rounded-xl px-4 py-3 text-sm text-admin-text outline-none transition-colors h-24 resize-none"
-              ></textarea>
+                className={`w-full bg-admin-surface border rounded-xl px-4 py-3 text-sm text-admin-text outline-none transition-colors h-24 resize-none ${fieldErrors.notes ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}
+              />
+              {fieldErrors.notes && <p className="text-accent-red text-xs mt-1">{fieldErrors.notes}</p>}
             </div>
           </div>
         </div>

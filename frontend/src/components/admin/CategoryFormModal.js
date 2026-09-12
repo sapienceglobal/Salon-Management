@@ -5,6 +5,7 @@ import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
 import { RiCloseLine } from 'react-icons/ri';
 import api from '@/lib/api';
+import { categorySchema, formatZodErrors } from '@/lib/validations';
 
 export default function CategoryFormModal({ isOpen, onClose, onSuccess, initialData }) {
   const [formData, setFormData] = useState({ name: '', description: '' });
@@ -17,6 +18,7 @@ export default function CategoryFormModal({ isOpen, onClose, onSuccess, initialD
     setMounted(true);
   }, []);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const isEditing = !!initialData;
 
@@ -49,6 +51,14 @@ export default function CategoryFormModal({ isOpen, onClose, onSuccess, initialD
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
+
+    const result = categorySchema.safeParse(formData);
+    if (!result.success) {
+      setFieldErrors(formatZodErrors(result.error));
+      setLoading(false);
+      return;
+    }
 
     try {
       if (isEditing) {
@@ -65,18 +75,18 @@ export default function CategoryFormModal({ isOpen, onClose, onSuccess, initialD
   };
 
   return createPortal(
-    <div className={`fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm ${isClosing ? 'animate-[fadeOut_0.2s_ease_forwards]' : 'animate-[fadeIn_0.2s_ease_forwards]'}`} onMouseDown={handleClose}>
-      <div className="bg-admin-card w-full max-w-md rounded-2xl border border-admin-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm ${isClosing ? 'animate-[fadeOut_0.2s_ease_forwards]' : 'animate-[fadeIn_0.2s_ease_forwards]'}`} onMouseDown={handleClose}>
+      <div className="bg-admin-card w-full max-w-md rounded-2xl border border-admin-border shadow-2xl overflow-hidden" onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-admin-border bg-admin-surface/50">
-          <h2 className="text-lg font-bold">{isEditing ? 'Edit Category' : 'Add Category'}</h2>
+          <h2 className="text-lg font-bold text-admin-text">{isEditing ? 'Edit Category' : 'Add Category'}</h2>
           <button onClick={handleClose} className="text-admin-text-secondary hover:text-admin-text p-1 rounded-md hover:bg-admin-surface-light transition-colors">
             <RiCloseLine className="text-xl" />
           </button>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} noValidate className="p-6">
           {error && (
             <div className="mb-4 p-3 bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm rounded-lg">
               {error}
@@ -88,12 +98,13 @@ export default function CategoryFormModal({ isOpen, onClose, onSuccess, initialD
               <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Category Name *</label>
               <input
                 type="text"
-                required
+                name="name"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors"
+                className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.name ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                 placeholder="e.g., Haircut & Styling"
               />
+              {fieldErrors.name && <p className="text-accent-red text-xs mt-1">{fieldErrors.name}</p>}
             </div>
             
             <div>
@@ -102,9 +113,10 @@ export default function CategoryFormModal({ isOpen, onClose, onSuccess, initialD
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
                 rows="3"
-                className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors resize-none"
+                className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors resize-none ${fieldErrors.description ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                 placeholder="Brief description of services in this category"
               />
+              {fieldErrors.description && <p className="text-accent-red text-xs mt-1">{fieldErrors.description}</p>}
             </div>
           </div>
 

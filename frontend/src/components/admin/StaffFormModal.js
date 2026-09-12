@@ -5,6 +5,7 @@ import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
 import { RiCloseLine, RiFileCopyLine, RiCheckLine, RiInformationLine } from 'react-icons/ri';
 import api from '@/lib/api';
+import { staffSchema, formatZodErrors } from '@/lib/validations';
 
 export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData }) {
   const isEditing = !!initialData;
@@ -35,6 +36,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
     setMounted(true);
   }, []);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [copied, setCopied] = useState(false);
 
   // Generate a random secure password for new users
@@ -96,6 +98,14 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
+
+    const result = staffSchema.safeParse(formData);
+    if (!result.success) {
+      setFieldErrors(formatZodErrors(result.error));
+      setLoading(false);
+      return;
+    }
 
     try {
       let userId = initialData?.user_id;
@@ -169,10 +179,11 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
 
         {/* Body */}
         <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
-          <form id="staff-form" onSubmit={handleSubmit} className="space-y-8">
+          <form id="staff-form" onSubmit={handleSubmit} noValidate className="space-y-8">
             {error && (
-              <div className="p-3 bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm rounded-lg">
-                {error}
+              <div className="p-3 bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm rounded-lg flex items-start gap-2">
+                <RiInformationLine className="text-lg shrink-0 mt-0.5" />
+                <span>{error}</span>
               </div>
             )}
 
@@ -184,20 +195,26 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                 <div>
                   <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">First Name *</label>
                   <input
-                    type="text" required value={formData.first_name}
+                    type="text"
+                    name="first_name"
+                    value={formData.first_name}
                     onChange={e => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+                    className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.first_name ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                     placeholder="e.g., Sarah"
                   />
+                  {fieldErrors.first_name && <p className="text-accent-red text-xs mt-1">{fieldErrors.first_name}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Last Name *</label>
                   <input
-                    type="text" required value={formData.last_name}
+                    type="text"
+                    name="last_name"
+                    value={formData.last_name}
                     onChange={e => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+                    className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.last_name ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                     placeholder="e.g., Connor"
                   />
+                  {fieldErrors.last_name && <p className="text-accent-red text-xs mt-1">{fieldErrors.last_name}</p>}
                 </div>
               </div>
 
@@ -205,21 +222,28 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                 <div>
                   <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Email Address *</label>
                   <input
-                    type="email" required value={formData.email} disabled={isEditing}
+                    type="email"
+                    name="email"
+                    disabled={isEditing}
+                    value={formData.email}
                     onChange={e => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none disabled:opacity-60"
+                    className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors disabled:opacity-60 ${fieldErrors.email ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                     placeholder="sarah@example.com"
                   />
+                  {fieldErrors.email && <p className="text-accent-red text-xs mt-1">{fieldErrors.email}</p>}
                   {isEditing && <p className="text-[11px] text-admin-text-muted mt-1">Email cannot be changed after creation.</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Phone Number *</label>
                   <input
-                    type="tel" required value={formData.phone}
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
                     onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+                    className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.phone ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                     placeholder="+91 9876543210"
                   />
+                  {fieldErrors.phone && <p className="text-accent-red text-xs mt-1">{fieldErrors.phone}</p>}
                 </div>
               </div>
 
@@ -227,14 +251,16 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                 <div>
                   <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">System Role *</label>
                   <select
-                    required value={formData.role}
+                    name="role"
+                    value={formData.role}
                     onChange={e => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+                    className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.role ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                   >
                     <option value="staff">Staff (Service Provider)</option>
                     <option value="receptionist">Receptionist (Front Desk)</option>
                     <option value="manager">Manager</option>
                   </select>
+                  {fieldErrors.role && <p className="text-accent-red text-xs mt-1">{fieldErrors.role}</p>}
                 </div>
                 
                 {!isEditing && (
@@ -242,8 +268,11 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                     <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Temporary Password</label>
                     <div className="flex items-center gap-2">
                       <input
-                        type="text" readOnly value={formData.password || ''}
-                        className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm font-mono text-admin-text outline-none opacity-80"
+                        type="text"
+                        name="password"
+                        readOnly
+                        value={formData.password || ''}
+                        className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm font-mono text-admin-text outline-none opacity-80 ${fieldErrors.password ? 'border-accent-red' : 'border-admin-border'}`}
                       />
                       <button 
                         type="button" onClick={copyToClipboard}
@@ -253,6 +282,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                         {copied ? <RiCheckLine className="text-accent-green" /> : <RiFileCopyLine className="text-admin-text-secondary" />}
                       </button>
                     </div>
+                    {fieldErrors.password && <p className="text-accent-red text-xs mt-1">{fieldErrors.password}</p>}
                     <p className="text-[11px] text-admin-text-muted mt-1 flex items-center gap-1">
                       <RiInformationLine /> Share this securely. User will be forced to change it.
                     </p>
@@ -269,20 +299,28 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                 <div>
                   <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Designation</label>
                   <input
-                    type="text" value={formData.designation}
+                    type="text"
+                    name="designation"
+                    value={formData.designation}
                     onChange={e => setFormData({ ...formData, designation: e.target.value })}
-                    className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+                    className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.designation ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                     placeholder="e.g., Senior Stylist"
                   />
+                  {fieldErrors.designation && <p className="text-accent-red text-xs mt-1">{fieldErrors.designation}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Base Salary (₹)</label>
                   <input
-                    type="number" min="0" step="100" value={formData.salary}
+                    type="number"
+                    name="salary"
+                    min="0"
+                    step="100"
+                    value={formData.salary}
                     onChange={e => setFormData({ ...formData, salary: e.target.value })}
-                    className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+                    className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.salary ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                     placeholder="Monthly salary"
                   />
+                  {fieldErrors.salary && <p className="text-accent-red text-xs mt-1">{fieldErrors.salary}</p>}
                 </div>
               </div>
 
@@ -290,30 +328,39 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                 <div>
                   <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Joining Date</label>
                   <input
-                    type="date" value={formData.joining_date}
+                    type="date"
+                    name="joining_date"
+                    value={formData.joining_date}
                     onChange={e => setFormData({ ...formData, joining_date: e.target.value })}
-                    className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none [color-scheme:dark] html[data-theme-mode='light']:![color-scheme:light]"
+                    className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors [color-scheme:dark] html[data-theme-mode='light']:![color-scheme:light] ${fieldErrors.joining_date ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                   />
+                  {fieldErrors.joining_date && <p className="text-accent-red text-xs mt-1">{fieldErrors.joining_date}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Specializations</label>
                   <input
-                    type="text" value={formData.specializations}
+                    type="text"
+                    name="specializations"
+                    value={formData.specializations}
                     onChange={e => setFormData({ ...formData, specializations: e.target.value })}
-                    className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+                    className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.specializations ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                     placeholder="Hair, Makeup, Nails (Comma separated)"
                   />
+                  {fieldErrors.specializations && <p className="text-accent-red text-xs mt-1">{fieldErrors.specializations}</p>}
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Bio / Notes</label>
                 <textarea
-                  rows="3" value={formData.bio}
+                  rows="3"
+                  name="bio"
+                  value={formData.bio}
                   onChange={e => setFormData({ ...formData, bio: e.target.value })}
-                  className="w-full bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none resize-none"
+                  className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors resize-none ${fieldErrors.bio ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
                   placeholder="Internal notes or public biography..."
                 />
+                {fieldErrors.bio && <p className="text-accent-red text-xs mt-1">{fieldErrors.bio}</p>}
               </div>
             </div>
 

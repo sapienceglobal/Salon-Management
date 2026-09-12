@@ -1,15 +1,17 @@
 import {  useState, useEffect  } from 'react';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
-import { RiCloseLine } from 'react-icons/ri';
+import { RiCloseLine, RiLoader2Line } from 'react-icons/ri';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import { expenseSchema, formatZodErrors } from '@/lib/validations';
 
 export default function AddExpenseModal({ isOpen, onClose, onSuccess }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   useScrollLock(isOpen);
 
   useEffect(() => {
@@ -67,21 +69,25 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.amount || !formData.expense_date || !formData.category_id || !formData.payment_method) {
-      toast.error('Please fill all required fields');
+    setFieldErrors({});
+
+    const payload = {
+      category_id: parseInt(formData.category_id),
+      amount: parseFloat(grossAmount.toFixed(2)),
+      tax_amount: parseFloat(tax.toFixed(2)),
+      payment_method: formData.payment_method,
+      expense_date: formData.expense_date,
+      description: formData.description + (formData.reference_number ? ` [Ref: ${formData.reference_number}]` : '')
+    };
+
+    const result = expenseSchema.safeParse(payload);
+    if (!result.success) {
+      setFieldErrors(formatZodErrors(result.error));
       return;
     }
 
     setLoading(true);
     try {
-      const payload = {
-        category_id: parseInt(formData.category_id),
-        amount: parseFloat(grossAmount.toFixed(2)),
-        tax_amount: parseFloat(tax.toFixed(2)),
-        payment_method: formData.payment_method,
-        expense_date: formData.expense_date,
-        description: formData.description + (formData.reference_number ? ` [Ref: ${formData.reference_number}]` : '')
-      };
 
       await api.post('/expenses', payload);
       toast.success('Expense added successfully');
@@ -111,46 +117,48 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }) {
 
         {/* Body */}
         <div className="overflow-y-auto custom-scrollbar flex-1 p-6 space-y-6">
-          
-          <div className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
               <label className="text-sm font-bold text-admin-text mb-1.5 block">Date</label>
               <input
                 type="date"
-                required
+                name="expense_date"
                 value={formData.expense_date}
                 onChange={e => setFormData({...formData, expense_date: e.target.value})}
-                className="w-full bg-admin-surface border border-admin-border focus:border-brand rounded-xl px-4 py-3 text-sm text-admin-text outline-none transition-colors [color-scheme:dark]"
+                className={`w-full bg-admin-surface border rounded-xl px-4 py-3 text-sm text-admin-text outline-none transition-colors [color-scheme:dark] ${fieldErrors.expense_date ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}
               />
+              {fieldErrors.expense_date && <p className="text-accent-red text-xs mt-1">{fieldErrors.expense_date}</p>}
             </div>
 
             <div>
               <label className="text-sm font-bold text-admin-text mb-1.5 block">Entry Type</label>
               <select
-                required
+                name="category_id"
                 value={formData.category_id}
                 onChange={e => setFormData({...formData, category_id: e.target.value})}
-                className="w-full bg-admin-surface border border-admin-border focus:border-brand rounded-xl px-4 py-3 text-sm text-admin-text outline-none transition-colors appearance-none"
+                className={`w-full bg-admin-surface border rounded-xl px-4 py-3 text-sm text-admin-text outline-none transition-colors appearance-none ${fieldErrors.category_id ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}
               >
                 <option value="" disabled>Select Entry Type</option>
                 {categories.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
+              {fieldErrors.category_id && <p className="text-accent-red text-xs mt-1">{fieldErrors.category_id}</p>}
             </div>
 
             <div>
               <label className="text-sm font-bold text-admin-text mb-1.5 block">Paid Amount (₹)</label>
               <input
                 type="number"
-                required
+                name="amount"
                 min="0"
                 step="0.01"
                 placeholder="0.00"
                 value={formData.amount}
                 onChange={e => setFormData({...formData, amount: e.target.value})}
-                className="w-full bg-admin-surface border border-admin-border focus:border-brand rounded-xl px-4 py-3 text-lg font-bold text-admin-text outline-none transition-colors"
+                className={`w-full bg-admin-surface border rounded-xl px-4 py-3 text-lg font-bold text-admin-text outline-none transition-colors ${fieldErrors.amount ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}
               />
+              {fieldErrors.amount && <p className="text-accent-red text-xs mt-1">{fieldErrors.amount}</p>}
             </div>
 
             <div>
@@ -219,25 +227,27 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }) {
                 className="w-full bg-admin-surface border border-admin-border focus:border-brand rounded-xl px-4 py-3 text-sm text-admin-text outline-none transition-colors h-24 resize-none"
               />
             </div>
-            
-          </div>
+            {/* Footer */}
+          </form>
         </div>
-
-        {/* Footer */}
-        <div className="p-6 border-t border-admin-border bg-admin-surface/50 shrink-0 flex gap-4">
-          <button
-            onClick={handleClose}
-            className="flex-1 py-3.5 px-4 rounded-xl border border-admin-border text-admin-text font-bold hover:bg-admin-surface transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="flex-[2] py-3.5 px-4 rounded-xl font-bold bg-brand text-white hover:bg-brand-dark transition-colors shadow-lg shadow-brand/25 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Saving...' : 'Save Expense'}
-          </button>
+        
+        <div className="p-6 border-t border-admin-border bg-admin-surface/50 shrink-0">
+          <div className="flex gap-3">
+            <button
+              onClick={handleClose}
+              disabled={loading}
+              className="flex-1 py-3 px-4 rounded-xl text-sm font-bold text-admin-text-secondary bg-admin-surface border border-admin-border hover:bg-admin-surface-light transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="flex-1 py-3 px-4 rounded-xl text-sm font-bold text-white bg-brand hover:bg-brand-light transition-colors disabled:opacity-50 shadow-lg shadow-brand/20 flex items-center justify-center"
+            >
+              {loading ? <RiLoader2Line className="animate-spin text-xl" /> : 'Save Expense'}
+            </button>
+          </div>
         </div>
       </div>
     </div>,

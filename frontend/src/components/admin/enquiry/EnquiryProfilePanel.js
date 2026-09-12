@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { RiCloseLine, RiEdit2Line, RiDeleteBinLine, RiPhoneLine, RiMailLine, RiUserStarLine } from 'react-icons/ri';
+import { useConfirm } from '@/context/ConfirmContext';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export default function EnquiryProfilePanel({ enquiry, isOpen, onClose, onEdit, onDelete, onConvert, fetchEnquiries }) {
+  const { confirm } = useConfirm();
   const [mounted, setMounted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
@@ -99,8 +101,13 @@ export default function EnquiryProfilePanel({ enquiry, isOpen, onClose, onEdit, 
                 <RiEdit2Line className="text-lg" />
               </button>
               <button 
-                onClick={() => {
-                  if (window.confirm("Are you sure you want to mark this enquiry as inactive?")) {
+                onClick={async () => {
+                  const isConfirmed = await confirm({
+                    title: 'Mark Inactive',
+                    message: 'Are you sure you want to mark this enquiry as inactive?',
+                    confirmText: 'Mark Inactive'
+                  });
+                  if (isConfirmed) {
                     onDelete && onDelete(enquiry.id);
                     handleClose();
                   }
@@ -134,9 +141,15 @@ export default function EnquiryProfilePanel({ enquiry, isOpen, onClose, onEdit, 
 
             {enquiry.status !== 'converted' && (
               <button 
-                onClick={() => {
-                  if (window.confirm("Convert this enquiry to a full Customer?")) {
-                    onConvert && onConvert(enquiry.id);
+                onClick={async () => {
+                  const isConfirmed = await confirm({
+                    title: 'Convert to Customer',
+                    message: 'Convert this enquiry to a full Customer?',
+                    confirmText: 'Convert',
+                    type: 'warning'
+                  });
+                  if (isConfirmed) {
+                    onConvert && onConvert(enquiry);
                     handleClose();
                   }
                 }}

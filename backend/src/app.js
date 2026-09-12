@@ -37,6 +37,7 @@ import campaignRoutes from './modules/campaigns/campaigns.module.js';
 import dashboardRoutes from './modules/dashboard/dashboard.module.js';
 import settingsRoutes from './modules/settings/settings.module.js';
 import reportRoutes from './modules/reports/reports.module.js';
+import searchRoutes from './modules/search/search.module.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -148,6 +149,7 @@ app.use(`${API_PREFIX}/expenses`, expenseRoutes);
 app.use(`${API_PREFIX}/feedback`, feedbackRoutes);
 app.use(`${API_PREFIX}/campaigns`, campaignRoutes);
 app.use(`${API_PREFIX}/dashboard`, dashboardRoutes);
+app.use(`${API_PREFIX}/search`, searchRoutes);
 app.use(`${API_PREFIX}/settings`, settingsRoutes);
 app.use(`${API_PREFIX}/reports`, reportRoutes);
 

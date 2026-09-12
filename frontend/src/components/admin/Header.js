@@ -3,6 +3,7 @@
 import { format } from 'date-fns';
 import { RiMenuLine, RiSearchLine, RiNotification3Line, RiMapPinLine, RiSettings4Line, RiSunLine, RiMoonLine } from 'react-icons/ri';
 import { useTheme } from '@/context/ThemeContext';
+import GlobalSearch from '@/components/admin/GlobalSearch';
 
 export default function Header({ onToggleSidebar }) {
   const today = format(new Date(), 'EEE, d MMM yyyy');
@@ -20,14 +21,7 @@ export default function Header({ onToggleSidebar }) {
           <RiMenuLine />
         </button>
 
-        <div className="flex items-center gap-2.5 bg-admin-surface-light border border-admin-border rounded-full px-[18px] py-2 w-[380px] focus-within:border-brand transition-colors duration-150">
-          <RiSearchLine className="text-admin-text-muted text-base shrink-0" />
-          <input
-            type="text"
-            placeholder="Search customer, appointment, service..."
-            className="bg-transparent border-none text-admin-text text-sm w-full outline-none placeholder:text-admin-text-muted"
-          />
-        </div>
+        <GlobalSearch />
       </div>
 
       {/* Right */}

@@ -4,9 +4,12 @@ import { createPortal } from 'react-dom';
 import { RiCloseLine, RiEdit2Line, RiDeleteBinLine, RiPriceTag3Line, RiStockLine, RiAlarmWarningLine, RiAddLine, RiSubtractLine, RiArchiveLine } from 'react-icons/ri';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { useScrollLock } from '@/hooks/useScrollLock';
+import { useConfirm } from '@/context/ConfirmContext';
+import toast from 'react-hot-toast';
 import api from '@/lib/api';
 
 export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, onUpdateSuccess }) {
+  const { confirm } = useConfirm();
   const [mounted, setMounted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   
@@ -65,7 +68,12 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
 
   const handleToggleActive = async () => {
     const actionStr = product.is_active ? 'mark as inactive' : 'restore';
-    if (!confirm(`Are you sure you want to ${actionStr} ${product.name}?`)) return;
+    const isConfirmed = await confirm({
+      title: product.is_active ? 'Mark Inactive' : 'Restore Product',
+      message: `Are you sure you want to ${actionStr} ${product.name}?`,
+      confirmText: product.is_active ? 'Mark Inactive' : 'Restore'
+    });
+    if (!isConfirmed) return;
     try {
       if (product.is_active) {
         await api.delete(`/products/${product.id}`);
@@ -77,7 +85,7 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
         handleClose();
       }
     } catch (err) {
-      alert(err.response?.data?.message || `Failed to ${actionStr} product`);
+      toast.error(err.response?.data?.message || `Failed to ${actionStr} product`);
     }
   };
 

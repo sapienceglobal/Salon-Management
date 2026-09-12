@@ -4,12 +4,14 @@ import { createPortal } from 'react-dom';
 import { RiCloseLine, RiImageAddLine } from 'react-icons/ri';
 import api from '@/lib/api';
 import { useScrollLock } from '@/hooks/useScrollLock';
+import { inventorySchema, formatZodErrors } from '@/lib/validations';
 
 export default function AddProductModal({ isOpen, onClose, onSuccess, productToEdit = null }) {
   const [mounted, setMounted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useScrollLock(isOpen);
 
@@ -56,6 +58,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, productToE
       }
       setIsClosing(false);
       setError(null);
+      setFieldErrors({});
     }
   }, [isOpen, productToEdit]);
 
@@ -78,15 +81,33 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, productToE
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setFieldErrors({});
+
+    const payload = {
+      ...formData,
+      purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : 0,
+      selling_price: parseFloat(formData.selling_price),
+      stock_quantity: parseInt(formData.stock_quantity, 10),
+      min_stock_alert: parseInt(formData.min_stock_alert, 10)
+    };
+
+    // Prepare formData string representation for validation
+    const validationPayload = {
+      ...formData,
+      purchase_price: formData.purchase_price.toString(),
+      selling_price: formData.selling_price.toString(),
+      stock_quantity: formData.stock_quantity.toString(),
+      min_stock_alert: formData.min_stock_alert.toString(),
+    };
+
+    const result = inventorySchema.safeParse(validationPayload);
+    if (!result.success) {
+      setFieldErrors(formatZodErrors(result.error));
+      setLoading(false);
+      return;
+    }
 
     try {
-      const payload = {
-        ...formData,
-        purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : 0,
-        selling_price: parseFloat(formData.selling_price),
-        stock_quantity: parseInt(formData.stock_quantity, 10),
-        min_stock_alert: parseInt(formData.min_stock_alert, 10)
-      };
 
       if (productToEdit) {
         await api.put(`/products/${productToEdit.id}`, payload);
@@ -119,31 +140,36 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, productToE
         <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
           {error && <div className="p-3 mb-4 rounded-xl bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm">{error}</div>}
           
-          <form id="productForm" onSubmit={handleSubmit} className="space-y-5">
+          <form id="productForm" onSubmit={handleSubmit} noValidate className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-admin-text-secondary mb-1">Product Name *</label>
-              <input type="text" name="name" value={formData.name} onChange={handleChange} required className="w-full px-4 py-2 bg-admin-surface border border-admin-border rounded-xl focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors" placeholder="L\'Oréal Professionnel Shampoo" />
+              <input type="text" name="name" value={formData.name} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors ${fieldErrors.name ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="L\'Oréal Professionnel Shampoo" />
+              {fieldErrors.name && <p className="text-accent-red text-xs mt-1">{fieldErrors.name}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-admin-text-secondary mb-1">Category</label>
-                <input type="text" name="category" value={formData.category} onChange={handleChange} className="w-full px-4 py-2 bg-admin-surface border border-admin-border rounded-xl focus:outline-none focus:border-brand transition-colors" placeholder="e.g. Hair Care" />
+                <input type="text" name="category" value={formData.category} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.category ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="e.g. Hair Care" />
+                {fieldErrors.category && <p className="text-accent-red text-xs mt-1">{fieldErrors.category}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-admin-text-secondary mb-1">Brand</label>
-                <input type="text" name="brand" value={formData.brand} onChange={handleChange} className="w-full px-4 py-2 bg-admin-surface border border-admin-border rounded-xl focus:outline-none focus:border-brand transition-colors" placeholder="e.g. L\'Oréal" />
+                <input type="text" name="brand" value={formData.brand} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.brand ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="e.g. L\'Oréal" />
+                {fieldErrors.brand && <p className="text-accent-red text-xs mt-1">{fieldErrors.brand}</p>}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-admin-text-secondary mb-1">SKU</label>
-                <input type="text" name="sku" value={formData.sku} onChange={handleChange} className="w-full px-4 py-2 bg-admin-surface border border-admin-border rounded-xl focus:outline-none focus:border-brand transition-colors" placeholder="Stock Keeping Unit" />
+                <label className="block text-sm font-medium text-admin-text-secondary mb-1">SKU *</label>
+                <input type="text" name="sku" value={formData.sku} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.sku ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="Stock Keeping Unit" />
+                {fieldErrors.sku && <p className="text-accent-red text-xs mt-1">{fieldErrors.sku}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-admin-text-secondary mb-1">Barcode</label>
-                <input type="text" name="barcode" value={formData.barcode} onChange={handleChange} className="w-full px-4 py-2 bg-admin-surface border border-admin-border rounded-xl focus:outline-none focus:border-brand transition-colors" placeholder="Barcode number" />
+                <input type="text" name="barcode" value={formData.barcode} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.barcode ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="Barcode number" />
+                {fieldErrors.barcode && <p className="text-accent-red text-xs mt-1">{fieldErrors.barcode}</p>}
               </div>
             </div>
 
@@ -152,15 +178,17 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, productToE
                 <label className="block text-sm font-medium text-admin-text-secondary mb-1">Purchase Price</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-admin-text-muted">₹</span>
-                  <input type="number" step="0.01" min="0" name="purchase_price" value={formData.purchase_price} onChange={handleChange} className="w-full pl-8 pr-4 py-2 bg-admin-surface border border-admin-border rounded-xl focus:outline-none focus:border-brand transition-colors" placeholder="0.00" />
+                  <input type="number" step="0.01" min="0" name="purchase_price" value={formData.purchase_price} onChange={handleChange} className={`w-full pl-8 pr-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.purchase_price ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="0.00" />
                 </div>
+                {fieldErrors.purchase_price && <p className="text-accent-red text-xs mt-1">{fieldErrors.purchase_price}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-admin-text-secondary mb-1">Selling Price *</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-admin-text-muted">₹</span>
-                  <input type="number" step="0.01" min="0" name="selling_price" value={formData.selling_price} onChange={handleChange} required className="w-full pl-8 pr-4 py-2 bg-admin-surface border border-admin-border rounded-xl focus:outline-none focus:border-brand transition-colors" placeholder="0.00" />
+                  <input type="number" step="0.01" min="0" name="selling_price" value={formData.selling_price} onChange={handleChange} className={`w-full pl-8 pr-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.selling_price ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="0.00" />
                 </div>
+                {fieldErrors.selling_price && <p className="text-accent-red text-xs mt-1">{fieldErrors.selling_price}</p>}
               </div>
             </div>
 
@@ -168,22 +196,25 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, productToE
               {!productToEdit && (
                 <div>
                   <label className="block text-sm font-medium text-admin-text-secondary mb-1">Initial Stock</label>
-                  <input type="number" min="0" name="stock_quantity" value={formData.stock_quantity} onChange={handleChange} required className="w-full px-4 py-2 bg-admin-surface border border-admin-border rounded-xl focus:outline-none focus:border-brand transition-colors" />
+                  <input type="number" min="0" name="stock_quantity" value={formData.stock_quantity} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.stock_quantity ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} />
+                  {fieldErrors.stock_quantity && <p className="text-accent-red text-xs mt-1">{fieldErrors.stock_quantity}</p>}
                 </div>
               )}
               <div>
                 <label className="block text-sm font-medium text-admin-text-secondary mb-1">Min Alert</label>
-                <input type="number" min="0" name="min_stock_alert" value={formData.min_stock_alert} onChange={handleChange} required className="w-full px-4 py-2 bg-admin-surface border border-admin-border rounded-xl focus:outline-none focus:border-brand transition-colors" />
+                <input type="number" min="0" name="min_stock_alert" value={formData.min_stock_alert} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.min_stock_alert ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} />
+                {fieldErrors.min_stock_alert && <p className="text-accent-red text-xs mt-1">{fieldErrors.min_stock_alert}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-admin-text-secondary mb-1">Unit</label>
-                <select name="unit" value={formData.unit} onChange={handleChange} className="w-full px-4 py-2 bg-admin-surface border border-admin-border rounded-xl focus:outline-none focus:border-brand transition-colors appearance-none">
+                <select name="unit" value={formData.unit} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors appearance-none ${fieldErrors.unit ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}>
                   <option value="piece">Piece</option>
                   <option value="ml">ml</option>
                   <option value="gm">gm</option>
                   <option value="liter">Liter</option>
                   <option value="box">Box</option>
                 </select>
+                {fieldErrors.unit && <p className="text-accent-red text-xs mt-1">{fieldErrors.unit}</p>}
               </div>
             </div>
 

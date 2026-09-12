@@ -10,6 +10,7 @@ import {
   RiLoader2Line, RiArrowRightLine
 } from 'react-icons/ri';
 import api from '@/lib/api';
+import toast from 'react-hot-toast';
 
 const TEMPLATE_HEADERS = ['First Name', 'Last Name', 'Phone', 'Email', 'Gender', 'DOB (YYYY-MM-DD)', 'Source', 'Notes'];
 const TEMPLATE_DATA = [
@@ -55,7 +56,7 @@ export default function ImportCustomersModal({ isOpen, onClose, onSuccess }) {
   const handleFile = (selectedFile) => {
     if (!selectedFile) return;
     if (!selectedFile.name.endsWith('.csv')) {
-      alert('Please upload a valid CSV file.');
+      toast.error('Please upload a valid CSV file.');
       return;
     }
     setFile(selectedFile);
@@ -119,7 +120,7 @@ export default function ImportCustomersModal({ isOpen, onClose, onSuccess }) {
     }).filter(c => c.first_name); // First name is required
 
     if (formattedData.length === 0) {
-      alert('No valid customers found in CSV. Make sure "First Name" is provided.');
+      toast.error('No valid customers found in CSV. Make sure "First Name" is provided.');
       setLoading(false);
       return;
     }
@@ -130,7 +131,7 @@ export default function ImportCustomersModal({ isOpen, onClose, onSuccess }) {
       // We don't call onSuccess here anymore, we let the user review the results first.
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || 'Failed to import customers');
+      toast.error(err.response?.data?.message || 'Failed to import customers');
     } finally {
       setLoading(false);
     }

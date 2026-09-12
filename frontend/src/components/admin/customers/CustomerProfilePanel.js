@@ -1,26 +1,34 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { RiCloseLine, RiEdit2Line, RiDeleteBinLine, RiPhoneLine, RiMailLine } from 'react-icons/ri';
+import { useConfirm } from '@/context/ConfirmContext';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
+import ReceiptModal from '../billing/ReceiptModal';
+import AppointmentDetailsDrawer from '../appointments/AppointmentDetailsDrawer';
 
 export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit, onDelete }) {
   const router = useRouter();
+  const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState('billing');
   const [mounted, setMounted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
   // Data states
   const [profileData, setProfileData] = useState(null);
-  const [visits, setVisits] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [wallet, setWallet] = useState([]);
   const [rewards, setRewards] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
 
   useScrollLock(isOpen);
 
@@ -38,14 +46,16 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [profRes, visitsRes, walletRes, rewardsRes] = await Promise.all([
+      const [profRes, invoicesRes, apptsRes, walletRes, rewardsRes] = await Promise.all([
         api.get(`/customers/${customer.id}/profile`),
         api.get(`/customers/${customer.id}/visits`),
+        api.get(`/appointments?customer_id=${customer.id}`),
         api.get(`/customers/${customer.id}/wallet`),
         api.get(`/customers/${customer.id}/rewards`)
       ]);
       setProfileData(profRes.data);
-      setVisits(visitsRes.data);
+      setInvoices(invoicesRes.data);
+      setAppointments(apptsRes.data?.data || apptsRes.data || []);
       setWallet(walletRes.data);
       setRewards(rewardsRes.data);
     } catch (err) {
@@ -68,7 +78,8 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
   const TABS = ['Billing', 'Wallet', 'Points', 'Packages', 'Membership', 'Appointments'];
 
   return createPortal(
-    <div className={`fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm ${isClosing ? 'animate-[fadeOut_0.3s_ease_forwards]' : 'animate-[fadeIn_0.3s_ease_forwards]'}`} onMouseDown={handleClose}>
+    <Fragment>
+      <div className={`fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm ${isClosing ? 'animate-[fadeOut_0.3s_ease_forwards]' : 'animate-[fadeIn_0.3s_ease_forwards]'}`} onMouseDown={handleClose}>
       <div 
         className={`bg-admin-card w-full max-w-2xl h-full shadow-2xl border-l border-admin-border flex flex-col ${isClosing ? 'animate-[slideOutRight_0.3s_ease_forwards]' : 'animate-[slideInRight_0.3s_ease_forwards]'}`}
         onMouseDown={e => e.stopPropagation()}
@@ -93,11 +104,11 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
                 {customer.first_name?.[0]?.toUpperCase()}
               </div>
               <div>
-                <h3 className="text-xl font-bold flex items-center gap-2">
+                <h3 className="text-xl font-bold flex items-center gap-2 text-admin-text">
                   {customer.first_name} {customer.last_name}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-admin-surface border border-admin-border capitalize">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-admin-surface border border-admin-border capitalize text-admin-text">
                     {customer.gender || 'Unknown'}
                   </span>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${customer.is_active ? 'bg-accent-green/10 text-accent-green border-accent-green/20' : 'bg-accent-red/10 text-accent-red border-accent-red/20'}`}>
@@ -130,8 +141,13 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
                 <RiEdit2Line className="text-lg" />
               </button>
               <button 
-                onClick={() => {
-                  if (window.confirm("Are you sure you want to mark this customer as inactive?")) {
+                onClick={async () => {
+                  const isConfirmed = await confirm({
+                    title: 'Mark Inactive',
+                    message: 'Are you sure you want to mark this customer as inactive?',
+                    confirmText: 'Mark Inactive'
+                  });
+                  if (isConfirmed) {
                     onDelete && onDelete(customer.id);
                     handleClose();
                   }
@@ -191,29 +207,76 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
              </div>
           ) : (
             <>
-              {(activeTab === 'billing' || activeTab === 'appointments') && (
+              {activeTab === 'billing' && (
                 <div className="space-y-4">
-                  {visits.length === 0 ? (
+                  {invoices.length === 0 ? (
+                    <div className="text-center py-10 bg-admin-card rounded-xl border border-admin-border">
+                      <p className="text-admin-text-secondary font-medium">No billing history found.</p>
+                    </div>
+                  ) : (
+                    invoices.map((inv, i) => (
+                      <div key={i} className="bg-admin-card border border-admin-border rounded-xl p-5 flex justify-between items-center hover:border-brand/30 transition-colors">
+                        <div>
+                          <h4 className="font-bold text-lg text-admin-text">{inv.invoice_number || `#${inv.id?.toString().padStart(5, '0')}`}</h4>
+                          <p className="text-sm text-admin-text-secondary mt-1">{new Date(inv.created_at).toLocaleDateString()} at {new Date(inv.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 ${
+                              inv.status === 'paid' || inv.status === 'completed' ? 'bg-accent-green/10 text-accent-green' : 
+                              inv.status === 'cancelled' ? 'bg-accent-red/10 text-accent-red' : 
+                              inv.status === 'partial' ? 'bg-orange-500/10 text-orange-500' : 
+                              'bg-accent-blue/10 text-accent-blue'
+                            }`}>
+                              {inv.status.toUpperCase()}
+                            </span>
+                            {inv.total_amount && <h3 className="text-xl font-bold text-admin-text">{formatCurrency(inv.total_amount)}</h3>}
+                          </div>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedReceipt(inv);
+                            }}
+                            className="px-4 py-2 bg-admin-surface hover:bg-admin-surface-light text-brand text-sm font-bold rounded-lg border border-admin-border transition-colors whitespace-nowrap"
+                          >
+                            View Receipt
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'appointments' && (
+                <div className="space-y-4">
+                  {appointments.length === 0 ? (
                     <div className="text-center py-10 bg-admin-card rounded-xl border border-admin-border">
                       <p className="text-admin-text-secondary font-medium">No appointments found.</p>
                     </div>
                   ) : (
-                    visits.map((visit, i) => (
-                      <div key={i} className="bg-admin-card border border-admin-border rounded-xl p-5 flex justify-between items-center hover:border-brand/30 transition-colors">
+                    appointments.map((appt, i) => (
+                      <div 
+                        key={i} 
+                        onClick={() => setSelectedAppointment(appt)}
+                        className="bg-admin-card border border-admin-border rounded-xl p-5 flex justify-between items-center hover:border-brand/30 transition-colors cursor-pointer"
+                      >
                         <div>
-                          <h4 className="font-bold text-lg">#{visit.id?.toString().padStart(5, '0')}</h4>
-                          <p className="text-sm text-admin-text-secondary mt-1">{new Date(visit.created_at).toLocaleDateString()} at {new Date(visit.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          <h4 className="font-bold text-lg text-admin-text">#{appt.id?.toString().padStart(5, '0')} - {appt.service_name || 'Service'}</h4>
+                          <p className="text-sm text-admin-text-secondary mt-1">{new Date(appt.appointment_date).toLocaleDateString()} • {appt.start_time} - {appt.end_time}</p>
+                          {appt.staff_name && (
+                            <p className="text-xs text-admin-text-muted mt-1">with {appt.staff_name}</p>
+                          )}
                         </div>
                         <div className="text-right">
                           <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 ${
-                            visit.status === 'paid' || visit.status === 'completed' ? 'bg-accent-green/10 text-accent-green' : 
-                            visit.status === 'cancelled' ? 'bg-accent-red/10 text-accent-red' : 
-                            visit.status === 'partial' ? 'bg-orange-500/10 text-orange-500' : 
-                            'bg-accent-blue/10 text-accent-blue'
+                            appt.status === 'completed' ? 'bg-accent-green/10 text-accent-green' : 
+                            appt.status === 'cancelled' || appt.status === 'no_show' ? 'bg-accent-red/10 text-accent-red' : 
+                            appt.status === 'ongoing' ? 'bg-orange-500/10 text-orange-500' : 
+                            'bg-brand/10 text-brand'
                           }`}>
-                            {visit.status.toUpperCase()}
+                            {appt.status.toUpperCase().replace('_', ' ')}
                           </span>
-                          {visit.total_price && <h3 className="text-xl font-bold">{formatCurrency(visit.total_price)}</h3>}
                         </div>
                       </div>
                     ))
@@ -236,7 +299,7 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
                     wallet.map((txn, i) => (
                       <div key={i} className="bg-admin-card border border-admin-border rounded-xl p-4 flex justify-between items-center">
                         <div>
-                          <p className="font-bold">{txn.type === 'credit' ? 'Added to Wallet' : 'Deducted from Wallet'}</p>
+                          <p className="font-bold text-admin-text">{txn.type === 'credit' ? 'Added to Wallet' : 'Deducted from Wallet'}</p>
                           <p className="text-xs text-admin-text-secondary mt-1">{new Date(txn.created_at).toLocaleDateString()}</p>
                         </div>
                         <div className={`font-bold ${txn.type === 'credit' ? 'text-accent-green' : 'text-admin-text'}`}>
@@ -312,9 +375,30 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
             </>
           )}
         </div>
-
       </div>
-    </div>,
+      </div>
+      
+      {/* Modals */}
+      <ReceiptModal 
+        isOpen={!!selectedReceipt} 
+        onClose={() => setSelectedReceipt(null)} 
+        invoice={selectedReceipt} 
+      />
+      
+      <AppointmentDetailsDrawer 
+        isOpen={!!selectedAppointment} 
+        onClose={() => setSelectedAppointment(null)} 
+        appointment={selectedAppointment}
+        onStatusUpdate={(id, newStatus) => {
+          setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
+        }}
+        onEdit={(appt) => {
+          setSelectedAppointment(null);
+          handleClose();
+          setTimeout(() => router.push(`/admin/appointments?appointment_id=${appt.id}`), 300);
+        }}
+      />
+    </Fragment>,
     document.body
   );
 }

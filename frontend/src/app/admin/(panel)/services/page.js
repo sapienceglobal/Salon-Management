@@ -10,8 +10,11 @@ import {
 } from 'react-icons/ri';
 import CategoryFormModal from '@/components/admin/CategoryFormModal';
 import ServiceFormModal from '@/components/admin/ServiceFormModal';
+import { useConfirm } from '@/context/ConfirmContext';
+import toast from 'react-hot-toast';
 
 export default function ServicesPage() {
+  const { confirm } = useConfirm();
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
   const [activeCategoryId, setActiveCategoryId] = useState(null);
@@ -99,23 +102,35 @@ export default function ServicesPage() {
 
   const handleDeleteCategory = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this category? All its services will also be deleted.')) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Category',
+      message: 'Are you sure you want to delete this category? All its services will also be deleted.',
+      confirmText: 'Delete Category'
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/services/categories/${id}`);
       if (activeCategoryId === id) setActiveCategoryId(null);
+      toast.success('Category deleted successfully');
       fetchCategories();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete category');
+      toast.error(err.response?.data?.message || 'Failed to delete category');
     }
   };
 
   const handleDeleteService = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this service?')) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Service',
+      message: 'Are you sure you want to delete this service?',
+      confirmText: 'Delete Service'
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/services/${id}`);
+      toast.success('Service deleted successfully');
       fetchServices(activeCategoryId);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete service');
+      toast.error(err.response?.data?.message || 'Failed to delete service');
     }
   };
 

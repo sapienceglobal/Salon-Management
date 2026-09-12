@@ -9,8 +9,10 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import AddExpenseModal from '@/components/admin/billing/AddExpenseModal';
+import { useConfirm } from '@/context/ConfirmContext';
 
 export default function ExpensesPage() {
+  const { confirm } = useConfirm();
   const [expenses, setExpenses] = useState([]);
   const [summary, setSummary] = useState({ total_expenses: 0, total_tax: 0 });
   const [loading, setLoading] = useState(true);
@@ -52,13 +54,20 @@ export default function ExpensesPage() {
   }, [fetchExpenses]);
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this expense?')) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Expense',
+      message: 'Are you sure you want to delete this expense?',
+      confirmText: 'Delete'
+    });
+    if (!isConfirmed) return;
+    
     try {
       await api.delete(`/expenses/${id}`);
-      toast.success('Expense deleted successfully');
       fetchExpenses();
+      toast.success('Expense deleted successfully');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete expense');
+      console.error('Failed to delete expense', error);
+      toast.error('Failed to delete expense');
     }
   };
 

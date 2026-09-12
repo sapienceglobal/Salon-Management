@@ -9,10 +9,10 @@ import {
   RiArrowRightSLine, RiArrowUpLine, RiArrowDownLine,
   RiAddLine, RiWalkLine, RiUserAddLine, RiFileList3Line,
   RiScissorsLine, RiGiftLine, RiMailLine, RiVipCrownLine,
-  RiMoreFill, RiLoader4Line, RiAlertLine,
+  RiMoreFill, RiLoader4Line, RiLoader2Line, RiAlertLine,
 } from 'react-icons/ri';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import StatCard from '@/components/admin/StatCard';
 import Link from 'next/link';
@@ -227,6 +227,7 @@ export default function DashboardPage() {
       trend: `${summary?.today?.appointments?.completed ?? 0} completed`,
       up: true,
       color: 'bg-brand/15 text-brand',
+      href: '/admin/appointments'
     },
     {
       icon: RiUserLine,
@@ -235,6 +236,7 @@ export default function DashboardPage() {
       trend: `+${summary?.customers?.new_this_month ?? 0} this month`,
       up: (summary?.customers?.new_this_month ?? 0) > 0,
       color: 'bg-accent-blue/15 text-accent-blue',
+      href: '/admin/customers'
     },
     {
       icon: RiMoneyDollarCircleLine,
@@ -243,6 +245,7 @@ export default function DashboardPage() {
       trend: `Monthly: ${formatCurrency(summary?.monthly?.revenue ?? 0)}`,
       up: (summary?.today?.revenue ?? 0) > 0,
       color: 'bg-accent-green/15 text-accent-green',
+      href: '/admin/billing'
     },
     {
       icon: RiTeamLine,
@@ -251,6 +254,7 @@ export default function DashboardPage() {
       trend: `${summary?.today?.appointments?.ongoing ?? 0} currently busy`,
       up: true,
       color: 'bg-accent-purple/15 text-accent-purple',
+      href: '/admin/staff'
     },
   ];
 
@@ -285,6 +289,7 @@ export default function DashboardPage() {
               color={card.color}
               trend={card.trend}
               up={card.up}
+              href={card.href}
               loading={loading}
               delay={`${(i + 1) * 0.1}s`}
             />
@@ -379,54 +384,68 @@ export default function DashboardPage() {
     )}
             </div>
           </div>
-          <div className="px-5 py-4 min-h-[300px]">
-            {revenueLoading ? (
+          <div className="px-5 py-4 min-h-[300px] relative">
+            {/* Show skeleton ONLY if we have no data yet (first load) */}
+            {revenueLoading && !revenueData?.chart && (
               <div className="space-y-4">
                 <Skeleton className="h-8 w-32" />
                 <Skeleton className="h-[220px] w-full" />
               </div>
-            ) : (
-              <>
-                <div className="flex items-baseline gap-2.5 mb-2">
-                  <span className="font-heading text-2xl font-bold">{formatCurrency(revenueData?.stats?.revenue ?? 0)}</span>
-                  
-                </div>
-                <div className="w-full h-[220px]">
-                  {revenueData?.chart?.length > 0 ? (
-                    <ResponsiveContainer>
-                      <AreaChart data={revenueData.chart} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#e74a8a" stopOpacity={0.3} />
-                            <stop offset="100%" stopColor="#e74a8a" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                        <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} />
-                        <YAxis tick={{ fill: '#64748b', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} tickFormatter={(v) => `${v / 1000}K`} />
-                        <Tooltip content={<ChartTooltip />} />
-                        <Area type="monotone" dataKey="revenue" stroke="#e74a8a" strokeWidth={2.5} fill="url(#revenueGrad)" dot={{ fill: '#e74a8a', r: 4, strokeWidth: 0 }} activeDot={{ r: 6, fill: '#e74a8a', stroke: '#fff', strokeWidth: 2 }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <EmptyState message="No revenue data yet. Start billing to see charts." />
-                  )}
-                </div>
-                {/* Revenue Breakdown */}
-                <div className="flex gap-4 mt-3">
-                  {[
-                    { color: 'bg-accent-green', label: 'Collected', pct: formatCurrency(revenueData?.stats?.collected ?? 0) },
-                    { color: 'bg-accent-red', label: 'Expenses', pct: formatCurrency(revenueData?.stats?.expenses ?? 0) },
-                    { color: 'bg-accent-purple', label: 'Net Profit', pct: formatCurrency(revenueData?.stats?.net_profit ?? 0) },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                      <div className={`w-2.5 h-2.5 rounded-full ${item.color}`}></div>
-                      <span className="text-xs text-admin-text-secondary">{item.label} <strong>{item.pct}</strong></span>
-                    </div>
-                  ))}
-                </div>
-              </>
             )}
+            
+            <div className={`transition-opacity duration-300 ${revenueLoading && revenueData?.chart ? 'opacity-50 pointer-events-none' : 'opacity-100'}`} style={{ display: (revenueLoading && !revenueData?.chart) ? 'none' : 'block' }}>
+              
+              {revenueLoading && revenueData?.chart && (
+                <div className="absolute inset-0 bg-admin-surface/30 z-50 flex items-center justify-center rounded-2xl backdrop-blur-[2px]">
+                  <RiLoader2Line className="animate-spin text-brand text-4xl" />
+                </div>
+              )}
+
+              <div className="flex items-baseline gap-2.5 mb-2">
+                <span className="font-heading text-2xl font-bold">{formatCurrency(revenueData?.stats?.revenue ?? 0)}</span>
+              </div>
+              <div className="w-full h-[220px]">
+                {revenueData?.chart?.length > 0 ? (
+                  <ResponsiveContainer>
+                    <BarChart data={revenueData.chart} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#e74a8a" stopOpacity={0.8} />
+                          <stop offset="100%" stopColor="#e74a8a" stopOpacity={0.2} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} tickLine={false} />
+                      <YAxis tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}K`} />
+                      <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                      <Bar 
+                        dataKey="revenue" 
+                        fill="url(#revenueGrad)" 
+                        radius={[4, 4, 0, 0]} 
+                        barSize={32}
+                        animationDuration={1500}
+                        animationEasing="ease-out"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyState message="No revenue data yet. Start billing to see charts." />
+                )}
+              </div>
+              {/* Revenue Breakdown */}
+              <div className="flex gap-4 mt-3">
+                {[
+                  { color: 'bg-accent-green', label: 'Collected', pct: formatCurrency(revenueData?.stats?.collected ?? 0) },
+                  { color: 'bg-accent-red', label: 'Expenses', pct: formatCurrency(revenueData?.stats?.expenses ?? 0) },
+                  { color: 'bg-accent-purple', label: 'Net Profit', pct: formatCurrency(revenueData?.stats?.net_profit ?? 0) },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <div className={`w-2.5 h-2.5 rounded-full ${item.color}`}></div>
+                    <span className="text-xs text-admin-text-secondary">{item.label} <strong>{item.pct}</strong></span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { RiCloseLine, RiCalendarLine, RiSearchLine, RiUserAddLine, RiTimeLine, RiLoader2Line } from 'react-icons/ri';
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import { appointmentSchema, formatZodErrors } from '@/lib/validations';
 
 const DURATION_OPTIONS = [
   { label: '30 Minutes', value: 30 },
@@ -28,6 +29,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [mounted, setMounted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   useScrollLock(isOpen);
@@ -68,6 +70,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
       }
 
       setError('');
+      setFieldErrors({});
     }
   }, [isOpen, initialDate, editData]);
 
@@ -77,6 +80,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
 
     try {
       const [hours, mins] = formData.start_time.split(':').map(Number);
@@ -86,15 +90,27 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
       const end_time = `${endH}:${endM}:00`;
 
       const payload = {
-        customer_id: parseInt(formData.customer_id),
-        service_id: parseInt(formData.service_id),
-        staff_id: formData.staff_id ? parseInt(formData.staff_id) : null,
+        customer_id: formData.customer_id,
+        service_id: formData.service_id,
+        staff_id: formData.staff_id || null,
         appointment_date: formData.appointment_date,
         start_time: formData.start_time,
         end_time,
         notes: formData.notes,
         status: editData ? editData.status : 'planned'
       };
+
+      const result = appointmentSchema.safeParse(payload);
+      if (!result.success) {
+        setFieldErrors(formatZodErrors(result.error));
+        setLoading(false);
+        return;
+      }
+
+      // Convert IDs to numbers after validation
+      payload.customer_id = parseInt(payload.customer_id);
+      payload.service_id = parseInt(payload.service_id);
+      if (payload.staff_id) payload.staff_id = parseInt(payload.staff_id);
 
       if (editData) {
         await api.patch(`/appointments/${editData.id}`, payload);
@@ -138,16 +154,16 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
 
         {/* Body (Form content without pushing footer down) */}
         <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
-          <form id="appointment-form" onSubmit={handleSubmit} className="space-y-4 flex flex-col">
+          <form id="appointment-form" onSubmit={handleSubmit} noValidate className="space-y-4 flex flex-col">
             
             {error && <div className="text-sm text-accent-red font-medium p-3 bg-accent-red/10 border border-accent-red/20 rounded-lg shrink-0">{error}</div>}
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[0.75rem] font-semibold text-admin-text-secondary">Select Customer</label>
+              <label className="text-[0.75rem] font-semibold text-admin-text-secondary">Select Customer *</label>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted text-sm pointer-events-none" />
-                  <select required className="w-full border border-admin-border rounded-lg text-sm pl-9 pr-3 py-2.5 bg-admin-surface-light text-admin-text focus:border-brand focus:bg-admin-card outline-none transition-colors"
+                  <select className={`w-full border rounded-lg text-sm pl-9 pr-3 py-2.5 bg-admin-surface-light text-admin-text outline-none transition-colors ${fieldErrors.customer_id ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand focus:bg-admin-card'}`}
                     value={formData.customer_id} onChange={e => setFormData({ ...formData, customer_id: e.target.value })}>
                     <option value="">Search customer...</option>
                     {customersList.map(c => <option key={c.id} value={c.id}>{c.first_name} {c.last_name || ''}</option>)}
@@ -158,38 +174,42 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                   <RiUserAddLine />
                 </button>
               </div>
+              {fieldErrors.customer_id && <p className="text-accent-red text-xs mt-1">{fieldErrors.customer_id}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[0.75rem] font-semibold text-admin-text-secondary">Select Service</label>
-              <select required className="w-full border border-admin-border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text focus:border-brand focus:bg-admin-card outline-none transition-colors"
+              <label className="text-[0.75rem] font-semibold text-admin-text-secondary">Select Service *</label>
+              <select className={`w-full border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text outline-none transition-colors ${fieldErrors.service_id ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand focus:bg-admin-card'}`}
                 value={formData.service_id} onChange={e => setFormData({ ...formData, service_id: e.target.value })}>
                 <option value="">Choose a service...</option>
                 {servicesList.map(s => <option key={s.id} value={s.id}>{s.name} - {formatCurrency(s.price)}</option>)}
               </select>
+              {fieldErrors.service_id && <p className="text-accent-red text-xs mt-1">{fieldErrors.service_id}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[0.75rem] font-semibold text-admin-text-secondary">Select Staff</label>
-              <select className="w-full border border-admin-border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text focus:border-brand focus:bg-admin-card outline-none transition-colors"
+              <select className={`w-full border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text outline-none transition-colors ${fieldErrors.staff_id ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand focus:bg-admin-card'}`}
                 value={formData.staff_id} onChange={e => setFormData({ ...formData, staff_id: e.target.value })}>
                 <option value="">Anyone available</option>
                 {staffList.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
               </select>
+              {fieldErrors.staff_id && <p className="text-accent-red text-xs mt-1">{fieldErrors.staff_id}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[0.75rem] font-semibold text-admin-text-secondary">Date &amp; Time</label>
+              <label className="text-[0.75rem] font-semibold text-admin-text-secondary">Date &amp; Time *</label>
               <div className="grid grid-cols-2 gap-3">
                 <div className="relative">
-                  <input type="date" required className="w-full border border-admin-border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text focus:border-brand focus:bg-admin-card outline-none transition-colors dark:[color-scheme:dark]"
+                  <input type="date" className={`w-full border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text outline-none transition-colors dark:[color-scheme:dark] ${fieldErrors.appointment_date ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand focus:bg-admin-card'}`}
                     value={formData.appointment_date} onChange={e => setFormData({ ...formData, appointment_date: e.target.value })} />
                 </div>
                 <div className="relative">
-                  <input type="time" required className="w-full border border-admin-border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text focus:border-brand focus:bg-admin-card outline-none transition-colors dark:[color-scheme:dark]"
+                  <input type="time" className={`w-full border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text outline-none transition-colors dark:[color-scheme:dark] ${fieldErrors.start_time ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand focus:bg-admin-card'}`}
                     value={formData.start_time.substring(0, 5)} onChange={e => setFormData({ ...formData, start_time: e.target.value + ':00' })} />
                 </div>
               </div>
+              {(fieldErrors.appointment_date || fieldErrors.start_time) && <p className="text-accent-red text-xs mt-1">{fieldErrors.appointment_date || fieldErrors.start_time}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -202,8 +222,9 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[0.75rem] font-semibold text-admin-text-secondary">Notes (Optional)</label>
-              <textarea placeholder="Add any special request..." className="w-full border border-admin-border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text focus:border-brand focus:bg-admin-card outline-none transition-colors min-h-[80px] resize-none"
+              <textarea placeholder="Add any special request..." className={`w-full border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text outline-none transition-colors min-h-[80px] resize-none ${fieldErrors.notes ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand focus:bg-admin-card'}`}
                 value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
+              {fieldErrors.notes && <p className="text-accent-red text-xs mt-1">{fieldErrors.notes}</p>}
             </div>
 
             {/* Footer Buttons attached directly inside the form to avoid excessive empty space below notes */}

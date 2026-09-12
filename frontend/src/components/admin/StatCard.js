@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { RiArrowUpLine, RiArrowDownLine, RiArrowRightSLine } from 'react-icons/ri';
 
 export default function StatCard({
@@ -10,10 +11,11 @@ export default function StatCard({
   up,
   loading = false,
   delay = "0s",
+  href,
 }) {
-  return (
+  const CardContent = (
     <div
-      className="bg-admin-card border border-admin-border rounded-2xl p-5 flex items-center gap-4 hover:border-admin-border-light hover:-translate-y-0.5 hover:shadow-[0_8px_25px_rgba(0,0,0,0.3)] transition-all duration-150 animate-[fadeIn_0.5s_ease_forwards] h-full"
+      className={`bg-admin-card border border-admin-border rounded-2xl p-5 flex items-center gap-4 hover:border-admin-border-light hover:-translate-y-0.5 hover:shadow-[0_8px_25px_rgba(0,0,0,0.3)] transition-all duration-150 animate-[fadeIn_0.5s_ease_forwards] h-full ${href ? 'cursor-pointer' : ''}`}
       style={{ animationDelay: delay }}
     >
       <div className={`w-[52px] h-[52px] rounded-[10px] flex items-center justify-center text-2xl shrink-0 ${color}`}>
@@ -28,9 +30,19 @@ export default function StatCard({
           </div>
         )}
       </div>
-      <button className="text-xl text-admin-text-muted p-1.5 rounded-full hover:bg-admin-surface-hover hover:text-admin-text transition-all duration-150">
-        <RiArrowRightSLine />
-      </button>
+      {href ? (
+        <button className="text-xl text-admin-text-muted p-1.5 rounded-full hover:bg-admin-surface-hover hover:text-admin-text transition-all duration-150">
+          <RiArrowRightSLine />
+        </button>
+      ) : (
+        <div className="w-8 h-8"></div> // Spacer
+      )}
     </div>
   );
+
+  if (href) {
+    return <Link href={href} className="block h-full">{CardContent}</Link>;
+  }
+
+  return CardContent;
 }

@@ -8,8 +8,12 @@ import {
 import api from '@/lib/api';
 import StaffFormModal from '@/components/admin/StaffFormModal';
 import StaffDetailsModal from '@/components/admin/StaffDetailsModal';
+import { formatCurrency } from '@/lib/utils';
+import { useConfirm } from '@/context/ConfirmContext';
+import toast from 'react-hot-toast';
 
 export default function StaffPage() {
+  const confirm = useConfirm();
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,12 +84,19 @@ export default function StaffPage() {
 
   const deleteStaff = async (e, id) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this staff member? This cannot be undone.")) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Staff',
+      message: 'Are you sure you want to delete this staff member? This cannot be undone.',
+      confirmText: 'Delete'
+    });
+    if (!isConfirmed) return;
+    
     try {
       await api.delete(`/staff/${id}`);
+      toast.success('Staff member deleted');
       fetchStaff();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete staff member');
+      toast.error(err.response?.data?.message || 'Failed to delete staff member');
     }
   };
 
@@ -236,8 +247,14 @@ export default function StaffPage() {
             setIsFormOpen(true);
           }, 250);
         }}
-        onDelete={(id) => {
-          api.delete(`/staff/${id}`).then(() => fetchStaff()).catch(err => alert(err.response?.data?.message || 'Failed to delete staff member'));
+        onDelete={async (id) => {
+          try {
+            await api.delete(`/staff/${id}`);
+            toast.success('Staff member deleted');
+            fetchStaff();
+          } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to delete staff member');
+          }
         }}
       />
 
