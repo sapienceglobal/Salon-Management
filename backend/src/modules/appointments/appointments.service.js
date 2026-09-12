@@ -3,6 +3,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { db } from '../../config/database.js';
 
 class AppointmentService {
+  async getStats(businessId, query) { return appointmentRepository.getStats(businessId, query); }
   async getAll(businessId, query) { return appointmentRepository.findAll(businessId, query); }
 
   async getById(id, businessId) {

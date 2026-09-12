@@ -59,7 +59,7 @@ export default function ReceiptModal({ isOpen, onClose, invoice }) {
         {/* Receipt Content - This part should be styled for printing via CSS @media print */}
         <div className="overflow-y-auto custom-scrollbar flex-1 p-8 bg-white text-black" id="printable-receipt">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-black tracking-tight uppercase mb-1">SALON PRO</h1>
+            <h1 className="text-2xl font-black tracking-tight uppercase mb-1">SALONTIME</h1>
             <p className="text-sm text-gray-500">Premium Hair & Beauty Salon</p>
             <p className="text-xs text-gray-400 mt-2">123 Business Avenue, City, State 12345</p>
             <p className="text-xs text-gray-400">Phone: +1 234 567 8900</p>

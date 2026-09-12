@@ -6,6 +6,10 @@ export const getAppointments = asyncHandler(async (req, res) => {
   const { appointments, meta } = await appointmentService.getAll(req.user.business_id, req.query);
   ApiResponse.ok('Appointments fetched', appointments, meta).send(res);
 });
+export const getAppointmentStats = asyncHandler(async (req, res) => {
+  const stats = await appointmentService.getStats(req.user.business_id, req.query);
+  ApiResponse.ok('Appointment stats fetched', stats).send(res);
+});
 export const getAppointment = asyncHandler(async (req, res) => {
   const appt = await appointmentService.getById(req.params.id, req.user.business_id);
   ApiResponse.ok('Appointment fetched', appt).send(res);

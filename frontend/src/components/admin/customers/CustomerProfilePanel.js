@@ -164,7 +164,7 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
             <button 
               onClick={() => {
                 handleClose();
-                setTimeout(() => router.push(`/admin/billing?customer_id=${customer.id}`), 300);
+                setTimeout(() => router.push(`/billing?customer_id=${customer.id}`), 300);
               }}
               className="flex-1 py-2.5 rounded-xl border border-admin-border bg-admin-surface-light hover:bg-admin-surface transition-colors font-bold text-sm text-admin-text"
             >
@@ -173,7 +173,7 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
             <button 
               onClick={() => {
                 handleClose();
-                setTimeout(() => router.push(`/admin/appointments?customer_id=${customer.id}`), 300);
+                setTimeout(() => router.push(`/appointments?customer_id=${customer.id}`), 300);
               }}
               className="flex-1 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold text-sm transition-colors shadow-lg shadow-brand/20"
             >
@@ -395,7 +395,7 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
         onEdit={(appt) => {
           setSelectedAppointment(null);
           handleClose();
-          setTimeout(() => router.push(`/admin/appointments?appointment_id=${appt.id}`), 300);
+          setTimeout(() => router.push(`/appointments?appointment_id=${appt.id}`), 300);
         }}
       />
     </Fragment>,

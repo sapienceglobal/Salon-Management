@@ -25,8 +25,8 @@ export default function StatCard({
         <div className="text-[0.8rem] text-admin-text-secondary mb-1">{label}</div>
         <div className="font-heading text-2xl font-bold">{loading ? '-' : value}</div>
         {trend && (
-          <div className={`text-xs mt-1 flex items-center gap-1 ${up ? 'text-accent-green' : 'text-admin-text-muted'}`}>
-            {up ? <RiArrowUpLine /> : <RiArrowDownLine />} {trend}
+          <div className={`text-xs mt-1 flex items-center gap-1 ${up === true ? 'text-accent-green' : up === false ? 'text-accent-red' : 'text-admin-text-muted'}`}>
+            {up === true ? <RiArrowUpLine /> : up === false ? <RiArrowDownLine /> : null} {trend}
           </div>
         )}
       </div>

@@ -3,18 +3,18 @@ import { Providers } from './providers';
 
 export const metadata = {
   title: {
-    default: 'Salon Pro — Premium Salon & Spa Management',
-    template: '%s | Salon Pro',
+    default: 'SalonTime — Premium Salon & Spa Management',
+    template: '%s | SalonTime',
   },
   description: 'Book salon services online. Premium haircuts, skin care, spa treatments, bridal makeup, and more. Best salon management experience.',
   keywords: ['salon', 'spa', 'beauty', 'haircut', 'facial', 'bridal makeup', 'booking'],
-  authors: [{ name: 'Salon Pro' }],
+  authors: [{ name: 'SalonTime' }],
   openGraph: {
-    title: 'Salon Pro — Premium Salon & Spa Management',
+    title: 'SalonTime — Premium Salon & Spa Management',
     description: 'Book salon services online. Premium haircuts, skin care, spa treatments, and more.',
     type: 'website',
     locale: 'en_IN',
-    siteName: 'Salon Pro',
+    siteName: 'SalonTime',
   },
 };
 

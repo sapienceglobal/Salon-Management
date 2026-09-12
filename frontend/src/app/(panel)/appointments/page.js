@@ -74,6 +74,7 @@ export default function AppointmentsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [preselectedCustomerId, setPreselectedCustomerId] = useState('');
+  const [backendStats, setBackendStats] = useState(null);
 
   // Top-level stats derived from the loaded day's appointments
   const stats = {
@@ -107,24 +108,24 @@ export default function AppointmentsPage() {
 
   const STAT_CARDS = [
     {
-      key: 'total', label: 'Total Appointments', value: stats.total, icon: RiCalendarEventLine,
-      bg: 'bg-brand/10', iconBg: 'bg-brand', sub: '↑ 12% vs yesterday', subColor: 'text-accent-green'
+      key: 'total', label: 'Total Appointments', value: backendStats?.total?.value ?? stats.total, icon: RiCalendarEventLine,
+      bg: 'bg-brand/10', iconBg: 'bg-brand', sub: backendStats?.total ? `${backendStats.total.trend.is_up ? '↑' : '↓'} ${backendStats.total.trend.value}% vs yesterday` : '...', subColor: backendStats?.total?.trend?.is_up === false ? 'text-accent-red' : 'text-accent-green'
     },
     {
-      key: 'confirmed', label: 'Confirmed', value: stats.confirmed, icon: RiCheckDoubleLine,
-      bg: 'bg-accent-blue/10', iconBg: 'bg-accent-blue', sub: `${pct(stats.confirmed)}% of total`, subColor: 'text-accent-blue'
+      key: 'confirmed', label: 'Confirmed', value: backendStats?.confirmed?.value ?? stats.confirmed, icon: RiCheckDoubleLine,
+      bg: 'bg-accent-blue/10', iconBg: 'bg-accent-blue', sub: backendStats?.confirmed ? `${backendStats.confirmed.trend.is_up ? '↑' : '↓'} ${backendStats.confirmed.trend.value}% vs yesterday` : '...', subColor: backendStats?.confirmed?.trend?.is_up === false ? 'text-accent-red' : 'text-accent-blue'
     },
     {
-      key: 'inProgress', label: 'In Progress', value: stats.inProgress, icon: RiLoader2Line,
-      bg: 'bg-accent-yellow/10', iconBg: 'bg-accent-yellow', sub: `${pct(stats.inProgress)}% of total`, subColor: 'text-accent-yellow'
+      key: 'inProgress', label: 'In Progress', value: backendStats?.in_progress?.value ?? stats.inProgress, icon: RiLoader2Line,
+      bg: 'bg-accent-yellow/10', iconBg: 'bg-accent-yellow', sub: backendStats?.in_progress ? `${backendStats.in_progress.trend.is_up ? '↑' : '↓'} ${backendStats.in_progress.trend.value}% vs yesterday` : '...', subColor: backendStats?.in_progress?.trend?.is_up === false ? 'text-accent-red' : 'text-accent-yellow'
     },
     {
-      key: 'cancelled', label: 'Cancelled', value: stats.cancelled, icon: RiCloseCircleLine,
-      bg: 'bg-accent-red/10', iconBg: 'bg-accent-red', sub: `${pct(stats.cancelled)}% of total`, subColor: 'text-accent-red'
+      key: 'cancelled', label: 'Cancelled', value: backendStats?.cancelled?.value ?? stats.cancelled, icon: RiCloseCircleLine,
+      bg: 'bg-accent-red/10', iconBg: 'bg-accent-red', sub: backendStats?.cancelled ? `${backendStats.cancelled.trend.is_up ? '↑' : '↓'} ${backendStats.cancelled.trend.value}% vs yesterday` : '...', subColor: backendStats?.cancelled?.trend?.is_up === false ? 'text-accent-green' : 'text-accent-red' // cancel up is bad
     },
     {
-      key: 'walkIns', label: 'Walk-ins', value: stats.walkIns, icon: RiWalkLine,
-      bg: 'bg-accent-green/10', iconBg: 'bg-accent-green', sub: `${pct(stats.walkIns)}% of total`, subColor: 'text-accent-green'
+      key: 'walkIns', label: 'Walk-ins', value: backendStats?.walk_ins?.value ?? stats.walkIns, icon: RiWalkLine,
+      bg: 'bg-accent-green/10', iconBg: 'bg-accent-green', sub: backendStats?.walk_ins ? `${backendStats.walk_ins.trend.is_up ? '↑' : '↓'} ${backendStats.walk_ins.trend.value}% vs yesterday` : '...', subColor: backendStats?.walk_ins?.trend?.is_up === false ? 'text-accent-red' : 'text-accent-green'
     },
   ];
 
@@ -152,13 +153,18 @@ export default function AppointmentsPage() {
       let monthQuery = `/appointments?from_date=${monthStartStr}&to_date=${monthEndStr}&limit=500`;
       if (selectedStaff) monthQuery += `&staff_id=${selectedStaff}`;
 
-      const [apptsRes, upcomingRes, monthRes, staffRes, custRes, servRes] = await Promise.allSettled([
+      let statsQuery = `/appointments/stats?date=${dateStr}`;
+      if (selectedStaff) statsQuery += `&staff_id=${selectedStaff}`;
+      if (selectedService) statsQuery += `&service_id=${selectedService}`;
+
+      const [apptsRes, upcomingRes, monthRes, staffRes, custRes, servRes, statsRes] = await Promise.allSettled([
         api.get(apptQuery),
         api.get(upcomingQuery),
         api.get(monthQuery),
         api.get('/staff'),
         api.get('/customers?limit=100'),
-        api.get('/services')
+        api.get('/services'),
+        api.get(statsQuery)
       ]);
 
       if (apptsRes.status === 'fulfilled') setAppointments(apptsRes.value.data?.appointments || apptsRes.value.data || []);
@@ -167,6 +173,7 @@ export default function AppointmentsPage() {
       if (staffRes.status === 'fulfilled') setStaffList(staffRes.value.data?.users || staffRes.value.data || []);
       if (custRes.status === 'fulfilled') setCustomersList(custRes.value.data?.customers || custRes.value.data || []);
       if (servRes.status === 'fulfilled') setServicesList(servRes.value.data?.services || servRes.value.data || []);
+      if (statsRes.status === 'fulfilled') setBackendStats(statsRes.value.data?.data || statsRes.value.data);
 
     } catch (err) {
       console.error(err);

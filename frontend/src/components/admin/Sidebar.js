@@ -12,19 +12,19 @@ import {
 import { GiLotus } from 'react-icons/gi';
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/admin/dashboard', icon: RiDashboardLine },
-  { label: 'Appointments', href: '/admin/appointments', icon: RiCalendarCheckLine },
-  { label: 'Customers', href: '/admin/customers', icon: RiUserLine },
-  { label: 'Services', href: '/admin/services', icon: RiScissorsLine },
-  { label: 'Packages', href: '/admin/packages', icon: RiGiftLine },
-  { label: 'Staff', href: '/admin/staff', icon: RiTeamLine },
-  { label: 'POS & Billing', href: '/admin/billing', icon: RiShoppingCartLine },
-  { label: 'Expenses', href: '/admin/expenses', icon: RiWallet3Line },
-  { label: 'Inventory', href: '/admin/inventory', icon: RiArchiveLine },
-  { label: 'Marketing', href: '/admin/marketing', icon: RiMegaphoneLine },
-  { label: 'Reports', href: '/admin/reports', icon: RiBarChartLine },
-  { label: 'Enquiry', href: '/admin/enquiry', icon: RiContactsLine },
-  { label: 'Settings', href: '/admin/settings', icon: RiSettings3Line },
+  { label: 'Dashboard', href: '/', icon: RiDashboardLine },
+  { label: 'Appointments', href: '/appointments', icon: RiCalendarCheckLine },
+  { label: 'Customers', href: '/customers', icon: RiUserLine },
+  { label: 'Services', href: '/services', icon: RiScissorsLine },
+  { label: 'Packages', href: '/packages', icon: RiGiftLine },
+  { label: 'Staff', href: '/staff', icon: RiTeamLine },
+  { label: 'POS & Billing', href: '/billing', icon: RiShoppingCartLine },
+  { label: 'Expenses', href: '/expenses', icon: RiWallet3Line },
+  { label: 'Inventory', href: '/inventory', icon: RiArchiveLine },
+  { label: 'Marketing', href: '/marketing', icon: RiMegaphoneLine },
+  { label: 'Reports', href: '/reports', icon: RiBarChartLine },
+  { label: 'Enquiry', href: '/enquiry', icon: RiContactsLine },
+  { label: 'Settings', href: '/settings', icon: RiSettings3Line },
 ];
 
 export default function Sidebar({ collapsed, onToggle }) {
@@ -44,7 +44,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         </div>
         {!collapsed && (
           <div className="flex flex-col leading-tight overflow-hidden">
-            <span className="font-heading text-base font-bold text-admin-text whitespace-nowrap">SALON PRO</span>
+            <span className="font-heading text-base font-bold text-admin-text whitespace-nowrap">SALONTIME</span>
             <span className="text-[0.65rem] text-admin-text-muted uppercase tracking-widest whitespace-nowrap">Management System</span>
           </div>
         )}

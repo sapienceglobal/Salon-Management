@@ -33,14 +33,14 @@ const STATUS_STYLES = {
 };
 
 const QUICK_ACTIONS = [
-  { icon: RiAddLine, text: 'New Appointment', color: 'bg-brand/15 text-brand', href: '/admin/appointments' },
-  { icon: RiWalkLine, text: 'Walk-in', color: 'bg-accent-blue/15 text-accent-blue', href: '/admin/appointments' },
-  { icon: RiUserAddLine, text: 'New Customer', color: 'bg-accent-green/15 text-accent-green', href: '/admin/customers' },
-  { icon: RiFileList3Line, text: 'New Invoice', color: 'bg-accent-purple/15 text-accent-purple', href: '/admin/billing' },
-  { icon: RiScissorsLine, text: 'Add Service', color: 'bg-accent-cyan/15 text-accent-cyan', href: '/admin/services' },
-  { icon: RiGiftLine, text: 'Add Package', color: 'bg-accent-yellow/15 text-accent-yellow', href: '/admin/packages' },
-  { icon: RiMailLine, text: 'Send Offer', color: 'bg-accent-red/15 text-accent-red', href: '/admin/marketing' },
-  { icon: RiVipCrownLine, text: 'Loyalty', color: 'bg-brand/15 text-brand', href: '/admin/settings' },
+  { icon: RiAddLine, text: 'New Appointment', color: 'bg-brand/15 text-brand', href: '/appointments' },
+  { icon: RiWalkLine, text: 'Walk-in', color: 'bg-accent-blue/15 text-accent-blue', href: '/appointments' },
+  { icon: RiUserAddLine, text: 'New Customer', color: 'bg-accent-green/15 text-accent-green', href: '/customers' },
+  { icon: RiFileList3Line, text: 'New Invoice', color: 'bg-accent-purple/15 text-accent-purple', href: '/billing' },
+  { icon: RiScissorsLine, text: 'Add Service', color: 'bg-accent-cyan/15 text-accent-cyan', href: '/services' },
+  { icon: RiGiftLine, text: 'Add Package', color: 'bg-accent-yellow/15 text-accent-yellow', href: '/packages' },
+  { icon: RiMailLine, text: 'Send Offer', color: 'bg-accent-red/15 text-accent-red', href: '/marketing' },
+  { icon: RiVipCrownLine, text: 'Loyalty', color: 'bg-brand/15 text-brand', href: '/settings' },
 ];
 
 /* =============================================
@@ -224,37 +224,37 @@ export default function DashboardPage() {
       icon: RiCalendarCheckLine,
       label: "Today's Appointments",
       value: summary?.today?.appointments?.total ?? 0,
-      trend: `${summary?.today?.appointments?.completed ?? 0} completed`,
-      up: true,
+      trend: `${summary?.trends?.today_appointments?.value ?? 0}% vs yesterday`,
+      up: summary?.trends?.today_appointments?.is_up,
       color: 'bg-brand/15 text-brand',
-      href: '/admin/appointments'
+      href: '/appointments'
     },
     {
       icon: RiUserLine,
       label: 'Total Customers',
       value: (summary?.customers?.total ?? 0).toLocaleString(),
-      trend: `+${summary?.customers?.new_this_month ?? 0} this month`,
-      up: (summary?.customers?.new_this_month ?? 0) > 0,
+      trend: `${summary?.trends?.monthly_customers?.value ?? 0}% vs last month`,
+      up: summary?.trends?.monthly_customers?.is_up,
       color: 'bg-accent-blue/15 text-accent-blue',
-      href: '/admin/customers'
+      href: '/customers'
     },
     {
       icon: RiMoneyDollarCircleLine,
       label: "Today's Revenue",
       value: formatCurrency(summary?.today?.revenue ?? 0),
-      trend: `Monthly: ${formatCurrency(summary?.monthly?.revenue ?? 0)}`,
-      up: (summary?.today?.revenue ?? 0) > 0,
+      trend: `${summary?.trends?.today_revenue?.value ?? 0}% vs yesterday`,
+      up: summary?.trends?.today_revenue?.is_up,
       color: 'bg-accent-green/15 text-accent-green',
-      href: '/admin/billing'
+      href: '/billing'
     },
     {
       icon: RiTeamLine,
       label: 'Active Staff',
       value: summary?.staff?.active ?? 0,
       trend: `${summary?.today?.appointments?.ongoing ?? 0} currently busy`,
-      up: true,
+      up: null, // neutral gray
       color: 'bg-accent-purple/15 text-accent-purple',
-      href: '/admin/staff'
+      href: '/staff'
     },
   ];
 
@@ -304,7 +304,7 @@ export default function DashboardPage() {
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
             <span className="text-[0.95rem] font-semibold">Today&apos;s Appointments</span>
-            <Link href="/admin/appointments" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
+            <Link href="/appointments" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
           <div className="p-0 max-h-[360px] overflow-y-auto custom-scrollbar relative">
             {loading ? (
@@ -322,7 +322,7 @@ export default function DashboardPage() {
                 </thead>
                 <tbody>
                   {todayAppointments.map((apt) => (
-                    <tr key={apt.id} onClick={() => router.push(`/admin/appointments?appointment_id=${apt.id}`)} className="hover:bg-white/[0.02] transition-colors cursor-pointer">
+                    <tr key={apt.id} onClick={() => router.push(`/appointments?appointment_id=${apt.id}`)} className="hover:bg-white/[0.02] transition-colors cursor-pointer">
                       <td className="px-3 py-3 text-sm font-medium border-b border-admin-border last:border-0">{formatTime(apt.start_time)}</td>
                       <td className="px-3 py-3 text-sm border-b border-admin-border">
                         <div className="flex items-center gap-2">
@@ -479,7 +479,7 @@ export default function DashboardPage() {
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
             <span className="text-[0.95rem] font-semibold">Upcoming Appointments</span>
-            <Link href="/admin/appointments" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
+            <Link href="/appointments" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
           <div className="px-5 py-3 max-h-[360px] overflow-y-auto custom-scrollbar">
             {loading ? (
@@ -488,7 +488,7 @@ export default function DashboardPage() {
               <EmptyState message="No upcoming appointments" />
             ) : (
               upcomingAppointments.map((apt) => (
-                <div key={apt.id} onClick={() => router.push(`/admin/appointments?appointment_id=${apt.id}`)} className="flex items-center gap-3.5 py-3 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer px-2 rounded-lg -mx-2">
+                <div key={apt.id} onClick={() => router.push(`/appointments?appointment_id=${apt.id}`)} className="flex items-center gap-3.5 py-3 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer px-2 rounded-lg -mx-2">
                   <span className="text-sm font-semibold text-admin-text-secondary min-w-[65px]">{formatTime(apt.start_time)}</span>
                   <span className="w-2 h-2 rounded-full bg-brand shrink-0"></span>
                   <div className="flex-1">
@@ -512,7 +512,7 @@ export default function DashboardPage() {
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
             <span className="text-[0.95rem] font-semibold">Top Services</span>
-            <Link href="/admin/services" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
+            <Link href="/services" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
           <div className="px-5 py-3 max-h-[320px] overflow-y-auto custom-scrollbar">
             {loading ? (
@@ -521,7 +521,7 @@ export default function DashboardPage() {
               <EmptyState message="No services data yet" />
             ) : (
               topServices.map((svc, i) => (
-                <div key={i} onClick={() => router.push(`/admin/services?category_id=${svc.category_id}&service_id=${svc.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
+                <div key={i} onClick={() => router.push(`/services?category_id=${svc.category_id}&service_id=${svc.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
                   <span className="w-7 h-7 rounded-md bg-admin-surface-light flex items-center justify-center text-xs font-bold text-admin-text-muted shrink-0">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{svc.name}</div>
@@ -537,7 +537,7 @@ export default function DashboardPage() {
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
             <span className="text-[0.95rem] font-semibold">Recent Customers</span>
-            <Link href="/admin/customers" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
+            <Link href="/customers" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
           <div className="px-5 py-3 max-h-[320px] overflow-y-auto custom-scrollbar">
             {loading ? (
@@ -546,7 +546,7 @@ export default function DashboardPage() {
               <EmptyState message="No customers added yet" />
             ) : (
               recentCustomers.map((cust) => (
-                <div key={cust.id} onClick={() => router.push(`/admin/customers?customer_id=${cust.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
+                <div key={cust.id} onClick={() => router.push(`/customers?customer_id=${cust.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-[0.7rem] font-bold text-white shrink-0">
                     {getInitials(cust.first_name, cust.last_name)}
                   </div>
@@ -565,7 +565,7 @@ export default function DashboardPage() {
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
             <span className="text-[0.95rem] font-semibold">Inventory Alerts</span>
-            <Link href="/admin/inventory" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
+            <Link href="/inventory" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
           <div className="px-5 py-3 max-h-[320px] overflow-y-auto custom-scrollbar">
             {loading ? (
@@ -574,7 +574,7 @@ export default function DashboardPage() {
               <EmptyState message="No products in inventory yet" />
             ) : (
               inventoryAlerts.map((item) => (
-                <div key={item.id} onClick={() => router.push(`/admin/inventory?product_id=${item.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
+                <div key={item.id} onClick={() => router.push(`/inventory?product_id=${item.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{item.name}</div>
                     <div className="text-xs text-admin-text-muted">{item.category || 'General'}</div>
@@ -602,7 +602,7 @@ export default function DashboardPage() {
               <EmptyState message="No staff members added yet" />
             ) : (
               staffPerformance.map((staff) => (
-                <div key={staff.id} onClick={() => router.push(`/admin/staff?staff_id=${staff.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
+                <div key={staff.id} onClick={() => router.push(`/staff?staff_id=${staff.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-[0.75rem] font-bold text-white shrink-0">
                     {staff.name?.[0] || '?'}
                   </div>

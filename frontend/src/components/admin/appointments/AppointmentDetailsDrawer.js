@@ -222,7 +222,7 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
             onClick={() => {
               handleClose();
               setTimeout(() => {
-                window.location.href = `/admin/billing?appointment_id=${appointment.id}`;
+                window.location.href = `/billing?appointment_id=${appointment.id}`;
               }, 250);
             }}
           >

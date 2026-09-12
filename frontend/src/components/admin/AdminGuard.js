@@ -25,14 +25,14 @@ export default function AdminGuard({ children, allowedRoles = ADMIN_ROLES }) {
 
     // Not logged in → admin login
     if (!isAuthenticated || !user) {
-      router.replace('/admin/login');
+      router.replace('/login');
       return;
     }
 
     // Logged in but not admin role → admin login with error
     if (!allowedRoles.includes(user.role)) {
       localStorage.removeItem('accessToken');
-      router.replace('/admin/login?error=unauthorized');
+      router.replace('/login?error=unauthorized');
       return;
     }
 

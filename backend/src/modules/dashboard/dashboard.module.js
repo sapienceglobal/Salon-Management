@@ -16,8 +16,27 @@ class DashboardService {
     const cacheKey = `dashboard:summary:${businessId}`;
 
     return cache.getOrSet(cacheKey, async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const todayObj = new Date();
+      const today = todayObj.toISOString().split('T')[0];
       const startOfMonth = `${today.substring(0, 7)}-01`;
+
+      const yesterdayObj = new Date(todayObj);
+      yesterdayObj.setDate(todayObj.getDate() - 1);
+      const yesterday = yesterdayObj.toISOString().split('T')[0];
+
+      const firstDayLastMonthObj = new Date(todayObj.getFullYear(), todayObj.getMonth() - 1, 1);
+      const lastDayLastMonthObj = new Date(todayObj.getFullYear(), todayObj.getMonth(), 0);
+      
+      const pad = (n) => n.toString().padStart(2, '0');
+      const firstDayLastMonth = `${firstDayLastMonthObj.getFullYear()}-${pad(firstDayLastMonthObj.getMonth() + 1)}-01`;
+      const lastDayLastMonth = `${lastDayLastMonthObj.getFullYear()}-${pad(lastDayLastMonthObj.getMonth() + 1)}-${pad(lastDayLastMonthObj.getDate())}`;
+
+      const calcTrend = (current, previous) => {
+        if (previous === 0) return { value: current > 0 ? 100 : 0, is_up: current >= 0 };
+        const diff = current - previous;
+        const pct = Math.round((diff / previous) * 100);
+        return { value: Math.abs(pct), is_up: pct >= 0 };
+      };
 
       // Today's revenue stats
       const [todayStats] = await db('invoices')
@@ -31,6 +50,17 @@ class DashboardService {
           db.raw('COALESCE(SUM(paid_amount), 0) as today_collected')
         );
 
+      const [yesterdayStats] = await db('invoices')
+        .where({ business_id: businessId })
+        .where('created_at', '>=', `${yesterday} 00:00:00`)
+        .where('created_at', '<=', `${yesterday} 23:59:59`)
+        .whereNot('status', 'cancelled')
+        .select(
+          db.raw('COUNT(*) as yesterday_invoices'),
+          db.raw('COALESCE(SUM(total_amount), 0) as yesterday_revenue'),
+          db.raw('COALESCE(SUM(paid_amount), 0) as yesterday_collected')
+        );
+
       // Today's appointment counts
       const [todayAppointments] = await db('appointments')
         .where({ business_id: businessId, appointment_date: today })
@@ -42,6 +72,14 @@ class DashboardService {
           db.raw("SUM(CASE WHEN status = 'ongoing' THEN 1 ELSE 0 END) as ongoing")
         );
 
+      const [yesterdayAppointments] = await db('appointments')
+        .where({ business_id: businessId, appointment_date: yesterday })
+        .whereNotIn('status', ['cancelled'])
+        .select(
+          db.raw('COUNT(*) as total'),
+          db.raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
+        );
+
       // Monthly stats
       const [monthlyStats] = await db('invoices')
         .where({ business_id: businessId })
@@ -51,6 +89,16 @@ class DashboardService {
           db.raw('COUNT(*) as monthly_invoices'),
           db.raw('COALESCE(SUM(total_amount), 0) as monthly_revenue'),
           db.raw('COALESCE(SUM(paid_amount), 0) as monthly_collected')
+        );
+
+      const [lastMonthStats] = await db('invoices')
+        .where({ business_id: businessId })
+        .where('created_at', '>=', `${firstDayLastMonth} 00:00:00`)
+        .where('created_at', '<=', `${lastDayLastMonth} 23:59:59`)
+        .whereNot('status', 'cancelled')
+        .select(
+          db.raw('COALESCE(SUM(total_amount), 0) as last_month_revenue'),
+          db.raw('COALESCE(SUM(paid_amount), 0) as last_month_collected')
         );
 
       // Monthly expenses
@@ -67,6 +115,12 @@ class DashboardService {
       const [newCustomers] = await db('customers')
         .where({ business_id: businessId })
         .where('created_at', '>=', `${startOfMonth} 00:00:00`)
+        .select(db.raw('COUNT(*) as new_customers'));
+
+      const [lastMonthCustomers] = await db('customers')
+        .where({ business_id: businessId })
+        .where('created_at', '>=', `${firstDayLastMonth} 00:00:00`)
+        .where('created_at', '<=', `${lastDayLastMonth} 23:59:59`)
         .select(db.raw('COUNT(*) as new_customers'));
 
       // Active staff count
@@ -91,13 +145,22 @@ class DashboardService {
         pendingCommissions = pc;
       } catch { /* table may not exist yet */ }
 
+      const tRev = parseFloat(todayStats.today_revenue || 0);
+      const yRev = parseFloat(yesterdayStats.yesterday_revenue || 0);
+      const tAppts = parseInt(todayAppointments.total || 0);
+      const yAppts = parseInt(yesterdayAppointments.total || 0);
+      const mRev = parseFloat(monthlyStats.monthly_revenue || 0);
+      const lmRev = parseFloat(lastMonthStats.last_month_revenue || 0);
+      const tCusts = parseInt(newCustomers.new_customers || 0);
+      const lmCusts = parseInt(lastMonthCustomers.new_customers || 0);
+
       return {
         today: {
           invoices: parseInt(todayStats.today_invoices || 0),
-          revenue: parseFloat(todayStats.today_revenue || 0),
+          revenue: tRev,
           collected: parseFloat(todayStats.today_collected || 0),
           appointments: {
-            total: parseInt(todayAppointments.total || 0),
+            total: tAppts,
             completed: parseInt(todayAppointments.completed || 0),
             upcoming: parseInt(todayAppointments.upcoming || 0),
             ongoing: parseInt(todayAppointments.ongoing || 0)
@@ -105,14 +168,14 @@ class DashboardService {
         },
         monthly: {
           invoices: parseInt(monthlyStats.monthly_invoices || 0),
-          revenue: parseFloat(monthlyStats.monthly_revenue || 0),
+          revenue: mRev,
           collected: parseFloat(monthlyStats.monthly_collected || 0),
           expenses: parseFloat(monthlyExpenses.monthly_expenses || 0),
           net_profit: parseFloat(monthlyStats.monthly_collected || 0) - parseFloat(monthlyExpenses.monthly_expenses || 0)
         },
         customers: {
           total: parseInt(customerStats.total_customers || 0),
-          new_this_month: parseInt(newCustomers.new_customers || 0)
+          new_this_month: tCusts
         },
         staff: {
           active: parseInt(staffStats.active_staff || 0)
@@ -121,6 +184,12 @@ class DashboardService {
           low_stock: lowStock,
           pending_commissions: pendingCommissions
         },
+        trends: {
+          today_revenue: calcTrend(tRev, yRev),
+          today_appointments: calcTrend(tAppts, yAppts),
+          monthly_revenue: calcTrend(mRev, lmRev),
+          monthly_customers: calcTrend(tCusts, lmCusts)
+        }
       };
     }, 60); // 60s cache
   }

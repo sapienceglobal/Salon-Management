@@ -17,7 +17,7 @@ export function useRequireAuth(allowedRoles = []) {
     }
     if (!loading && isAuthenticated && allowedRoles.length > 0) {
       if (!allowedRoles.includes(user?.role)) {
-        router.replace('/admin/dashboard');
+        router.replace('/');
       }
     }
   }, [loading, isAuthenticated, user, allowedRoles, router]);

@@ -24,7 +24,7 @@ function AdminLoginForm() {
   // If already authenticated as admin, redirect to dashboard
   useEffect(() => {
     if (!authLoading && isAuthenticated && user && ADMIN_ROLES.includes(user.role)) {
-      router.replace('/admin/dashboard');
+      router.replace('/');
     }
   }, [authLoading, isAuthenticated, user, router]);
 
@@ -51,7 +51,7 @@ function AdminLoginForm() {
         return;
       }
 
-      router.replace('/admin/dashboard');
+      router.replace('/');
     } catch (err) {
       setError(err.message || 'Invalid email or password');
     } finally {
@@ -73,7 +73,7 @@ function AdminLoginForm() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-brand to-brand-dark rounded-2xl text-3xl text-white mb-4 shadow-[0_4px_20px_rgba(231,74,138,0.3)]">
             <GiLotus />
           </div>
-          <h1 className="font-heading text-2xl font-bold text-admin-text">Salon Pro</h1>
+          <h1 className="font-heading text-2xl font-bold text-admin-text">SalonTime</h1>
           <p className="text-sm text-admin-text-muted mt-1">Management System</p>
         </div>
 
@@ -123,7 +123,7 @@ function AdminLoginForm() {
                 <input type="checkbox" className="w-4 h-4 rounded border-admin-border bg-admin-surface-light accent-brand" />
                 Remember me
               </label>
-              <a href="/admin/forgot-password" className="text-sm text-brand hover:text-brand-light transition-colors">Forgot password?</a>
+              <a href="/forgot-password" className="text-sm text-brand hover:text-brand-light transition-colors">Forgot password?</a>
             </div>
 
             {/* Submit */}
@@ -147,7 +147,7 @@ function AdminLoginForm() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-admin-text-muted mt-6">© {new Date().getFullYear()} Salon Pro. All rights reserved.</p>
+        <p className="text-center text-xs text-admin-text-muted mt-6">© {new Date().getFullYear()} SalonTime. All rights reserved.</p>
       </div>
     </div>
   );

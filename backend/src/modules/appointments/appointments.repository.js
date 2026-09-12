@@ -2,6 +2,53 @@ import { db } from '../../config/database.js';
 import { parsePagination, buildPaginationMeta } from '../../utils/pagination.js';
 
 class AppointmentRepository {
+  async getStats(businessId, query) {
+    const todayStr = query.date || new Date().toISOString().split('T')[0];
+    const d = new Date(todayStr);
+    d.setDate(d.getDate() - 1);
+    const yesterdayStr = d.toISOString().split('T')[0];
+
+    const getDayStats = async (dt) => {
+      const q = db('appointments as a')
+        .where({ 'a.business_id': businessId, 'a.appointment_date': dt });
+
+      if (query.staff_id) q.where('a.staff_member_id', query.staff_id);
+      if (query.service_id) {
+        q.join('appointment_services as aps', 'a.id', 'aps.appointment_id')
+         .where('aps.service_id', query.service_id);
+      }
+
+      const [res] = await q.select(
+        db.raw('COUNT(*) as total'),
+        db.raw("SUM(CASE WHEN a.status = 'planned' THEN 1 ELSE 0 END) as confirmed"),
+        db.raw("SUM(CASE WHEN a.status = 'ongoing' THEN 1 ELSE 0 END) as in_progress"),
+        db.raw("SUM(CASE WHEN a.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled"),
+        db.raw("SUM(CASE WHEN a.source = 'walk_in' THEN 1 ELSE 0 END) as walk_ins")
+      );
+      return res || {};
+    };
+
+    const today = await getDayStats(todayStr);
+    const yesterday = await getDayStats(yesterdayStr);
+
+    const calcTrend = (current, previous) => {
+      const curr = parseInt(current || 0);
+      const prev = parseInt(previous || 0);
+      if (prev === 0) return { value: curr > 0 ? 100 : 0, is_up: curr >= 0 };
+      const diff = curr - prev;
+      const pct = Math.round((diff / prev) * 100);
+      return { value: Math.abs(pct), is_up: pct >= 0 };
+    };
+
+    return {
+      total: { value: parseInt(today.total || 0), trend: calcTrend(today.total, yesterday.total) },
+      confirmed: { value: parseInt(today.confirmed || 0), trend: calcTrend(today.confirmed, yesterday.confirmed) },
+      in_progress: { value: parseInt(today.in_progress || 0), trend: calcTrend(today.in_progress, yesterday.in_progress) },
+      cancelled: { value: parseInt(today.cancelled || 0), trend: calcTrend(today.cancelled, yesterday.cancelled) },
+      walk_ins: { value: parseInt(today.walk_ins || 0), trend: calcTrend(today.walk_ins, yesterday.walk_ins) }
+    };
+  }
+
   async findAll(businessId, query) {
     const { page, limit, offset } = parsePagination(query);
     const base = db('appointments as a')

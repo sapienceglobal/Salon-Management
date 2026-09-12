@@ -104,28 +104,28 @@ export default function GlobalSearch() {
         router.push(item.route);
         break;
       case 'customers':
-        router.push(`/admin/customers?customer_id=${item.id}`);
+        router.push(`/customers?customer_id=${item.id}`);
         break;
       case 'appointments':
-        router.push(`/admin/appointments?appointment_id=${item.id}`);
+        router.push(`/appointments?appointment_id=${item.id}`);
         break;
       case 'services':
-        router.push(`/admin/services?category_id=${item.category_id}&service_id=${item.id}`);
+        router.push(`/services?category_id=${item.category_id}&service_id=${item.id}`);
         break;
       case 'products':
-        router.push(`/admin/inventory?product_id=${item.id}`);
+        router.push(`/inventory?product_id=${item.id}`);
         break;
       case 'staff':
-        router.push(`/admin/staff?staff_id=${item.id}`);
+        router.push(`/staff?staff_id=${item.id}`);
         break;
       case 'invoices':
-        router.push(`/admin/billing?invoice_id=${item.id}`);
+        router.push(`/billing?invoice_id=${item.id}`);
         break;
       case 'expenses':
-        router.push(`/admin/expenses?expense_id=${item.id}`);
+        router.push(`/expenses?expense_id=${item.id}`);
         break;
       case 'enquiries':
-        router.push(`/admin/enquiry?enquiry_id=${item.id}`);
+        router.push(`/enquiry?enquiry_id=${item.id}`);
         break;
       default:
         break;
