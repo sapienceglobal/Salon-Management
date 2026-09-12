@@ -68,7 +68,7 @@ class AppointmentRepository {
     return appointment;
   }
 
-  async create(appointmentData, serviceId) {
+  async create(appointmentData, serviceId, servicePrice, serviceDuration) {
     return db.transaction(async (trx) => {
       const [appointmentId] = await trx('appointments').insert(appointmentData);
       
@@ -76,7 +76,9 @@ class AppointmentRepository {
       await trx('appointment_services').insert({
         appointment_id: appointmentId,
         service_id: serviceId,
-        staff_member_id: appointmentData.staff_member_id || null
+        staff_member_id: appointmentData.staff_member_id || null,
+        price: servicePrice || 0,
+        duration_minutes: serviceDuration || 30
       });
 
       return appointmentId;
@@ -107,16 +109,18 @@ class AppointmentRepository {
     return parseInt(count, 10);
   }
 
-  async update(id, businessId, updateData, newServiceId = null) {
+  async update(id, businessId, updateData, newServiceId = null, newPrice = null, newDuration = null) {
     return db.transaction(async (trx) => {
       updateData.updated_at = db.fn.now();
       await trx('appointments').where({ id, business_id: businessId }).update(updateData);
       
       // Update appointment_services if service or staff changed
-      if (newServiceId || updateData.staff_member_id !== undefined) {
+      if (newServiceId || updateData.staff_member_id !== undefined || newPrice !== null || newDuration !== null) {
         const apsUpdate = {};
         if (newServiceId) apsUpdate.service_id = newServiceId;
         if (updateData.staff_member_id !== undefined) apsUpdate.staff_member_id = updateData.staff_member_id;
+        if (newPrice !== null) apsUpdate.price = newPrice;
+        if (newDuration !== null) apsUpdate.duration_minutes = newDuration;
         
         await trx('appointment_services').where({ appointment_id: id }).update(apsUpdate);
       }

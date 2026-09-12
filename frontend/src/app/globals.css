@@ -91,6 +91,16 @@ html[data-theme-mode="light"] {
     font-family: var(--font-sans);
   }
 
+  /* Hide number input spin buttons */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
   /* Admin dropdown option styling — dark */
   html[data-theme-mode="dark"] [data-theme="admin"] select option {
     background-color: var(--color-admin-card);

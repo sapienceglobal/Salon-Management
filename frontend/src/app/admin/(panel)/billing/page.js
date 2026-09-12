@@ -178,7 +178,7 @@ export default function POSPage() {
     if (customerSearchTimeout.current) clearTimeout(customerSearchTimeout.current);
     customerSearchTimeout.current = setTimeout(async () => {
       try {
-        const res = await api.get('/customers', { params: { search: query, limit: 5 } });
+        const res = await api.get('/customers', { params: { search: query, limit: 5, is_active: 'true' } });
         setCustomerResults(res.data || []);
         setShowCustomerDropdown(true);
       } catch (error) {
@@ -271,7 +271,7 @@ export default function POSPage() {
       clearCart();
     } catch (error) {
       console.error(error);
-      toast.error('Failed to save draft');
+      toast.error(error.response?.data?.message || 'Failed to save draft');
     } finally {
       setIsSavingDraft(false);
     }
@@ -687,6 +687,7 @@ export default function POSPage() {
             staff_member_id: item.staff_member_id
           })));
         }}
+        onDraftDeleted={fetchDraftCount}
       />
       
       <CheckoutModal

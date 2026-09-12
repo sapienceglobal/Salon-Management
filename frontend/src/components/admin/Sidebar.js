@@ -7,7 +7,7 @@ import { getInitials } from '@/lib/utils';
 import {
   RiDashboardLine, RiCalendarCheckLine, RiUserLine, RiScissorsLine,
   RiGiftLine, RiTeamLine, RiShoppingCartLine, RiArchiveLine,
-  RiMegaphoneLine, RiBarChartLine, RiSettings3Line, RiContactsLine
+  RiMegaphoneLine, RiBarChartLine, RiSettings3Line, RiContactsLine, RiWallet3Line
 } from 'react-icons/ri';
 import { GiLotus } from 'react-icons/gi';
 
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { label: 'Packages', href: '/admin/packages', icon: RiGiftLine },
   { label: 'Staff', href: '/admin/staff', icon: RiTeamLine },
   { label: 'POS & Billing', href: '/admin/billing', icon: RiShoppingCartLine },
+  { label: 'Expenses', href: '/admin/expenses', icon: RiWallet3Line },
   { label: 'Inventory', href: '/admin/inventory', icon: RiArchiveLine },
   { label: 'Marketing', href: '/admin/marketing', icon: RiMegaphoneLine },
   { label: 'Reports', href: '/admin/reports', icon: RiBarChartLine },

@@ -111,7 +111,11 @@ export default function DashboardPage() {
 
   // State for all dashboard data
   const [summary, setSummary] = useState(null);
-  const [revenueChart, setRevenueChart] = useState([]);
+  const [revenueData, setRevenueData] = useState({ chart: [], stats: {} });
+  const [revenueDateRange, setRevenueDateRange] = useState('this_month');
+  const [revenueLoading, setRevenueLoading] = useState(true);
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [todayAppointments, setTodayAppointments] = useState([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [topServices, setTopServices] = useState([]);
@@ -131,7 +135,6 @@ export default function DashboardPage() {
     try {
       const [
         summaryRes,
-        revenueRes,
         todayAptsRes,
         upcomingAptsRes,
         topSvcRes,
@@ -140,7 +143,7 @@ export default function DashboardPage() {
         staffPerfRes,
       ] = await Promise.allSettled([
         api.get('/dashboard/summary'),
-        api.get('/dashboard/revenue-chart'),
+        // revenue chart fetched separately
         api.get('/dashboard/today-appointments'),
         api.get('/dashboard/upcoming-appointments'),
         api.get('/dashboard/top-services'),
@@ -150,7 +153,7 @@ export default function DashboardPage() {
       ]);
 
       if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value.data);
-      if (revenueRes.status === 'fulfilled') setRevenueChart(revenueRes.value.data || []);
+      
       if (todayAptsRes.status === 'fulfilled') setTodayAppointments(todayAptsRes.value.data || []);
       if (upcomingAptsRes.status === 'fulfilled') setUpcomingAppointments(upcomingAptsRes.value.data || []);
       if (topSvcRes.status === 'fulfilled') setTopServices(topSvcRes.value.data || []);
@@ -167,6 +170,53 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  const fetchRevenueData = useCallback(async () => {
+    setRevenueLoading(true);
+    try {
+      const today = new Date();
+      let start = new Date();
+      let end = new Date();
+      
+      if (revenueDateRange === 'custom') {
+        if (!customStartDate || !customEndDate) return; // Wait until both are selected
+        start = new Date(customStartDate);
+        end = new Date(customEndDate);
+      } else if (revenueDateRange === 'today') {
+        // start and end are today
+      } else if (revenueDateRange === 'yesterday') {
+        start.setDate(today.getDate() - 1);
+        end.setDate(today.getDate() - 1);
+      } else if (revenueDateRange === 'this_week') {
+        const day = today.getDay();
+        const diff = today.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+        start = new Date(today.setDate(diff));
+        end = new Date(); // up to today
+      } else if (revenueDateRange === 'last_month') {
+        start.setMonth(today.getMonth() - 1, 1);
+        end.setMonth(today.getMonth(), 0);
+      } else if (revenueDateRange === 'this_month') {
+        start.setDate(1);
+      } else if (revenueDateRange === 'this_year') {
+        start.setMonth(0, 1);
+      }
+
+      const startDate = start.toISOString().split('T')[0];
+      const endDate = end.toISOString().split('T')[0];
+
+      const res = await api.get(`/dashboard/revenue-chart?startDate=${startDate}&endDate=${endDate}`);
+      setRevenueData(res.data?.data || res.data || { chart: [], stats: {} });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRevenueLoading(false);
+    }
+  }, [revenueDateRange, customStartDate, customEndDate]);
+
+  useEffect(() => {
+    fetchRevenueData();
+  }, [fetchRevenueData]);
+
 
   // Derived stat cards from real data
   const statCards = [
@@ -294,28 +344,57 @@ export default function DashboardPage() {
 
         {/* Revenue Overview */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
-          <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-[18px] border-b border-admin-border gap-3">
             <span className="text-[0.95rem] font-semibold">Revenue Overview</span>
-            <span className="text-sm text-admin-text-muted">Monthly</span>
+            <div className="flex items-center gap-3">
+              <select 
+      value={revenueDateRange}
+      onChange={(e) => setRevenueDateRange(e.target.value)}
+      className="text-sm bg-admin-surface border border-admin-border rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand cursor-pointer"
+    >
+      <option value="today">Today</option>
+      <option value="yesterday">Yesterday</option>
+      <option value="this_week">This Week</option>
+      <option value="this_month">This Month</option>
+      <option value="last_month">Last Month</option>
+      <option value="this_year">This Year</option>
+      <option value="custom">Custom Range</option>
+    </select>
+    {revenueDateRange === 'custom' && (
+      <div className="flex items-center gap-2 mt-2 sm:mt-0">
+        <input 
+          type="date" 
+          value={customStartDate} 
+          onChange={(e) => setCustomStartDate(e.target.value)}
+          className="text-sm bg-admin-surface border border-admin-border rounded-lg px-2 py-1 focus:outline-none focus:border-brand"
+        />
+        <span className="text-admin-text-muted">to</span>
+        <input 
+          type="date" 
+          value={customEndDate} 
+          onChange={(e) => setCustomEndDate(e.target.value)}
+          className="text-sm bg-admin-surface border border-admin-border rounded-lg px-2 py-1 focus:outline-none focus:border-brand"
+        />
+      </div>
+    )}
+            </div>
           </div>
-          <div className="px-5 py-4">
-            {loading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-7 w-32" />
+          <div className="px-5 py-4 min-h-[300px]">
+            {revenueLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-32" />
                 <Skeleton className="h-[220px] w-full" />
               </div>
             ) : (
               <>
                 <div className="flex items-baseline gap-2.5 mb-2">
-                  <span className="font-heading text-2xl font-bold">{formatCurrency(summary?.monthly?.revenue ?? 0)}</span>
-                  <span className="text-sm text-accent-green flex items-center gap-1">
-                    <RiArrowUpLine /> This Month
-                  </span>
+                  <span className="font-heading text-2xl font-bold">{formatCurrency(revenueData?.stats?.revenue ?? 0)}</span>
+                  
                 </div>
                 <div className="w-full h-[220px]">
-                  {revenueChart.length > 0 ? (
+                  {revenueData?.chart?.length > 0 ? (
                     <ResponsiveContainer>
-                      <AreaChart data={revenueChart} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                      <AreaChart data={revenueData.chart} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                         <defs>
                           <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="#e74a8a" stopOpacity={0.3} />
@@ -336,9 +415,9 @@ export default function DashboardPage() {
                 {/* Revenue Breakdown */}
                 <div className="flex gap-4 mt-3">
                   {[
-                    { color: 'bg-accent-green', label: 'Collected', pct: formatCurrency(summary?.monthly?.collected ?? 0) },
-                    { color: 'bg-accent-red', label: 'Expenses', pct: formatCurrency(summary?.monthly?.expenses ?? 0) },
-                    { color: 'bg-accent-purple', label: 'Net Profit', pct: formatCurrency(summary?.monthly?.net_profit ?? 0) },
+                    { color: 'bg-accent-green', label: 'Collected', pct: formatCurrency(revenueData?.stats?.collected ?? 0) },
+                    { color: 'bg-accent-red', label: 'Expenses', pct: formatCurrency(revenueData?.stats?.expenses ?? 0) },
+                    { color: 'bg-accent-purple', label: 'Net Profit', pct: formatCurrency(revenueData?.stats?.net_profit ?? 0) },
                   ].map((item, i) => (
                     <div key={i} className="flex items-center gap-1.5">
                       <div className={`w-2.5 h-2.5 rounded-full ${item.color}`}></div>

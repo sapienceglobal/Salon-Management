@@ -16,8 +16,8 @@ class WalletService {
     return db.transaction(async (trx) => {
       const customer = await trx('customers').where({ id: data.customer_id, business_id: businessId }).first();
       if (!customer) throw ApiError.notFound('Customer not found');
-
-      const newBalance = parseFloat((customer.wallet_balance + data.amount).toFixed(2));
+      const currentBalance = parseFloat(customer.wallet_balance || 0);
+      const newBalance = parseFloat((currentBalance + data.amount).toFixed(2));
       await trx('customers').where({ id: data.customer_id }).update({ wallet_balance: newBalance, updated_at: db.fn.now() });
       await trx('wallet_transactions').insert({
         customer_id: data.customer_id, business_id: businessId, type: 'credit',
@@ -60,7 +60,8 @@ class RewardService {
       });
 
       // Credit equivalent amount to wallet
-      const newWallet = parseFloat((customer.wallet_balance + redeemValue).toFixed(2));
+      const currentWallet = parseFloat(customer.wallet_balance || 0);
+      const newWallet = parseFloat((currentWallet + redeemValue).toFixed(2));
       await trx('customers').where({ id: data.customer_id }).update({ wallet_balance: newWallet });
       await trx('wallet_transactions').insert({
         customer_id: data.customer_id, business_id: businessId, type: 'credit',

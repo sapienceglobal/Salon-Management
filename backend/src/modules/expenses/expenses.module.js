@@ -19,8 +19,7 @@ class ExpenseService {
     const base = db('expenses as e')
       .leftJoin('expense_categories as ec', 'e.category_id', 'ec.id')
       .leftJoin('users as u', 'e.created_by', 'u.id')
-      .where('e.business_id', businessId)
-      .select('e.*', 'ec.name as category_name', 'u.first_name as created_by_name');
+      .where('e.business_id', businessId);
 
     if (query.category_id) base.where('e.category_id', query.category_id);
     if (query.start_date) base.where('e.expense_date', '>=', query.start_date);
@@ -28,7 +27,10 @@ class ExpenseService {
     if (query.payment_method) base.where('e.payment_method', query.payment_method);
 
     const [{ count }] = await base.clone().count('* as count');
-    const expenses = await base.clone().orderBy('e.expense_date', 'desc').limit(limit).offset(offset);
+    const expenses = await base.clone()
+      .select('e.*', 'ec.name as category_name', 'u.first_name as created_by_name')
+      .orderBy('e.expense_date', 'desc')
+      .limit(limit).offset(offset);
 
     // Summary
     const [summary] = await db('expenses').where({ business_id: businessId })

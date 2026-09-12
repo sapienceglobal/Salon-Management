@@ -5,7 +5,7 @@ import { RiCloseLine, RiTimeLine } from 'react-icons/ri';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
-export default function ViewDraftsDrawer({ isOpen, onClose, onSelectDraft }) {
+export default function ViewDraftsDrawer({ isOpen, onClose, onSelectDraft, onDraftDeleted }) {
   const [loading, setLoading] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [mounted, setMounted] = useState(false);
@@ -57,6 +57,7 @@ export default function ViewDraftsDrawer({ isOpen, onClose, onSelectDraft }) {
       await api.delete(`/invoices/${id}`);
       toast.success('Draft deleted');
       fetchDrafts();
+      if (onDraftDeleted) onDraftDeleted();
     } catch (error) {
       console.error(error);
       toast.error('Failed to delete draft');

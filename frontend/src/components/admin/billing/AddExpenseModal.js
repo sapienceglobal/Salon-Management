@@ -44,7 +44,7 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }) {
   const fetchCategories = async () => {
     try {
       const res = await api.get('/expenses/categories');
-      setCategories(res.data.data || []);
+      setCategories(res.data || []);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
     }

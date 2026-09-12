@@ -40,7 +40,12 @@ class AppointmentService {
       created_by: userId
     };
 
-    const appointmentId = await appointmentRepository.create(appointmentData, data.service_id);
+    const appointmentId = await appointmentRepository.create(
+      appointmentData, 
+      data.service_id, 
+      service.price, 
+      service.duration
+    );
     return appointmentRepository.findById(appointmentId, businessId);
   }
 
@@ -89,7 +94,18 @@ class AppointmentService {
     if (data.status !== undefined) updateData.status = data.status;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
-    await appointmentRepository.update(id, businessId, updateData, data.service_id);
+    let servicePrice = null;
+    let serviceDuration = null;
+    
+    if (data.service_id && data.service_id !== appointment.service_id) {
+       const service = await db('salon_services').where({ id: data.service_id, business_id: businessId }).first();
+       if (service) {
+         servicePrice = service.price;
+         serviceDuration = service.duration;
+       }
+    }
+
+    await appointmentRepository.update(id, businessId, updateData, data.service_id, servicePrice, serviceDuration);
     return this.getById(id, businessId);
   }
 

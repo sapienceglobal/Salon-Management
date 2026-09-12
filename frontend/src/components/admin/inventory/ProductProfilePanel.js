@@ -52,7 +52,7 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
     setStockError(null);
     try {
       const diff = adjustType === 'add' ? parseInt(adjustQty) : -parseInt(adjustQty);
-      await api.patch(`/products/${product.id}/stock`, { quantity_change: diff });
+      await api.patch(`/products/${product.id}/stock`, { quantity: diff });
       setIsAdjustingStock(false);
       setAdjustQty('');
       if (onUpdateSuccess) onUpdateSuccess();
@@ -63,16 +63,21 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
     }
   };
 
-  const handleMarkInactive = async () => {
-    if (!confirm(`Are you sure you want to mark ${product.name} as inactive?`)) return;
+  const handleToggleActive = async () => {
+    const actionStr = product.is_active ? 'mark as inactive' : 'restore';
+    if (!confirm(`Are you sure you want to ${actionStr} ${product.name}?`)) return;
     try {
-      await api.delete(`/products/${product.id}`);
+      if (product.is_active) {
+        await api.delete(`/products/${product.id}`);
+      } else {
+        await api.put(`/products/${product.id}`, { is_active: true });
+      }
       if (onUpdateSuccess) {
         onUpdateSuccess();
         handleClose();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to mark as inactive');
+      alert(err.response?.data?.message || `Failed to ${actionStr} product`);
     }
   };
 
@@ -237,11 +242,15 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
         {/* Footer Actions */}
         <div className="p-6 border-t border-admin-border bg-admin-surface/50 shrink-0">
           <button 
-            onClick={handleMarkInactive}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold text-accent-red border border-accent-red/20 bg-accent-red/5 hover:bg-accent-red/10 transition-colors flex items-center justify-center gap-2"
+            onClick={handleToggleActive}
+            className={`w-full py-2.5 rounded-xl text-sm font-semibold border transition-colors flex items-center justify-center gap-2 ${
+              product.is_active 
+                ? 'text-accent-red border-accent-red/20 bg-accent-red/5 hover:bg-accent-red/10'
+                : 'text-brand border-brand/20 bg-brand/5 hover:bg-brand/10'
+            }`}
           >
             <RiArchiveLine className="text-lg" />
-            Mark Inactive
+            {product.is_active ? 'Mark Inactive' : 'Restore Product'}
           </button>
         </div>
       </div>

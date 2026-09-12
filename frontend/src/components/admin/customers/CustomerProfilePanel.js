@@ -202,10 +202,15 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
                       <div key={i} className="bg-admin-card border border-admin-border rounded-xl p-5 flex justify-between items-center hover:border-brand/30 transition-colors">
                         <div>
                           <h4 className="font-bold text-lg">#{visit.id?.toString().padStart(5, '0')}</h4>
-                          <p className="text-sm text-admin-text-secondary mt-1">{new Date(visit.appointment_date).toLocaleDateString()} at {visit.start_time}</p>
+                          <p className="text-sm text-admin-text-secondary mt-1">{new Date(visit.created_at).toLocaleDateString()} at {new Date(visit.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                         <div className="text-right">
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 ${visit.status === 'completed' ? 'bg-accent-green/10 text-accent-green' : visit.status === 'cancelled' ? 'bg-accent-red/10 text-accent-red' : 'bg-accent-blue/10 text-accent-blue'}`}>
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 ${
+                            visit.status === 'paid' || visit.status === 'completed' ? 'bg-accent-green/10 text-accent-green' : 
+                            visit.status === 'cancelled' ? 'bg-accent-red/10 text-accent-red' : 
+                            visit.status === 'partial' ? 'bg-orange-500/10 text-orange-500' : 
+                            'bg-accent-blue/10 text-accent-blue'
+                          }`}>
                             {visit.status.toUpperCase()}
                           </span>
                           {visit.total_price && <h3 className="text-xl font-bold">{formatCurrency(visit.total_price)}</h3>}

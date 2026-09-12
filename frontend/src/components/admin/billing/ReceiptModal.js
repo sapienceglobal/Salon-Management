@@ -113,8 +113,21 @@ export default function ReceiptModal({ isOpen, onClose, invoice }) {
             )}
             <div className="flex justify-between text-xl font-black pt-2">
               <span>Total Paid</span>
-              <span>{formatCurrency(invoice.total_amount)}</span>
+              <span>{formatCurrency(invoice.paid_amount || invoice.total_amount)}</span>
             </div>
+
+            {/* Payments Breakdown */}
+            {invoice.payments && invoice.payments.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Payment Details</p>
+                {invoice.payments.map((payment, idx) => (
+                  <div key={idx} className="flex justify-between text-sm text-gray-600 mb-1">
+                    <span className="capitalize">{payment.payment_method === 'wallet' ? 'Wallet Deduction' : payment.payment_method}</span>
+                    <span className="font-medium">{formatCurrency(payment.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-8 text-center">

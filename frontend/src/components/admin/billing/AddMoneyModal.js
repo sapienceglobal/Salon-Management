@@ -56,8 +56,8 @@ export default function AddMoneyModal({ isOpen, onClose, onSuccess, preSelectedC
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(async () => {
       try {
-        const res = await api.get('/customers', { params: { search: query, limit: 5 } });
-        setCustomers(res.data.customers || []);
+        const res = await api.get('/customers', { params: { search: query, limit: 5, is_active: 'true' } });
+        setCustomers(res.data || []);
         setShowDropdown(true);
       } catch (error) {
         console.error('Failed to search customers', error);
@@ -84,7 +84,7 @@ export default function AddMoneyModal({ isOpen, onClose, onSuccess, preSelectedC
 
     setLoading(true);
     try {
-      await api.post('/wallet/topup', {
+      await api.post('/wallet-rewards/wallet/topup', {
         customer_id: selectedCustomer.id,
         amount: parseFloat(formData.amount),
         description: formData.notes || `Top-up via ${formData.payment_method}`

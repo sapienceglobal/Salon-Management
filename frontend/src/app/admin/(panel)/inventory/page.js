@@ -17,6 +17,7 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('active');
   
   // UI State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -42,6 +43,20 @@ export default function InventoryPage() {
       const res = await api.get(query);
       const data = res.data?.products || res.data || [];
       setProducts(data);
+
+      // Check if coming from dashboard with a specific product
+      const params = new URLSearchParams(window.location.search);
+      const prodId = params.get('product_id');
+      if (prodId) {
+        const prod = data.find(p => p.id === parseInt(prodId));
+        if (prod) {
+          setSelectedProduct(prod);
+          // Clean URL
+          const url = new URL(window.location);
+          url.searchParams.delete('product_id');
+          window.history.replaceState({}, '', url);
+        }
+      }
       
       // Calculate metrics on client side for now (or fetch from summary endpoint if exists)
       const activeProducts = data.filter(p => p.is_active);
@@ -79,10 +94,15 @@ export default function InventoryPage() {
     setIsAddModalOpen(true);
   };
 
-  const activeProducts = products.filter(p => p.is_active);
-  const categories = [...new Set(activeProducts.map(p => p.category).filter(Boolean))];
+  const displayedProducts = products.filter(p => {
+    if (statusFilter === 'active' && !p.is_active) return false;
+    if (statusFilter === 'inactive' && p.is_active) return false;
+    return true;
+  });
+  const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
 
-  const getStockStatus = (qty, minAlert) => {
+  const getStockStatus = (qty, minAlert, isActive) => {
+    if (!isActive) return { label: 'Inactive', color: 'bg-admin-surface-light text-admin-text-muted border-admin-border' };
     if (qty === 0) return { label: 'Out of Stock', color: 'bg-accent-red/10 text-accent-red border-accent-red/20' };
     if (qty <= minAlert) return { label: 'Low Stock', color: 'bg-accent-yellow/10 text-accent-yellow border-accent-yellow/20' };
     return { label: 'In Stock', color: 'bg-accent-green/10 text-accent-green border-accent-green/20' };
@@ -181,6 +201,17 @@ export default function InventoryPage() {
             <option value="">All Categories</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+
+          {/* Status Filter */}
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full sm:w-36 px-3 py-2 bg-admin-surface border border-admin-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors appearance-none"
+          >
+            <option value="active">Active Only</option>
+            <option value="inactive">Inactive Only</option>
+            <option value="all">All Products</option>
+          </select>
         </div>
 
         {/* Low Stock Toggle */}
@@ -219,15 +250,15 @@ export default function InventoryPage() {
                     <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin mx-auto"></div>
                   </td>
                 </tr>
-              ) : activeProducts.length === 0 ? (
+              ) : displayedProducts.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="text-center py-12 text-admin-text-muted">
                     No products found.
                   </td>
                 </tr>
               ) : (
-                activeProducts.map(product => {
-                  const status = getStockStatus(product.stock_quantity, product.min_stock_alert);
+                displayedProducts.map(product => {
+                  const status = getStockStatus(product.stock_quantity, product.min_stock_alert, product.is_active);
                   return (
                     <tr 
                       key={product.id} 

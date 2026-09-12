@@ -284,7 +284,7 @@ export default function CustomersPage() {
                 <th className="py-4 pr-6 font-semibold">Phone Code</th>
                 <th className="py-4 pr-6 font-semibold">Mobile number</th>
                 <th className="py-4 pr-6 font-semibold">Total purchase value</th>
-                <th className="py-4 pr-6 font-semibold">Prepaid balance</th>
+                <th className="py-4 pr-6 font-semibold">Wallet Balance</th>
                 <th className="py-4 pr-6 font-semibold">Lifetime visit count</th>
                 <th className="py-4 pr-6 font-semibold">Last visited date</th>
                 <th className="py-4 pr-6 font-semibold">Source</th>
