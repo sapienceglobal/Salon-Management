@@ -3,8 +3,13 @@
  * @returns { Promise<void> } 
  */
 export async function seed(knex) {
-  // We assume business_id 6 exists from previous seeds.
-  const businessId = 6;
+  // Fetch the first business dynamically instead of hardcoding 6
+  const business = await knex('businesses').first();
+  if (!business) {
+    console.log('No business found. Please run initial seeds first.');
+    return;
+  }
+  const businessId = business.id;
 
   console.log('Seeding inventory products...');
   
