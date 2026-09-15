@@ -60,7 +60,7 @@ function AdminLoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex bg-admin-bg selection:bg-brand/30 selection:text-white">
+    <div className="min-h-screen flex bg-admin-bg selection:bg-brand/30 selection:text-white force-dark">
       {/* Left Panel - Branding (Hidden on mobile) */}
       <div className="hidden lg:flex w-[45%] relative bg-admin-card border-r border-admin-border overflow-hidden items-center justify-center">
         {/* Abstract Background Elements */}

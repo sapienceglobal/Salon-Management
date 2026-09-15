@@ -53,7 +53,7 @@
 /* ============================================
    DARK MODE (default)
    ============================================ */
-html[data-theme-mode="dark"] {
+html[data-theme-mode="dark"], .force-dark {
   --color-admin-bg: #0f0f1a;
   --color-admin-surface: #1a1a2e;
   --color-admin-surface-light: #232340;
