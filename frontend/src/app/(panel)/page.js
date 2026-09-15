@@ -197,6 +197,7 @@ export default function DashboardPage() {
         end.setMonth(today.getMonth(), 0);
       } else if (revenueDateRange === 'this_month') {
         start.setDate(1);
+        end.setMonth(today.getMonth() + 1, 0);
       } else if (revenueDateRange === 'this_year') {
         start.setMonth(0, 1);
       }

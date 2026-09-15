@@ -37,7 +37,14 @@
   --font-heading: 'Outfit', 'Inter', sans-serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* === Sidebar === */
+  /* === Sidebar Colors (Fixed dark theme) === */
+  --color-sidebar-bg: #12122a;
+  --color-sidebar-border: rgba(255, 255, 255, 0.06);
+  --color-sidebar-text: #f1f5f9;
+  --color-sidebar-text-muted: #64748b;
+  --color-sidebar-hover: #1a1a2e;
+
+  /* === Sidebar Sizes === */
   --spacing-sidebar: 260px;
   --spacing-sidebar-collapsed: 80px;
   --spacing-header: 70px;

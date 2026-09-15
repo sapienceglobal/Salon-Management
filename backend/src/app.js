@@ -19,6 +19,7 @@ import { sanitize } from './middlewares/sanitize.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { generateToken } from './middlewares/csrf.js';
+import { secureApi } from './middlewares/secureApi.js';
 
 // Route imports
 import authRoutes from './modules/auth/auth.routes.js';
@@ -134,6 +135,8 @@ app.get('/api/v1/csrf-token', (req, res) => {
 // ===================================================================
 
 const API_PREFIX = `/api/${env.API_VERSION}`;
+
+app.use(API_PREFIX, secureApi);
 
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/customers`, customerRoutes);

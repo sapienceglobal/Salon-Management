@@ -14,7 +14,7 @@ const ThemeContext = createContext(null);
  * the preference survives page refreshes.
  */
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState('dark'); // default dark
+  const [theme, setTheme] = useState('light'); // default light
   const [mounted, setMounted] = useState(false);
 
   // On mount, read persisted preference

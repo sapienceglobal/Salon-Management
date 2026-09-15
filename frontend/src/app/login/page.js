@@ -2,8 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
-import { GiLotus } from 'react-icons/gi';
 import { RiMailLine, RiLockLine, RiEyeLine, RiEyeOffLine, RiShieldCheckLine, RiArrowRightLine, RiStarFill } from 'react-icons/ri';
 
 export const dynamic = 'force-dynamic';
@@ -74,8 +74,15 @@ function AdminLoginForm() {
         </div>
 
         <div className="relative z-10 w-full max-w-lg px-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-brand to-brand-dark rounded-[1.25rem] text-4xl text-white mb-8 shadow-[0_8px_30px_rgba(231,74,138,0.4)] animate-[fadeInDown_0.6s_ease-out]">
-            <GiLotus />
+          <div className="mb-8 animate-[fadeInDown_0.6s_ease-out]">
+            <Image 
+              src="/logo-dark.png" 
+              alt="SalonTime Logo" 
+              width={280} 
+              height={80} 
+              className="object-contain -ml-4"
+              priority
+            />
           </div>
           
           <h1 className="text-4xl lg:text-5xl font-heading font-bold text-white mb-6 leading-tight animate-[fadeInUp_0.6s_ease-out_0.2s_both]">
@@ -111,11 +118,15 @@ function AdminLoginForm() {
       {/* Right Panel - Form */}
       <div className="flex-1 flex flex-col items-center justify-center relative p-6 sm:p-12">
         {/* Mobile Logo (visible only on small screens) */}
-        <div className="lg:hidden text-center mb-10 w-full animate-[fadeInDown_0.5s_ease-out]">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-brand to-brand-dark rounded-xl text-2xl text-white mb-3 shadow-[0_4px_20px_rgba(231,74,138,0.3)]">
-            <GiLotus />
-          </div>
-          <h1 className="font-heading text-2xl font-bold text-white">SalonTime</h1>
+        <div className="lg:hidden flex justify-center mb-10 w-full animate-[fadeInDown_0.5s_ease-out]">
+            <Image 
+              src="/logo-dark.png" 
+              alt="SalonTime Logo" 
+              width={240} 
+              height={65} 
+              className="object-contain"
+              priority
+            />
         </div>
 
         <div className="w-full max-w-md animate-[fadeInUp_0.5s_ease-out]">
