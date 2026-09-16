@@ -42,19 +42,29 @@ export const register = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const ipAddress = req.ip || req.connection.remoteAddress;
   const userAgent = req.headers['user-agent'];
+  const { email, password, rememberMe } = req.body;
 
   const { user, accessToken, refreshToken } = await authService.login(
-    req.body,
+    { email, password },
     ipAddress,
     userAgent
   );
 
   // Set refresh token as httpOnly cookie
-  res.cookie('refreshToken', refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
+  // If rememberMe is true, it gets a 7-day maxAge. Otherwise, it becomes a session cookie (deleted on browser close)
+  const cookieOptions = {
+    ...REFRESH_TOKEN_COOKIE_OPTIONS,
+  };
+  if (!rememberMe) {
+    delete cookieOptions.maxAge;
+  }
+
+  res.cookie('refreshToken', refreshToken, cookieOptions);
 
   ApiResponse.ok('Login successful', {
     user,
     accessToken,
+    refreshToken,
   }).send(res);
 });
 
@@ -64,9 +74,13 @@ export const login = asyncHandler(async (req, res) => {
  * @access  Public (requires valid refresh token cookie)
  */
 export const refresh = asyncHandler(async (req, res) => {
-  const refreshTokenFromCookie = req.cookies.refreshToken;
+  const refreshTokenFromCookie = req.cookies.refreshToken || req.body.refreshToken;
   const ipAddress = req.ip || req.connection.remoteAddress;
   const userAgent = req.headers['user-agent'];
+
+  if (!refreshTokenFromCookie) {
+    return ApiResponse.unauthorized('No refresh token provided').send(res);
+  }
 
   const { user, accessToken, refreshToken } = await authService.refreshToken(
     refreshTokenFromCookie,
@@ -80,6 +94,7 @@ export const refresh = asyncHandler(async (req, res) => {
   ApiResponse.ok('Token refreshed', {
     user,
     accessToken,
+    refreshToken,
   }).send(res);
 });
 

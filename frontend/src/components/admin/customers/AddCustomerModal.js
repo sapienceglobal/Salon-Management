@@ -105,15 +105,16 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
       }
 
       if (initialData) {
-        await api.put(`/customers/${initialData.id}`, payload);
+        const res = await api.put(`/customers/${initialData.id}`, payload);
+        onSuccess(res.data);
       } else {
-        await api.post('/customers', payload);
+        const res = await api.post('/customers', payload);
+        onSuccess(res.data);
       }
-      onSuccess();
       onClose();
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Failed to add customer');
+      setError(err?.message || err?.response?.data?.message || 'Failed to add customer');
     } finally {
       setLoading(false);
     }
@@ -323,19 +324,21 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
                 <span className="text-sm font-semibold">WhatsApp</span>
               </label>
             </div>
-            {/* Footer Buttons attached directly inside the form to avoid excessive empty space */}
-            <div className="pt-4 mt-2 border-t border-admin-border flex flex-col sm:flex-row justify-end gap-3">
-              <button type="button" onClick={handleClose} disabled={loading}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-admin-border text-admin-text-secondary hover:text-admin-text hover:bg-admin-surface-light text-sm font-bold transition-colors">
-                Cancel
-              </button>
-              <button type="submit" disabled={loading}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-light text-white text-sm font-bold transition-colors shadow-lg shadow-brand/20 disabled:opacity-50">
-                {loading ? 'Saving...' : 'Save Customer'}
-              </button>
-            </div>
-            
           </form>
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="p-6 border-t border-admin-border bg-admin-surface/50 shrink-0">
+          <div className="flex gap-3">
+            <button type="button" onClick={handleClose} disabled={loading}
+              className="flex-1 py-3 px-4 rounded-xl border border-admin-border text-admin-text-secondary hover:text-admin-text hover:bg-admin-surface-light text-sm font-bold transition-colors">
+              Cancel
+            </button>
+            <button onClick={handleSubmit} disabled={loading}
+              className="flex-1 py-3 px-4 rounded-xl bg-brand hover:bg-brand-light text-white text-sm font-bold transition-colors shadow-lg shadow-brand/20 disabled:opacity-50 flex items-center justify-center">
+              {loading ? 'Saving...' : 'Save Customer'}
+            </button>
+          </div>
         </div>
       </div>
     </div>,

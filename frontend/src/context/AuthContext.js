@@ -13,13 +13,14 @@ export function AuthProvider({ children }) {
 
   const fetchUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
       if (!token) { setLoading(false); return; }
       const res = await api.get('/auth/me');
       setUser(res.data.user);
     } catch {
       setUser(null);
       localStorage.removeItem('accessToken');
+      sessionStorage.removeItem('accessToken');
     } finally {
       setLoading(false);
     }
@@ -27,15 +28,20 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { fetchUser(); }, [fetchUser]);
 
-  const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
-    localStorage.setItem('accessToken', res.data.accessToken);
+  const login = async (email, password, rememberMe = false) => {
+    const res = await api.post('/auth/login', { email, password, rememberMe });
+    if (rememberMe) {
+      localStorage.setItem('accessToken', res.data.accessToken);
+    } else {
+      sessionStorage.setItem('accessToken', res.data.accessToken);
+    }
     setUser(res.data.user);
     return res.data;
   };
 
   const register = async (data) => {
     const res = await api.post('/auth/register', data);
+    // Registration defaults to localStorage for simplicity
     localStorage.setItem('accessToken', res.data.accessToken);
     setUser(res.data.user);
     return res.data;
@@ -44,6 +50,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try { await api.post('/auth/logout'); } catch { /* ignore */ }
     localStorage.removeItem('accessToken');
+    sessionStorage.removeItem('accessToken');
     setUser(null);
   };
 

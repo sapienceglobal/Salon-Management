@@ -7,6 +7,7 @@ import { RiCloseLine, RiCalendarLine, RiSearchLine, RiUserAddLine, RiTimeLine, R
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { appointmentSchema, formatZodErrors } from '@/lib/validations';
+import AddCustomerModal from '../customers/AddCustomerModal';
 
 const DURATION_OPTIONS = [
   { label: '30 Minutes', value: 30 },
@@ -30,6 +31,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   useScrollLock(isOpen);
@@ -119,7 +121,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
       }
       onSuccess();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to book appointment');
+      setError(err?.message || err?.response?.data?.message || 'Failed to book appointment');
     } finally {
       setLoading(false);
     }
@@ -170,7 +172,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                   </select>
                 </div>
                 {/* Note: In a complete app, this button would open AddCustomerModal */}
-                <button type="button" className="w-[42px] h-[42px] rounded-lg bg-brand text-white flex items-center justify-center shrink-0 hover:bg-brand-light transition-colors shadow-sm" title="Add new customer">
+                <button type="button" onClick={() => setShowAddCustomer(true)} className="w-[42px] h-[42px] rounded-lg bg-brand text-white flex items-center justify-center shrink-0 hover:bg-brand-light transition-colors shadow-sm" title="Add new customer">
                   <RiUserAddLine />
                 </button>
               </div>
@@ -249,6 +251,18 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
           </form>
         </div>
 
+        <AddCustomerModal 
+          isOpen={showAddCustomer} 
+          onClose={() => setShowAddCustomer(false)} 
+          onSuccess={(newCustomer) => {
+            // Optimistically add to list so it can be selected immediately
+            if (!customersList.find(c => c.id === newCustomer.id)) {
+              customersList.push(newCustomer);
+            }
+            setFormData(prev => ({ ...prev, customer_id: newCustomer.id }));
+            setShowAddCustomer(false);
+          }} 
+        />
       </div>
     </div>,
     document.body

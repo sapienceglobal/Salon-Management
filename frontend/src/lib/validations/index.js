@@ -113,6 +113,29 @@ export const appointmentSchema = z.object({
   service_id: z.string().min(1, 'Service is required').or(z.number()),
 });
 
+export const membershipSchema = z.object({
+  name: z.string().min(1, 'Membership name is required').max(100),
+  description: z.string().max(1000).optional().or(z.literal('')),
+  price: z.string().min(1, 'Price is required').or(z.number().min(0)),
+  duration_months: z.string().min(1, 'Duration is required').or(z.number().min(1)),
+  discount_percentage: z.string().optional().or(z.number().min(0).max(100)).or(z.literal('')),
+  max_members: z.string().optional().or(z.number().min(1)).or(z.literal('')),
+  benefits: z.array(z.string()).optional(),
+});
+
+export const packageSchema = z.object({
+  name: z.string().min(1, 'Package name is required').max(100),
+  description: z.string().max(1000).optional().or(z.literal('')),
+  total_price: z.string().min(1, 'Total price is required').or(z.number().min(0)),
+  validity_days: z.string().optional().or(z.number().min(1)).or(z.literal('')),
+  max_uses: z.string().optional().or(z.number().min(1)).or(z.literal('')),
+  tax_percentage: z.string().optional().or(z.number().min(0).max(100)).or(z.literal('')),
+  items: z.array(z.object({
+    service_id: z.number().min(1, 'Service is required'),
+    quantity: z.number().min(1, 'Quantity must be at least 1')
+  })).min(1, 'At least one service must be included').optional()
+});
+
 export const formatZodErrors = (zodError) => {
   const errors = {};
   zodError.issues.forEach(issue => {

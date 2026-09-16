@@ -202,8 +202,11 @@ export default function DashboardPage() {
         start.setMonth(0, 1);
       }
 
-      const startDate = start.toISOString().split('T')[0];
-      const endDate = end.toISOString().split('T')[0];
+      const pad = (n) => String(n).padStart(2, '0');
+      const toYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+      const startDate = toYMD(start);
+      const endDate = toYMD(end);
 
       const res = await api.get(`/dashboard/revenue-chart?startDate=${startDate}&endDate=${endDate}`);
       setRevenueData(res.data?.data || res.data || { chart: [], stats: {} });

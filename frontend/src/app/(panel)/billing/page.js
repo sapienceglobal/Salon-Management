@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   RiSearchLine, RiAddLine, RiUserLine, RiDiscountPercentLine, 
   RiDeleteBinLine, RiMore2Fill, RiTimeLine, RiMoreFill, RiEdit2Line, RiSubtractLine, RiFileList3Line,
-  RiCloseLine
+  RiCloseLine, RiPhoneLine, RiMessage2Line, RiPriceTag3Line, RiMoneyDollarCircleLine, RiWallet3Line, RiMapPinTimeLine, RiUserShared2Line, RiStarLine, RiPencilLine, RiVipCrown2Line
 } from 'react-icons/ri';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -43,6 +43,7 @@ export default function POSPage() {
   const [isAddMoneyOpen, setIsAddMoneyOpen] = useState(false);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [customerToEdit, setCustomerToEdit] = useState(null);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
@@ -196,9 +197,9 @@ export default function POSPage() {
   };
 
   const addToCart = (item, type) => {
-    const existing = cart.find(c => c.id === item.id && c.type === type);
+    const existing = cart.find(c => String(c.id) === String(item.id) && c.type === type);
     if (existing) {
-      setCart(cart.map(c => c.id === item.id && c.type === type ? { ...c, qty: c.qty + 1 } : c));
+      setCart(cart.map(c => String(c.id) === String(item.id) && c.type === type ? { ...c, qty: c.qty + 1 } : c));
     } else {
       setCart([...cart, { 
         ...item, 
@@ -212,7 +213,7 @@ export default function POSPage() {
 
   const updateCartQty = (id, type, delta) => {
     setCart(cart.map(c => {
-      if (c.id === id && c.type === type) {
+      if (String(c.id) === String(id) && c.type === type) {
         const newQty = Math.max(1, c.qty + delta);
         return { ...c, qty: newQty };
       }
@@ -221,13 +222,13 @@ export default function POSPage() {
   };
 
   const removeFromCart = (id, type) => {
-    setCart(cart.filter(c => !(c.id === id && c.type === type)));
+    setCart(cart.filter(c => !(String(c.id) === String(id) && c.type === type)));
   };
 
   const handleEditPriceSave = (id, type) => {
     const newPrice = parseFloat(editPriceValue);
     if (!isNaN(newPrice) && newPrice >= 0) {
-      setCart(cart.map(c => c.id === id && c.type === type ? { ...c, cart_price: newPrice } : c));
+      setCart(cart.map(c => String(c.id) === String(id) && c.type === type ? { ...c, cart_price: newPrice } : c));
     }
     setEditingItemId(null);
   };
@@ -290,14 +291,23 @@ export default function POSPage() {
     setCustomerQuery(`${draft.customer_first_name} ${draft.customer_last_name || ''}`);
     setAppointmentId(draft.appointment_id);
     
-    const loadedCart = (draft.items || []).map(i => ({
-      id: i.item_id,
-      type: i.item_type,
-      name: i.item_name,
-      qty: i.quantity,
-      cart_price: i.unit_price,
-      staff_member_id: i.staff_member_id
-    }));
+    const loadedCart = (draft.items || []).map(i => {
+      let mappedType = i.item_type || 'service';
+      if (mappedType === 'service') mappedType = 'services';
+      else if (mappedType === 'product') mappedType = 'products';
+      else if (mappedType === 'package') mappedType = 'packages';
+      else if (mappedType === 'membership') mappedType = 'memberships';
+      else if (mappedType === 'prepaid_plan' || mappedType === 'prepaid plan') mappedType = 'prepaid plan';
+
+      return {
+        id: parseInt(i.item_id, 10),
+        type: mappedType,
+        name: i.item_name,
+        qty: parseInt(i.quantity, 10) || 1,
+        cart_price: parseFloat(i.unit_price) || 0,
+        staff_member_id: i.staff_member_id ? parseInt(i.staff_member_id, 10) : null
+      };
+    });
     setCart(loadedCart);
   };
 
@@ -327,79 +337,171 @@ export default function POSPage() {
       <div className="flex-1 flex flex-col min-w-0 bg-admin-surface rounded-2xl border border-admin-border overflow-hidden relative">
         
         {/* Top Bar */}
-        <div className="p-4 border-b border-admin-border flex justify-between items-center gap-4">
-          <div className="relative w-full max-w-sm z-20">
-            <label className="block text-[10px] uppercase tracking-wider text-admin-text-secondary font-bold mb-1">Add/change customer</label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Write name or mobile number"
-                value={customerQuery}
-                onChange={e => {
-                  handleCustomerSearch(e.target.value);
-                  if (selectedCustomer) setSelectedCustomer(null);
-                }}
-                className="w-full bg-admin-surface border border-admin-border/50 focus:border-brand rounded-lg px-4 py-2.5 text-sm text-admin-text outline-none transition-colors"
-              />
-              {selectedCustomer && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                  <RiCloseLine 
-                    className="text-admin-text-secondary cursor-pointer hover:text-admin-text" 
-                    onClick={() => { setSelectedCustomer(null); setCustomerQuery(''); }}
-                  />
+        {selectedCustomer ? (
+          // DETAILED CUSTOMER VIEW (Matched with design image)
+          <div className="p-4 border-b border-admin-border relative">
+            {/* Action Buttons Top Right */}
+            <div className="absolute top-4 right-4 flex items-center gap-2">
+              <button 
+                onClick={() => { setSelectedCustomer(null); setCustomerQuery(''); }}
+                className="w-8 h-8 rounded-lg border border-admin-border bg-admin-surface hover:bg-admin-surface-light flex items-center justify-center text-admin-text-secondary hover:text-admin-text transition-colors"
+                title="Switch Customer"
+              >
+                <RiUserShared2Line />
+              </button>
+              <button 
+                onClick={() => { setCustomerToEdit(selectedCustomer); setIsAddCustomerOpen(true); }}
+                className="w-8 h-8 rounded-lg border border-admin-border bg-admin-surface hover:bg-admin-surface-light flex items-center justify-center text-admin-text-secondary hover:text-admin-text transition-colors"
+                title="Edit Customer"
+              >
+                <RiPencilLine />
+              </button>
+            </div>
+
+            <div className="flex items-start gap-4">
+              {/* Avatar */}
+              <div className="w-16 h-16 rounded-full bg-admin-surface-light border border-admin-border flex items-center justify-center text-xl font-bold shrink-0 shadow-sm">
+                {(selectedCustomer.first_name?.[0] || '') + (selectedCustomer.last_name?.[0] || '')}
+              </div>
+
+              <div className="flex-1 min-w-0 pt-0.5">
+                {/* Name Pill */}
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg border border-admin-border bg-admin-surface-light mb-2">
+                  <span className="text-base font-bold text-admin-text">{selectedCustomer.first_name} {selectedCustomer.last_name}</span>
+                  <div className="w-5 h-5 rounded-md bg-[#2b1845] text-[#8e44ad] flex items-center justify-center">
+                    <RiUserShared2Line className="text-[10px]" />
+                  </div>
+                </div>
+
+                {/* Phone & Notes */}
+                <div className="flex items-center gap-3 text-xs text-admin-text-secondary font-medium mb-5">
+                  <div className="flex items-center gap-1.5">
+                    <RiPhoneLine />
+                    <span>{selectedCustomer.phone || 'No phone'}</span>
+                  </div>
+                  <span className="w-1 h-1 rounded-full bg-admin-border"></span>
+                  <div className="flex items-center gap-1.5">
+                    <RiMessage2Line />
+                    <span className="truncate max-w-[200px]">{selectedCustomer.notes || 'No Available'}</span>
+                  </div>
+                </div>
+
+                {/* Quick Stats Grid */}
+                <div className="grid grid-cols-6 gap-2 w-full max-w-3xl">
+                  {/* Membership */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 text-admin-text-secondary text-xs font-semibold">
+                      <RiPriceTag3Line /> Membership
+                    </div>
+                    <span className="text-sm font-bold text-admin-text truncate pr-2">{selectedCustomer.membership_name || 'No Available'}</span>
+                  </div>
+
+                  {/* Points */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 text-admin-text-secondary text-xs font-semibold">
+                      <RiStarLine /> Points
+                    </div>
+                    <span className="text-sm font-bold text-admin-text border-b border-admin-text self-start leading-tight">{selectedCustomer.reward_points || 0} pts</span>
+                  </div>
+
+                  {/* Prepaid */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 text-admin-text-secondary text-xs font-semibold">
+                      <RiFileList3Line /> Prepaid
+                    </div>
+                    <span className="text-sm font-bold text-admin-text truncate pr-2">{selectedCustomer.active_packages?.length > 0 ? `${selectedCustomer.active_packages.length} active` : 'No Available'}</span>
+                  </div>
+
+                  {/* Pending */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 text-admin-text-secondary text-xs font-semibold">
+                      <RiMoneyDollarCircleLine /> Pending
+                    </div>
+                    <span className="text-sm font-bold text-admin-text">{formatCurrency(selectedCustomer.pending_amount || 0)}</span>
+                  </div>
+
+                  {/* Wallet */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 text-admin-text-secondary text-xs font-semibold">
+                      <RiWallet3Line /> Wallet
+                    </div>
+                    <span className="text-sm font-bold text-admin-text">{formatCurrency(selectedCustomer.wallet_balance || 0)}</span>
+                  </div>
+
+                  {/* Visits */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 text-admin-text-secondary text-xs font-semibold">
+                      <RiMapPinTimeLine /> Visits
+                    </div>
+                    <span className="text-sm font-bold text-admin-text border-b border-admin-text self-start leading-tight">{selectedCustomer.total_visits || 0} visit{selectedCustomer.total_visits !== 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 border-b border-admin-border flex justify-between items-center gap-4">
+            <div className="relative w-full max-w-sm z-20">
+              <label className="block text-[10px] uppercase tracking-wider text-admin-text-secondary font-bold mb-1">Add/change customer</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Write name or mobile number"
+                  value={customerQuery}
+                  onChange={e => handleCustomerSearch(e.target.value)}
+                  className="w-full bg-admin-surface border border-admin-border/50 focus:border-brand rounded-lg px-4 py-2.5 text-sm text-admin-text outline-none transition-colors"
+                />
+              </div>
+              
+              {showCustomerDropdown && customerResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-admin-card border border-admin-border rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto">
+                  {customerResults.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => selectCustomer(c)}
+                      className="w-full px-4 py-3 text-left hover:bg-admin-surface flex flex-col transition-colors border-b border-admin-border/50 last:border-0"
+                    >
+                      <span className="text-sm font-bold text-admin-text">{c.first_name} {c.last_name}</span>
+                      <span className="text-xs text-admin-text-secondary">{c.phone}</span>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
-            
-            {showCustomerDropdown && customerResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-admin-card border border-admin-border rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto">
-                {customerResults.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => selectCustomer(c)}
-                    className="w-full px-4 py-3 text-left hover:bg-admin-surface flex flex-col transition-colors border-b border-admin-border/50 last:border-0"
-                  >
-                    <span className="text-sm font-bold text-admin-text">{c.first_name} {c.last_name}</span>
-                    <span className="text-xs text-admin-text-secondary">{c.phone}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
-          <div className="flex items-center gap-2 relative">
-            <button 
-              onClick={() => setIsAddCustomerOpen(true)}
-              className="px-4 py-2.5 bg-brand/10 text-brand rounded-lg text-sm font-bold hover:bg-brand hover:text-white transition-colors flex items-center gap-2"
-            >
-              <RiAddLine /> Add New
-            </button>
-            <button 
-              onClick={() => setShowQuickActions(!showQuickActions)}
-              className="p-2.5 bg-admin-surface rounded-lg text-admin-text-secondary hover:text-admin-text transition-colors"
-            >
-              <RiMoreFill className="text-lg" />
-            </button>
-            
-            {showQuickActions && (
-              <div className="absolute top-full right-0 mt-2 w-48 bg-admin-card border border-admin-border rounded-xl shadow-xl overflow-hidden z-30">
-                <button 
-                  onClick={() => { setIsAddExpenseOpen(true); setShowQuickActions(false); }}
-                  className="w-full px-4 py-3 text-left text-sm text-admin-text hover:bg-admin-surface transition-colors border-b border-admin-border/50 font-medium"
-                >
-                  Add Expense
-                </button>
-                <button 
-                  onClick={() => { setIsAddMoneyOpen(true); setShowQuickActions(false); }}
-                  className="w-full px-4 py-3 text-left text-sm text-admin-text hover:bg-admin-surface transition-colors font-medium"
-                >
-                  Add Money to Wallet
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-2 relative">
+              <button 
+                onClick={() => { setCustomerToEdit(null); setIsAddCustomerOpen(true); }}
+                className="px-4 py-2.5 bg-brand/10 text-brand rounded-lg text-sm font-bold hover:bg-brand hover:text-white transition-colors flex items-center gap-2"
+              >
+                <RiAddLine /> Add New
+              </button>
+              <button 
+                onClick={() => setShowQuickActions(!showQuickActions)}
+                className="p-2.5 bg-admin-surface rounded-lg text-admin-text-secondary hover:text-admin-text transition-colors"
+              >
+                <RiMoreFill className="text-lg" />
+              </button>
+              
+              {showQuickActions && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-admin-card border border-admin-border rounded-xl shadow-xl overflow-hidden z-30">
+                  <button 
+                    onClick={() => { setIsAddExpenseOpen(true); setShowQuickActions(false); }}
+                    className="w-full px-4 py-3 text-left text-sm text-admin-text hover:bg-admin-surface transition-colors border-b border-admin-border/50 font-medium"
+                  >
+                    Add Expense
+                  </button>
+                  <button 
+                    onClick={() => { setIsAddMoneyOpen(true); setShowQuickActions(false); }}
+                    className="w-full px-4 py-3 text-left text-sm text-admin-text hover:bg-admin-surface transition-colors font-medium"
+                  >
+                    Add Money to Wallet
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Tabs & Search */}
         <div className="px-4 pt-4">
@@ -454,23 +556,39 @@ export default function POSPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
-              {displayedItems.map((item) => (
-                <div 
-                  key={item.id} 
-                  onClick={() => addToCart(item, activeTab.toLowerCase())}
-                  className="bg-admin-card rounded-xl p-4 border border-admin-border/30 hover:border-brand cursor-pointer transition-all hover:shadow-[0_4px_20px_rgba(231,74,138,0.15)] flex flex-col justify-between min-h-[110px]"
-                >
-                  <h3 className="text-sm font-bold text-admin-text mb-2 line-clamp-2">{item.name}</h3>
-                  <div className="flex justify-between items-end mt-auto">
-                    <span className="font-bold text-admin-text text-lg">₹{(item.price || item.selling_price || 0).toLocaleString()}</span>
-                    {item.duration && (
-                      <span className="text-[10px] font-medium text-admin-text-secondary flex items-center gap-1 border border-admin-border/50 rounded-full px-2 py-0.5">
-                        <RiTimeLine /> {item.duration} min
-                      </span>
+              {displayedItems.map((item) => {
+                const typeStr = activeTab.toLowerCase();
+                const cartItem = cart.find(c => String(c.id) === String(item.id) && c.type === typeStr);
+                const isSelected = !!cartItem;
+                const qty = cartItem ? cartItem.qty : 0;
+                
+                return (
+                  <div 
+                    key={item.id} 
+                    onClick={() => addToCart(item, typeStr)}
+                    className={`relative rounded-xl p-4 border cursor-pointer transition-all hover:shadow-[0_4px_20px_rgba(231,74,138,0.15)] flex flex-col justify-between min-h-[110px] ${
+                      isSelected 
+                        ? 'border-brand bg-brand/5' 
+                        : 'bg-admin-card border-admin-border/30 hover:border-brand/50'
+                    }`}
+                  >
+                    {qty > 0 && (
+                      <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center text-xs font-bold shadow-lg border-2 border-admin-surface z-10 animate-scale-in">
+                        {qty}
+                      </div>
                     )}
+                    <h3 className="text-sm font-bold text-admin-text mb-2 line-clamp-2">{item.name}</h3>
+                    <div className="flex justify-between items-end mt-auto">
+                      <span className="font-bold text-admin-text text-lg">₹{(item.price || item.selling_price || 0).toLocaleString()}</span>
+                      {item.duration && (
+                        <span className="text-[10px] font-medium text-admin-text-secondary flex items-center gap-1 border border-admin-border/50 rounded-full px-2 py-0.5">
+                          <RiTimeLine /> {item.duration} min
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -663,11 +781,11 @@ export default function POSPage() {
         preSelectedCustomer={selectedCustomer}
       />
       <AddCustomerModal 
-        isOpen={isAddCustomerOpen} 
+        isOpen={isAddCustomerOpen}
+        initialData={customerToEdit}
         onClose={() => setIsAddCustomerOpen(false)}
-        onSuccess={() => {
-          setIsAddCustomerOpen(false);
-          toast.success("Customer created successfully. Please search for them.");
+        onSuccess={(customer) => {
+          selectCustomer(customer);
         }}
       />
       
@@ -685,14 +803,22 @@ export default function POSPage() {
           });
           setCustomerQuery(draft.customer_first_name + ' ' + (draft.customer_last_name || ''));
           setCurrentDraftId(draft.id);
-          setCart(draft.items.map(item => ({
-            id: item.item_id,
-            type: item.item_type,
-            name: item.item_name,
-            cart_price: parseFloat(item.unit_price),
-            qty: item.quantity,
-            staff_member_id: item.staff_member_id
-          })));
+          setCart(draft.items.map(item => {
+            let mappedType = item.item_type || 'service';
+            if (mappedType === 'service') mappedType = 'services';
+            else if (mappedType === 'product') mappedType = 'products';
+            else if (mappedType === 'package') mappedType = 'packages';
+            else if (mappedType === 'membership') mappedType = 'memberships';
+            else if (mappedType === 'prepaid_plan') mappedType = 'prepaid plan';
+            return {
+              id: parseInt(item.item_id, 10),
+              type: mappedType,
+              name: item.item_name,
+              cart_price: parseFloat(item.unit_price) || 0,
+              qty: parseInt(item.quantity, 10) || 1,
+              staff_member_id: item.staff_member_id ? parseInt(item.staff_member_id, 10) : null
+            };
+          }));
         }}
         onDraftDeleted={fetchDraftCount}
       />

@@ -39,6 +39,7 @@ import dashboardRoutes from './modules/dashboard/dashboard.module.js';
 import settingsRoutes from './modules/settings/settings.module.js';
 import reportRoutes from './modules/reports/reports.module.js';
 import searchRoutes from './modules/search/search.module.js';
+import attendanceRoutes from './modules/attendance/attendance.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -155,6 +156,7 @@ app.use(`${API_PREFIX}/dashboard`, dashboardRoutes);
 app.use(`${API_PREFIX}/search`, searchRoutes);
 app.use(`${API_PREFIX}/settings`, settingsRoutes);
 app.use(`${API_PREFIX}/reports`, reportRoutes);
+app.use(`${API_PREFIX}/attendance`, attendanceRoutes);
 
 // ===================================================================
 // ERROR HANDLING

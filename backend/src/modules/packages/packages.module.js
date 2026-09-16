@@ -35,17 +35,44 @@ class PackageService {
   }
 
   async create(businessId, data) {
-    return db.transaction(async (trx) => {
+    let newId;
+    await db.transaction(async (trx) => {
       const [id] = await trx('packages').insert({
         business_id: businessId, name: data.name, description: data.description,
         total_price: data.total_price, validity_days: data.validity_days,
         max_uses: data.max_uses, tax_percentage: data.tax_percentage || 18,
       });
+      newId = id;
       if (data.items?.length) {
         await trx('package_items').insert(data.items.map(i => ({ package_id: id, service_id: i.service_id, quantity: i.quantity || 1 })));
       }
-      return this.getById(id, businessId);
     });
+    return this.getById(newId, businessId);
+  }
+
+  async update(id, businessId, data) {
+    await this.getById(id, businessId); // verify exists
+    await db.transaction(async (trx) => {
+      await trx('packages').where({ id, business_id: businessId }).update({
+        name: data.name, description: data.description,
+        total_price: data.total_price, validity_days: data.validity_days,
+        max_uses: data.max_uses, tax_percentage: data.tax_percentage || 18,
+      });
+      await trx('package_items').where({ package_id: id }).del();
+      if (data.items?.length) {
+        await trx('package_items').insert(data.items.map(i => ({ package_id: id, service_id: i.service_id, quantity: i.quantity || 1 })));
+      }
+    });
+    return this.getById(id, businessId);
+  }
+
+  async delete(id, businessId) {
+    const pkg = await this.getById(id, businessId);
+    await db.transaction(async (trx) => {
+      await trx('package_items').where({ package_id: id }).del();
+      await trx('packages').where({ id, business_id: businessId }).del();
+    });
+    return pkg;
   }
 
   async purchaseForCustomer(businessId, customerId, packageId) {
@@ -77,6 +104,18 @@ class MembershipService {
     return this.getById(id, businessId);
   }
 
+  async update(id, businessId, data) {
+    await this.getById(id, businessId);
+    await db('memberships').where({ id, business_id: businessId }).update({ ...data, benefits: data.benefits ? JSON.stringify(data.benefits) : null });
+    return this.getById(id, businessId);
+  }
+
+  async delete(id, businessId) {
+    const mem = await this.getById(id, businessId);
+    await db('memberships').where({ id, business_id: businessId }).del();
+    return mem;
+  }
+
   async purchaseForCustomer(businessId, customerId, membershipId) {
     const mem = await this.getById(membershipId, businessId);
     const customer = await db('customers').where({ id: customerId, business_id: businessId }).first();
@@ -101,10 +140,14 @@ const membershipService = new MembershipService();
 const getPackages = asyncHandler(async (req, res) => { ApiResponse.ok('Packages', await packageService.getAll(req.user.business_id)).send(res); });
 const getPackage = asyncHandler(async (req, res) => { ApiResponse.ok('Package', await packageService.getById(req.params.id, req.user.business_id)).send(res); });
 const createPackage = asyncHandler(async (req, res) => { ApiResponse.created('Package created', await packageService.create(req.user.business_id, req.body)).send(res); });
+const updatePackage = asyncHandler(async (req, res) => { ApiResponse.ok('Package updated', await packageService.update(req.params.id, req.user.business_id, req.body)).send(res); });
+const deletePackage = asyncHandler(async (req, res) => { ApiResponse.ok('Package deleted', await packageService.delete(req.params.id, req.user.business_id)).send(res); });
 const purchasePackage = asyncHandler(async (req, res) => { ApiResponse.created('Package purchased', await packageService.purchaseForCustomer(req.user.business_id, req.body.customer_id, req.body.package_id)).send(res); });
 const getMemberships = asyncHandler(async (req, res) => { ApiResponse.ok('Memberships', await membershipService.getAll(req.user.business_id)).send(res); });
 const getMembership = asyncHandler(async (req, res) => { ApiResponse.ok('Membership', await membershipService.getById(req.params.id, req.user.business_id)).send(res); });
 const createMembership = asyncHandler(async (req, res) => { ApiResponse.created('Membership created', await membershipService.create(req.user.business_id, req.body)).send(res); });
+const updateMembership = asyncHandler(async (req, res) => { ApiResponse.ok('Membership updated', await membershipService.update(req.params.id, req.user.business_id, req.body)).send(res); });
+const deleteMembership = asyncHandler(async (req, res) => { ApiResponse.ok('Membership deleted', await membershipService.delete(req.params.id, req.user.business_id)).send(res); });
 const purchaseMembership = asyncHandler(async (req, res) => { ApiResponse.created('Membership purchased', await membershipService.purchaseForCustomer(req.user.business_id, req.body.customer_id, req.body.membership_id)).send(res); });
 
 // ===== ROUTES =====
@@ -121,6 +164,15 @@ router.post('/packages', authorize('super_admin', 'admin', 'manager'), validate(
     items: z.array(z.object({ service_id: z.number().int().positive(), quantity: z.number().int().positive().optional() })).optional(),
   }),
 }), createPackage);
+router.put('/packages/:id', authorize('super_admin', 'admin', 'manager'), validate({
+  params: idParam,
+  body: z.object({ name: z.string().min(1), description: z.string().optional(), total_price: z.number().positive(),
+    validity_days: z.number().int().positive().optional(), max_uses: z.number().int().positive().optional(),
+    tax_percentage: z.number().min(0).max(100).optional(),
+    items: z.array(z.object({ service_id: z.number().int().positive(), quantity: z.number().int().positive().optional() })).optional(),
+  }),
+}), updatePackage);
+router.delete('/packages/:id', authorize('super_admin', 'admin', 'manager'), validate({ params: idParam }), deletePackage);
 router.post('/packages/purchase', validate({
   body: z.object({ customer_id: z.number().int().positive(), package_id: z.number().int().positive() }),
 }), purchasePackage);
@@ -134,6 +186,14 @@ router.post('/memberships', authorize('super_admin', 'admin', 'manager'), valida
     benefits: z.array(z.string()).optional(), max_members: z.number().int().positive().optional(),
   }),
 }), createMembership);
+router.put('/memberships/:id', authorize('super_admin', 'admin', 'manager'), validate({
+  params: idParam,
+  body: z.object({ name: z.string().min(1), description: z.string().optional(), price: z.number().positive(),
+    duration_months: z.number().int().positive(), discount_percentage: z.number().min(0).max(100).optional(),
+    benefits: z.array(z.string()).optional(), max_members: z.number().int().positive().optional(),
+  }),
+}), updateMembership);
+router.delete('/memberships/:id', authorize('super_admin', 'admin', 'manager'), validate({ params: idParam }), deleteMembership);
 router.post('/memberships/purchase', validate({
   body: z.object({ customer_id: z.number().int().positive(), membership_id: z.number().int().positive() }),
 }), purchaseMembership);

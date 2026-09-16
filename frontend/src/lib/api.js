@@ -15,7 +15,7 @@ const api = axios.create({
 // Request interceptor — attach access token & CSRF token
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
     if (token) config.headers.Authorization = `Bearer ${token}`;
 
     const csrfToken = localStorage.getItem('csrfToken');
@@ -74,7 +74,7 @@ api.interceptors.response.use(
       }
     }
 
-    return Promise.reject(error.response?.data || error);
+    return Promise.reject(error);
   }
 );
 

@@ -17,6 +17,7 @@ function AdminLoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,7 +42,7 @@ function AdminLoginForm() {
     setLoading(true);
 
     try {
-      const data = await login(email, password);
+      const data = await login(email, password, rememberMe);
 
       // Verify the logged in user has admin role
       if (!ADMIN_ROLES.includes(data.user.role)) {
@@ -193,9 +194,14 @@ function AdminLoginForm() {
 
             {/* Remember + Forgot */}
             <div className="flex items-center justify-between pt-2">
-              <label className="flex items-center gap-2.5 text-sm text-admin-text-secondary cursor-pointer hover:text-white transition-colors group">
+              <label className="flex items-center gap-2.5 text-sm text-slate-400 cursor-pointer hover:text-white transition-colors group">
                 <div className="relative flex items-center justify-center">
-                  <input type="checkbox" className="peer appearance-none w-4.5 h-4.5 rounded-[4px] border-2 border-admin-border bg-admin-surface-light checked:bg-brand checked:border-brand transition-all cursor-pointer" />
+                  <input 
+                    type="checkbox" 
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="peer appearance-none w-4.5 h-4.5 rounded-[4px] border-2 border-white/10 bg-[#232340] checked:bg-brand checked:border-brand transition-all cursor-pointer" 
+                  />
                   <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" viewBox="0 0 14 10" fill="none">
                     <path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>

@@ -16,18 +16,20 @@ class DashboardService {
     const cacheKey = `dashboard:summary:${businessId}`;
 
     return cache.getOrSet(cacheKey, async () => {
+      const pad = (n) => n.toString().padStart(2, '0');
+      const toYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      
       const todayObj = new Date();
-      const today = todayObj.toISOString().split('T')[0];
+      const today = toYMD(todayObj);
       const startOfMonth = `${today.substring(0, 7)}-01`;
 
       const yesterdayObj = new Date(todayObj);
       yesterdayObj.setDate(todayObj.getDate() - 1);
-      const yesterday = yesterdayObj.toISOString().split('T')[0];
+      const yesterday = toYMD(yesterdayObj);
 
       const firstDayLastMonthObj = new Date(todayObj.getFullYear(), todayObj.getMonth() - 1, 1);
       const lastDayLastMonthObj = new Date(todayObj.getFullYear(), todayObj.getMonth(), 0);
       
-      const pad = (n) => n.toString().padStart(2, '0');
       const firstDayLastMonth = `${firstDayLastMonthObj.getFullYear()}-${pad(firstDayLastMonthObj.getMonth() + 1)}-01`;
       const lastDayLastMonth = `${lastDayLastMonthObj.getFullYear()}-${pad(lastDayLastMonthObj.getMonth() + 1)}-${pad(lastDayLastMonthObj.getDate())}`;
 
@@ -194,11 +196,11 @@ class DashboardService {
     }, 60); // 60s cache
   }
 
-  /**
-   * Revenue chart data — monthly or daily
-   */
   async getRevenueChart(businessId, startDate, endDate) {
-    const today = new Date().toISOString().split('T')[0];
+    const pad = (n) => n.toString().padStart(2, '0');
+    const toYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    
+    const today = toYMD(new Date());
     const start = startDate || `${today.substring(0, 7)}-01`;
     const end = endDate || today;
     
