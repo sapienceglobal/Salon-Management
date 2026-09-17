@@ -43,10 +43,14 @@ export async function seed(knex) {
   await knex('businesses').del();
 
   // 1. Create default business
+  const businessName = process.env.BUSINESS_NAME || 'Luxe Salon & Spa';
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@luxesalon.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'LuxeAdmin@2026!';
+
   const [businessId] = await knex('businesses').insert({
-    name: 'Luxe Salon & Spa',
-    slug: 'luxe-salon',
-    email: 'hello@luxesalon.com',
+    name: businessName,
+    slug: businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+    email: adminEmail,
     phone: '+919876543210',
     address: '123 Main Street, Sector 21',
     city: 'New Delhi',
@@ -57,11 +61,11 @@ export async function seed(knex) {
     is_active: true,
   });
 
-  // 2. Create admin user (password: LuxeAdmin@2026!)
-  const passwordHash = await bcrypt.hash('LuxeAdmin@2026!', 12);
+  // 2. Create admin user
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
   const [adminUserId] = await knex('users').insert({
     business_id: businessId,
-    email: 'admin@luxesalon.com',
+    email: adminEmail,
     password_hash: passwordHash,
     first_name: 'Super',
     last_name: 'Admin',
@@ -155,8 +159,8 @@ export async function seed(knex) {
   ]);
 
   console.log('✅ Seed data inserted successfully');
-  console.log(`   🏢 Business: Luxe Salon & Spa`);
-  console.log(`   📧 Admin Email: admin@luxesalon.com`);
-  console.log(`   🔑 Admin Password: LuxeAdmin@2026!`);
+  console.log(`   🏢 Business: ${businessName}`);
+  console.log(`   📧 Admin Email: ${adminEmail}`);
+  console.log(`   🔑 Admin Password: ${adminPassword}`);
   console.log(`   ⚠️  Change this password immediately after first login!`);
 }
