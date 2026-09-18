@@ -128,7 +128,7 @@ export default function AttendancePage() {
     <div className="p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-1">Attendance</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Attendance</h1>
           <p className="text-sm text-admin-text-secondary mt-1">Manage staff attendance and timings.</p>
         </div>
         <button 
@@ -153,9 +153,9 @@ export default function AttendancePage() {
           {/* Date Controls */}
           <div className="flex items-center gap-4 bg-admin-surface px-2 py-1.5 rounded-lg border border-admin-border">
             <button onClick={() => shiftDate(-7)} className="p-1.5 rounded hover:bg-admin-border text-admin-text-secondary"><ArrowLeft /></button>
-            <button onClick={setToday} className="text-sm font-medium text-admin-text-secondary hover:text-white px-2">View Today</button>
+            <button onClick={setToday} className="text-sm font-medium text-admin-text-secondary hover:text-gray-900 dark:hover:text-white px-2">View Today</button>
             <div className="h-4 w-px bg-admin-border"></div>
-            <span className="text-sm font-bold text-white min-w-[100px] text-center">
+            <span className="text-sm font-bold text-gray-900 dark:text-white min-w-[100px] text-center">
               {dates[0].toLocaleDateString('en-GB')} - {dates[dates.length-1].toLocaleDateString('en-GB')}
             </span>
             <button onClick={() => shiftDate(7)} className="p-1.5 rounded hover:bg-admin-border text-admin-text-secondary"><ArrowRight /></button>
@@ -170,7 +170,7 @@ export default function AttendancePage() {
                 <th className="p-4 font-semibold w-48">Staff Name</th>
                 {dates.map((d, i) => (
                   <th key={i} className="p-4 text-center font-semibold">
-                    <div className="text-white">{d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                    <div className="text-gray-900 dark:text-white">{d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                     <div className="text-admin-text-muted mt-1 font-normal">{d.toLocaleDateString('en-GB', { weekday: 'long' })}</div>
                   </th>
                 ))}
@@ -192,7 +192,7 @@ export default function AttendancePage() {
               ) : (
                 staffData.map(staff => (
                   <tr key={staff.id} className="hover:bg-admin-surface/50 transition-colors">
-                    <td className="p-4 font-medium text-white">{staff.first_name} {staff.last_name}</td>
+                    <td className="p-4 font-medium text-gray-900 dark:text-white">{staff.first_name} {staff.last_name}</td>
                     {dates.map((d, i) => {
                       const dateStr = d.toISOString().split('T')[0];
                       const record = staff.attendance && staff.attendance[dateStr];
