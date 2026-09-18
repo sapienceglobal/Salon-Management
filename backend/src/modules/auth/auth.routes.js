@@ -7,6 +7,7 @@ import {
   registerSchema,
   loginSchema,
   forgotPasswordSchema,
+  verifyOtpSchema,
   resetPasswordSchema,
   changePasswordSchema,
 } from './auth.validation.js';
@@ -16,6 +17,7 @@ import {
   refresh,
   logout,
   forgotPassword,
+  verifyOtp,
   resetPassword,
   changePassword,
   getMe,
@@ -37,7 +39,7 @@ router.post('/login', validate(loginSchema), login);
 // Refresh access token
 router.post('/refresh', refresh);
 
-// Forgot password — send reset email
+// Forgot password — send OTP email
 router.post(
   '/forgot-password',
   passwordResetLimiter,
@@ -45,7 +47,15 @@ router.post(
   forgotPassword
 );
 
-// Reset password with token
+// Verify OTP
+router.post(
+  '/verify-otp',
+  passwordResetLimiter,
+  validate(verifyOtpSchema),
+  verifyOtp
+);
+
+// Reset password with OTP
 router.post(
   '/reset-password',
   passwordResetLimiter,

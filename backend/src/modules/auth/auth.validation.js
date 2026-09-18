@@ -40,9 +40,17 @@ export const forgotPasswordSchema = {
   }),
 };
 
+export const verifyOtpSchema = {
+  body: z.object({
+    email: z.string().email('Invalid email format'),
+    otp: z.string().length(6, 'OTP must be exactly 6 digits'),
+  }),
+};
+
 export const resetPasswordSchema = {
   body: z.object({
-    token: z.string().min(1, 'Reset token is required'),
+    email: z.string().email('Invalid email format'),
+    token: z.string().length(6, 'OTP must be exactly 6 digits'),
     password: passwordSchema,
   }),
 };

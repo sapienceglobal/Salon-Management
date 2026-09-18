@@ -61,6 +61,15 @@ export function generateRandomToken(length = 32) {
 }
 
 /**
+ * Generate a 6-digit numeric OTP.
+ *
+ * @returns {string} - 6 digit numeric string
+ */
+export function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
  * Generate a UUID v4.
  *
  * @returns {string}

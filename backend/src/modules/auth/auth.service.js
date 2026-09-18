@@ -5,7 +5,7 @@ import { env } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
 import { sendEmail } from '../../config/mailer.js';
 import { ApiError } from '../../utils/ApiError.js';
-import { hashToken, generateRandomToken, generateUUID } from '../../utils/crypto.js';
+import { hashToken, generateRandomToken, generateOTP, generateUUID } from '../../utils/crypto.js';
 import { slugify } from '../../utils/helpers.js';
 
 const SALT_ROUNDS = 12;
@@ -198,7 +198,7 @@ class AuthService {
   }
 
   /**
-   * Forgot password — send reset email.
+   * Forgot password — send OTP email.
    */
   async forgotPassword(email) {
     const user = await db('users').where({ email, is_active: true }).first();
@@ -208,71 +208,88 @@ class AuthService {
       return; // Silently return
     }
 
-    // Generate reset token
-    const resetToken = generateRandomToken(32);
-    const resetTokenHash = hashToken(resetToken);
-    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    // Generate 6-digit OTP
+    const otp = generateOTP();
+    const otpHash = hashToken(otp);
+    const resetExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes for OTP
 
     // Save to database
     await db('users').where({ id: user.id }).update({
-      password_reset_token: resetTokenHash,
+      password_reset_token: otpHash,
       password_reset_expires: resetExpiry,
       updated_at: db.fn.now(),
     });
-
-    // Build reset URL
-    const resetUrl = `${env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
     // Send email
     try {
       await sendEmail({
         to: email,
-        subject: 'Salon360 — Password Reset Request',
+        subject: 'Salon360 — Password Reset OTP',
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #333;">Password Reset</h2>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #E91E63; text-align: center;">SalonTime</h2>
+            <h3 style="color: #333;">Password Reset Verification</h3>
             <p>Hi ${user.first_name},</p>
-            <p>You requested a password reset for your Salon360 account.</p>
-            <p>Click the button below to reset your password. This link is valid for <strong>1 hour</strong>.</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${resetUrl}" 
-                 style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-size: 16px;">
-                Reset Password
-              </a>
+            <p>You recently requested to reset your password for your SalonTime account. Use the OTP below to complete the process.</p>
+            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; text-align: center; margin: 30px 0;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1A1A2E;">
+                ${otp}
+              </span>
             </div>
+            <p>This OTP is valid for <strong>15 minutes</strong>. Do not share this code with anyone.</p>
             <p style="color: #666; font-size: 14px;">If you didn't request this, please ignore this email. Your password will remain unchanged.</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-            <p style="color: #999; font-size: 12px;">Salon360 — Salon Management Platform</p>
+            <p style="color: #999; font-size: 12px; text-align: center;">SalonTime — Salon Management Platform</p>
           </div>
         `,
       });
 
-      logger.info(`Password reset email sent to ${email}`);
+      logger.info(`Password reset OTP sent to ${email}`);
     } catch (error) {
       // Reset the token if email fails
       await db('users').where({ id: user.id }).update({
         password_reset_token: null,
         password_reset_expires: null,
       });
-      logger.error('Failed to send password reset email:', error);
-      throw ApiError.internal('Failed to send reset email. Please try again later.');
+      logger.error('Failed to send password reset OTP email:', error);
+      throw ApiError.internal('Failed to send OTP email. Please try again later.');
     }
   }
 
   /**
-   * Reset password using token from email.
+   * Verify OTP
    */
-  async resetPassword(token, newPassword) {
+  async verifyOtp(email, otp) {
+    const user = await db('users').where({ email, is_active: true }).first();
+    if (!user) {
+      throw ApiError.badRequest('Invalid email or OTP');
+    }
+
+    const otpHash = hashToken(otp);
+
+    const isValid = user.password_reset_token === otpHash && user.password_reset_expires > new Date();
+
+    if (!isValid) {
+      throw ApiError.badRequest('Invalid or expired OTP');
+    }
+
+    return { success: true, message: 'OTP verified successfully' };
+  }
+
+  /**
+   * Reset password using OTP from email.
+   */
+  async resetPassword(email, token, newPassword) {
     const tokenHash = hashToken(token);
 
-    // Find user with valid, non-expired token
+    // Find user with valid, non-expired token and matching email
     const user = await db('users')
-      .where({ password_reset_token: tokenHash })
+      .where({ email, password_reset_token: tokenHash })
       .where('password_reset_expires', '>', new Date())
       .first();
 
     if (!user) {
-      throw ApiError.badRequest('Invalid or expired password reset token');
+      throw ApiError.badRequest('Invalid or expired OTP');
     }
 
     // Hash new password

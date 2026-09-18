@@ -135,12 +135,25 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Reset password with token
+ * @desc    Verify OTP
+ * @route   POST /api/v1/auth/verify-otp
+ * @access  Public
+ */
+export const verifyOtp = asyncHandler(async (req, res) => {
+  const result = await authService.verifyOtp(req.body.email, req.body.otp);
+  res.status(200).json({
+    success: true,
+    message: result.message,
+  });
+});
+
+/**
+ * @desc    Reset password with OTP
  * @route   POST /api/v1/auth/reset-password
  * @access  Public
  */
 export const resetPassword = asyncHandler(async (req, res) => {
-  await authService.resetPassword(req.body.token, req.body.password);
+  const result = await authService.resetPassword(req.body.email, req.body.token, req.body.password);
 
   ApiResponse.ok('Password reset successful. Please login with your new password.').send(res);
 });
