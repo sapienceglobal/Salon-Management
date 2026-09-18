@@ -1,5 +1,13 @@
 export const seed = async function(knex) {
-  const BUSINESS_ID = 2;
+  // Find Kaira Makeover dynamically
+  const kairaBusiness = await knex('businesses').where('name', 'like', '%Kaira Makeover%').first();
+  if (!kairaBusiness) {
+    console.log("Kaira Makeover business not found! Cannot seed.");
+    return;
+  }
+  const BUSINESS_ID = kairaBusiness.id;
+  console.log(`Seeding VPS data for Kaira Makeover (ID: ${BUSINESS_ID})...`);
+
   const now = new Date();
 
   const addDays = (date, days) => {
