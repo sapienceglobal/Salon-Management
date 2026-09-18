@@ -9,11 +9,34 @@ import { RiMoreFill, RiTimeLine } from 'react-icons/ri';
  * Props:
  * - staff: Array of staff members { id, first_name, last_name, specialization }
  * - appointments: Array of appointments for the current day
- * - hours: Array of hour strings (e.g., ['9 AM', '10 AM', '11 AM', ... '7 PM'])
+ * - businessSettings: Optional business settings object for dynamic hours
  */
-export default function ScheduleGrid({ staff = [], appointments = [], hours = [], onAppointmentClick }) {
+export default function ScheduleGrid({ staff = [], appointments = [], businessSettings, onAppointmentClick }) {
   // Constants for rendering calculations
-  const START_HOUR = 9; // 9 AM
+  const defaultStart = 9; // 9 AM
+  const defaultEnd = 19; // 7 PM
+  
+  let startHour = defaultStart;
+  let endHour = defaultEnd;
+
+  if (businessSettings && businessSettings.working_hours_start && businessSettings.working_hours_end) {
+    const sh = parseInt(businessSettings.working_hours_start.split(':')[0], 10);
+    const eh = parseInt(businessSettings.working_hours_end.split(':')[0], 10);
+    if (!isNaN(sh) && !isNaN(eh)) {
+      startHour = sh;
+      endHour = eh;
+    }
+  }
+
+  // Generate hours array dynamically
+  const hours = [];
+  for (let i = startHour; i <= endHour; i++) {
+    const ampm = i >= 12 ? 'PM' : 'AM';
+    const displayHour = i > 12 ? i - 12 : (i === 0 ? 12 : i);
+    hours.push(`${displayHour} ${ampm}`);
+  }
+
+  const START_HOUR = startHour;
   const TOTAL_HOURS = hours.length; // Ensure this exactly matches the columns
 
   // Colors for different appointment types/services as per design

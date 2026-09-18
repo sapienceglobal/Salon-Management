@@ -40,6 +40,7 @@ import settingsRoutes from './modules/settings/settings.module.js';
 import reportRoutes from './modules/reports/reports.module.js';
 import searchRoutes from './modules/search/search.module.js';
 import attendanceRoutes from './modules/attendance/attendance.routes.js';
+import webhookRoutes from './modules/webhooks/webhooks.module.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -136,6 +137,9 @@ app.get('/api/v1/csrf-token', (req, res) => {
 // ===================================================================
 
 const API_PREFIX = `/api/${env.API_VERSION}`;
+
+// Webhooks must be public (not protected by secureApi), Meta servers send requests here
+app.use(`${API_PREFIX}/webhooks`, webhookRoutes);
 
 app.use(API_PREFIX, secureApi);
 

@@ -5,6 +5,7 @@ import { testConnection, closeConnection } from './config/database.js';
 import { verifyMailConnection } from './config/mailer.js';
 import { connectRedis, disconnectRedis } from './config/redis.js';
 import { initRateLimitStores } from './middlewares/rateLimiter.js';
+import { initSocket } from './config/socket.js';
 
 /**
  * Bootstrap the server.
@@ -28,7 +29,7 @@ async function startServer() {
     });
 
     // Start listening
-    const server = app.listen(env.PORT, () => {
+    const server = app.listen(env.PORT, '0.0.0.0', () => {
       logger.info('══════════════════════════════════════════════════');
       logger.info(`  🚀 Salon API Server Started`);
       logger.info(`  📍 URL: ${env.SERVER_URL}`);
@@ -37,6 +38,9 @@ async function startServer() {
       logger.info(`  🔗 Health Check: ${env.SERVER_URL}/api/health`);
       logger.info('══════════════════════════════════════════════════');
     });
+
+    // Initialize WebSockets
+    initSocket(server);
 
     // Set server timeouts for production
     server.keepAliveTimeout = 65000; // Must be > load balancer's idle timeout

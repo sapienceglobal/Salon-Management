@@ -115,7 +115,7 @@ class AppointmentRepository {
     return appointment;
   }
 
-  async create(appointmentData, serviceId, servicePrice, serviceDuration) {
+  async create(appointmentData, serviceId, servicePrice, serviceDuration, roomName = null) {
     return db.transaction(async (trx) => {
       const [appointmentId] = await trx('appointments').insert(appointmentData);
       
@@ -125,7 +125,8 @@ class AppointmentRepository {
         service_id: serviceId,
         staff_member_id: appointmentData.staff_member_id || null,
         price: servicePrice || 0,
-        duration_minutes: serviceDuration || 30
+        duration_minutes: serviceDuration || 30,
+        room_number: roomName
       });
 
       return appointmentId;
@@ -156,21 +157,29 @@ class AppointmentRepository {
     return parseInt(count, 10);
   }
 
-  async update(id, businessId, updateData, newServiceId = null, newPrice = null, newDuration = null) {
+  async update(id, businessId, appointmentData, serviceData = null) {
     return db.transaction(async (trx) => {
-      updateData.updated_at = db.fn.now();
-      await trx('appointments').where({ id, business_id: businessId }).update(updateData);
-      
-      // Update appointment_services if service or staff changed
-      if (newServiceId || updateData.staff_member_id !== undefined || newPrice !== null || newDuration !== null) {
-        const apsUpdate = {};
-        if (newServiceId) apsUpdate.service_id = newServiceId;
-        if (updateData.staff_member_id !== undefined) apsUpdate.staff_member_id = updateData.staff_member_id;
-        if (newPrice !== null) apsUpdate.price = newPrice;
-        if (newDuration !== null) apsUpdate.duration_minutes = newDuration;
-        
-        await trx('appointment_services').where({ appointment_id: id }).update(apsUpdate);
+      // Update appointment table
+      if (Object.keys(appointmentData).length > 0) {
+        appointmentData.updated_at = db.fn.now();
+        await trx('appointments').where({ id, business_id: businessId }).update(appointmentData);
       }
+
+      // Update junction table if service data changed
+      if (serviceData) {
+        const updatePayload = {};
+        if (serviceData.service_id !== undefined) updatePayload.service_id = serviceData.service_id;
+        if (serviceData.staff_id !== undefined) updatePayload.staff_member_id = serviceData.staff_id;
+        if (serviceData.price !== undefined) updatePayload.price = serviceData.price;
+        if (serviceData.duration !== undefined) updatePayload.duration_minutes = serviceData.duration;
+        if (serviceData.room_name !== undefined) updatePayload.room_number = serviceData.room_name;
+        
+        if (Object.keys(updatePayload).length > 0) {
+          await trx('appointment_services').where({ appointment_id: id }).update(updatePayload);
+        }
+      }
+
+      return id;
     });
   }
 

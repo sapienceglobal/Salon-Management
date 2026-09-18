@@ -41,11 +41,19 @@ class AppointmentService {
       created_by: userId
     };
 
+    // Fetch room if provided
+    let roomName = null;
+    if (data.room_id) {
+      const room = await db('service_rooms').where({ id: data.room_id, business_id: businessId }).first();
+      if (room) roomName = room.name;
+    }
+
     const appointmentId = await appointmentRepository.create(
       appointmentData, 
       data.service_id, 
       service.price, 
-      service.duration
+      service.duration,
+      roomName
     );
     return appointmentRepository.findById(appointmentId, businessId);
   }
@@ -95,18 +103,28 @@ class AppointmentService {
     if (data.status !== undefined) updateData.status = data.status;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
-    let servicePrice = null;
-    let serviceDuration = null;
-    
+    const serviceData = {};
     if (data.service_id && data.service_id !== appointment.service_id) {
        const service = await db('salon_services').where({ id: data.service_id, business_id: businessId }).first();
        if (service) {
-         servicePrice = service.price;
-         serviceDuration = service.duration;
+         serviceData.service_id = data.service_id;
+         serviceData.price = service.price;
+         serviceData.duration = service.duration;
        }
     }
+    
+    if (data.staff_id !== undefined) serviceData.staff_id = data.staff_id;
 
-    await appointmentRepository.update(id, businessId, updateData, data.service_id, servicePrice, serviceDuration);
+    if (data.room_id !== undefined) {
+      if (data.room_id === null) {
+        serviceData.room_name = null;
+      } else {
+        const room = await db('service_rooms').where({ id: data.room_id, business_id: businessId }).first();
+        if (room) serviceData.room_name = room.name;
+      }
+    }
+
+    await appointmentRepository.update(id, businessId, updateData, Object.keys(serviceData).length > 0 ? serviceData : null);
     return this.getById(id, businessId);
   }
 

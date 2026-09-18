@@ -8,12 +8,10 @@ const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = env.CORS_ALLOWED_ORIGINS.split(',').map((o) => o.trim());
 
-    // Allow requests with no origin (mobile apps, curl, Postman in dev)
+    // Allow requests with no origin (mobile apps, curl). 
+    // Mobile apps are further protected by x-api-key in secureApi middleware.
     if (!origin) {
-      if (env.NODE_ENV === 'development') {
-        return callback(null, true);
-      }
-      return callback(new Error('Not allowed by CORS'));
+      return callback(null, true);
     }
 
     if (allowedOrigins.includes(origin)) {

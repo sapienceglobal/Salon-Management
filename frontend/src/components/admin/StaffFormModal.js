@@ -24,8 +24,11 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
     salary: '',
     joining_date: new Date().toISOString().split('T')[0],
     specializations: '', // Will be comma separated string in UI, array in API
+    commission_profile_id: '',
     bio: ''
   });
+  
+  const [commissionProfiles, setCommissionProfiles] = useState([]);
   
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -34,7 +37,18 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
 
   useEffect(() => {
     setMounted(true);
+    fetchCommissionProfiles();
   }, []);
+
+  const fetchCommissionProfiles = async () => {
+    try {
+      const res = await api.get('/settings/commission-profiles');
+      setCommissionProfiles(res.data || []);
+    } catch (err) {
+      console.error('Failed to load commission profiles', err);
+    }
+  };
+
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [copied, setCopied] = useState(false);
@@ -63,13 +77,14 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
           specializations: initialData.specializations ? 
             (typeof initialData.specializations === 'string' ? JSON.parse(initialData.specializations).join(', ') : initialData.specializations.join(', ')) 
             : '',
+          commission_profile_id: initialData.commission_profile_id || '',
           bio: initialData.bio || '',
           password: ''
         });
       } else {
         setFormData({
           first_name: '', last_name: '', email: '', phone: '', role: 'staff', password: '',
-          designation: '', salary: '', joining_date: new Date().toISOString().split('T')[0], specializations: '', bio: ''
+          designation: '', salary: '', joining_date: new Date().toISOString().split('T')[0], specializations: '', commission_profile_id: '', bio: ''
         });
         generatePassword();
       }
@@ -129,8 +144,9 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
         user_id: userId,
         designation: formData.designation,
         joining_date: formData.joining_date,
-        salary: formData.salary ? Number(formData.salary) : undefined,
-        specializations: formData.specializations ? formData.specializations.split(',').map(s => s.trim()).filter(Boolean) : [],
+        salary: formData.salary ? parseFloat(formData.salary) : undefined,
+        commission_profile_id: formData.commission_profile_id ? parseInt(formData.commission_profile_id) : undefined,
+        specializations: formData.specializations ? formData.specializations.split(',').map(s => s.trim()).filter(Boolean) : undefined,
         bio: formData.bio
       };
 
@@ -347,6 +363,26 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                     placeholder="Hair, Makeup, Nails (Comma separated)"
                   />
                   {fieldErrors.specializations && <p className="text-accent-red text-xs mt-1">{fieldErrors.specializations}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-admin-text-secondary mb-1.5">Commission Profile</label>
+                  <select
+                    name="commission_profile_id"
+                    value={formData.commission_profile_id}
+                    onChange={e => setFormData({ ...formData, commission_profile_id: e.target.value })}
+                    className={`w-full bg-admin-surface-light border rounded-lg px-4 py-2.5 text-sm text-admin-text focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors ${fieldErrors.commission_profile_id ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
+                  >
+                    <option value="">No Commission</option>
+                    {commissionProfiles.map(profile => (
+                      <option key={profile.id} value={profile.id}>
+                        {profile.name} ({profile.type === 'percentage' ? `${profile.value}%` : `₹${profile.value}`})
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.commission_profile_id && <p className="text-accent-red text-xs mt-1">{fieldErrors.commission_profile_id}</p>}
                 </div>
               </div>
 

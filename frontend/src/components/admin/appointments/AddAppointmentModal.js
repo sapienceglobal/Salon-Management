@@ -25,8 +25,11 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
     appointment_date: '',
     start_time: '10:00:00',
     duration_minutes: 60,
+    room_id: '',
     notes: ''
   });
+  
+  const [roomsList, setRoomsList] = useState([]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +41,17 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
 
   useEffect(() => {
     setMounted(true);
+    fetchRooms();
   }, []);
+
+  const fetchRooms = async () => {
+    try {
+      const res = await api.get('/settings/rooms');
+      setRoomsList(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch rooms', err);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -53,6 +66,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
           customer_id: editData.customer_id || '',
           service_id: editData.service_id || '',
           staff_id: editData.staff_member_id || '',
+          room_id: editData.room_id || '',
           appointment_date: editData.appointment_date.split('T')[0],
           start_time: editData.start_time.substring(0, 5) + ':00',
           duration_minutes: duration > 0 ? duration : 60,
@@ -67,6 +81,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
           duration_minutes: 60,
           service_id: '',
           staff_id: '',
+          room_id: '',
           notes: ''
         }));
       }
@@ -95,6 +110,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
         customer_id: formData.customer_id,
         service_id: formData.service_id,
         staff_id: formData.staff_id || null,
+        room_id: formData.room_id || null,
         appointment_date: formData.appointment_date,
         start_time: formData.start_time,
         end_time,
@@ -113,6 +129,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
       payload.customer_id = parseInt(payload.customer_id);
       payload.service_id = parseInt(payload.service_id);
       if (payload.staff_id) payload.staff_id = parseInt(payload.staff_id);
+      if (payload.room_id) payload.room_id = parseInt(payload.room_id);
 
       if (editData) {
         await api.patch(`/appointments/${editData.id}`, payload);
@@ -197,6 +214,16 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                 {staffList.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
               </select>
               {fieldErrors.staff_id && <p className="text-accent-red text-xs mt-1">{fieldErrors.staff_id}</p>}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[0.75rem] font-semibold text-admin-text-secondary">Select Room</label>
+              <select className={`w-full border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text outline-none transition-colors ${fieldErrors.room_id ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand focus:bg-admin-card'}`}
+                value={formData.room_id} onChange={e => setFormData({ ...formData, room_id: e.target.value })}>
+                <option value="">Any room</option>
+                {roomsList.map(r => <option key={r.id} value={r.id}>{r.name} (Cap: {r.capacity})</option>)}
+              </select>
+              {fieldErrors.room_id && <p className="text-accent-red text-xs mt-1">{fieldErrors.room_id}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">

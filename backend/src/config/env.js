@@ -75,6 +75,12 @@ const envSchema = z.object({
   REDIS_PORT: z.string().optional(),
   REDIS_PASSWORD: z.string().optional(),
   REDIS_DB: z.string().optional(),
+
+  // Meta Webhooks
+  META_WEBHOOK_VERIFY_TOKEN: z.string().default('kaira_salon_secret_token_123'),
+  META_APP_ID: z.string().optional(),
+  META_APP_SECRET: z.string().optional(),
+  META_ACCESS_TOKEN: z.string().optional(),
 });
 
 /**

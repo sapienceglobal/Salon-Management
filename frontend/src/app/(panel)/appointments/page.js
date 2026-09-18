@@ -18,7 +18,6 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import toast from 'react-hot-toast';
 
 // Configuration
-const HOURS = ['9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM'];
 const INSIGHT_COLORS = ['#38d9a9', '#4dabf7', '#ffc034', '#ff6b6b']; // Confirmed, In Progress, Pending, Cancelled
 const DURATION_OPTIONS = [
   { label: '30 Minutes', value: 30 },
@@ -75,6 +74,7 @@ export default function AppointmentsPage() {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [preselectedCustomerId, setPreselectedCustomerId] = useState('');
   const [backendStats, setBackendStats] = useState(null);
+  const [businessSettings, setBusinessSettings] = useState(null);
 
   // Top-level stats derived from the loaded day's appointments
   const stats = {
@@ -157,14 +157,15 @@ export default function AppointmentsPage() {
       if (selectedStaff) statsQuery += `&staff_id=${selectedStaff}`;
       if (selectedService) statsQuery += `&service_id=${selectedService}`;
 
-      const [apptsRes, upcomingRes, monthRes, staffRes, custRes, servRes, statsRes] = await Promise.allSettled([
+      const [apptsRes, upcomingRes, monthRes, staffRes, custRes, servRes, statsRes, settingsRes] = await Promise.allSettled([
         api.get(apptQuery),
         api.get(upcomingQuery),
         api.get(monthQuery),
         api.get('/staff'),
         api.get('/customers?limit=100'),
         api.get('/services'),
-        api.get(statsQuery)
+        api.get(statsQuery),
+        api.get('/settings')
       ]);
 
       if (apptsRes.status === 'fulfilled') setAppointments(apptsRes.value.data?.appointments || apptsRes.value.data || []);
@@ -174,6 +175,7 @@ export default function AppointmentsPage() {
       if (custRes.status === 'fulfilled') setCustomersList(custRes.value.data?.customers || custRes.value.data || []);
       if (servRes.status === 'fulfilled') setServicesList(servRes.value.data?.services || servRes.value.data || []);
       if (statsRes.status === 'fulfilled') setBackendStats(statsRes.value.data?.data || statsRes.value.data);
+      if (settingsRes.status === 'fulfilled') setBusinessSettings(settingsRes.value.data?.settings || settingsRes.value.data?.data?.settings || null);
 
     } catch (err) {
       console.error(err);
@@ -387,7 +389,7 @@ export default function AppointmentsPage() {
               <ScheduleGrid 
                 staff={staffList} 
                 appointments={appointments} 
-                hours={HOURS} 
+                businessSettings={businessSettings}
                 onAppointmentClick={(appt) => setSelectedViewAppointment(appt)} 
               />
             </div>
