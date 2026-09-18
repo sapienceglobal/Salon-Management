@@ -128,7 +128,7 @@ export default function AttendancePage() {
     <div className="p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Attendance</h1>
+          <h1 className="text-2xl font-bold text-admin-text mb-1">Attendance</h1>
           <p className="text-sm text-admin-text-secondary mt-1">Manage staff attendance and timings.</p>
         </div>
         <button 
@@ -153,9 +153,9 @@ export default function AttendancePage() {
           {/* Date Controls */}
           <div className="flex items-center gap-4 bg-admin-surface px-2 py-1.5 rounded-lg border border-admin-border">
             <button onClick={() => shiftDate(-7)} className="p-1.5 rounded hover:bg-admin-border text-admin-text-secondary"><ArrowLeft /></button>
-            <button onClick={setToday} className="text-sm font-medium text-admin-text-secondary hover:text-gray-900 dark:hover:text-white px-2">View Today</button>
+            <button onClick={setToday} className="text-sm font-medium text-admin-text-secondary hover:text-admin-text px-2">View Today</button>
             <div className="h-4 w-px bg-admin-border"></div>
-            <span className="text-sm font-bold text-gray-900 dark:text-white min-w-[100px] text-center">
+            <span className="text-sm font-bold text-admin-text min-w-[100px] text-center">
               {dates[0].toLocaleDateString('en-GB')} - {dates[dates.length-1].toLocaleDateString('en-GB')}
             </span>
             <button onClick={() => shiftDate(7)} className="p-1.5 rounded hover:bg-admin-border text-admin-text-secondary"><ArrowRight /></button>
@@ -170,7 +170,7 @@ export default function AttendancePage() {
                 <th className="p-4 font-semibold w-48">Staff Name</th>
                 {dates.map((d, i) => (
                   <th key={i} className="p-4 text-center font-semibold">
-                    <div className="text-gray-900 dark:text-white">{d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                    <div className="text-admin-text">{d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                     <div className="text-admin-text-muted mt-1 font-normal">{d.toLocaleDateString('en-GB', { weekday: 'long' })}</div>
                   </th>
                 ))}
@@ -192,7 +192,7 @@ export default function AttendancePage() {
               ) : (
                 staffData.map(staff => (
                   <tr key={staff.id} className="hover:bg-admin-surface/50 transition-colors">
-                    <td className="p-4 font-medium text-gray-900 dark:text-white">{staff.first_name} {staff.last_name}</td>
+                    <td className="p-4 font-medium text-admin-text">{staff.first_name} {staff.last_name}</td>
                     {dates.map((d, i) => {
                       const dateStr = d.toISOString().split('T')[0];
                       const record = staff.attendance && staff.attendance[dateStr];
@@ -294,8 +294,8 @@ function MarkAttendanceModal({ cell, onClose, onSuccess }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-admin-card border border-admin-border rounded-2xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="p-6 border-b border-admin-border flex justify-between items-center">
-          <h2 className="text-xl font-bold text-white">Mark Attendance</h2>
-          <button onClick={onClose} className="text-admin-text-secondary hover:text-white p-1 rounded-lg hover:bg-admin-surface transition-colors">
+          <h2 className="text-xl font-bold text-admin-text">Mark Attendance</h2>
+          <button onClick={onClose} className="text-admin-text-secondary hover:text-admin-text p-1 rounded-lg hover:bg-admin-surface transition-colors">
             ✕
           </button>
         </div>
@@ -303,12 +303,12 @@ function MarkAttendanceModal({ cell, onClose, onSuccess }) {
         <form onSubmit={handleSave} className="p-6">
           <div className="mb-4">
             <p className="text-sm text-admin-text-secondary mb-1">Staff Member</p>
-            <p className="text-white font-medium">{cell.staff.first_name} {cell.staff.last_name}</p>
+            <p className="text-admin-text font-medium">{cell.staff.first_name} {cell.staff.last_name}</p>
           </div>
           
           <div className="mb-6">
             <p className="text-sm text-admin-text-secondary mb-1">Date</p>
-            <p className="text-white font-medium">{cell.dateObj.toLocaleDateString('en-GB', { dateStyle: 'full' })}</p>
+            <p className="text-admin-text font-medium">{cell.dateObj.toLocaleDateString('en-GB', { dateStyle: 'full' })}</p>
           </div>
 
           <div className="space-y-4">
@@ -330,14 +330,14 @@ function MarkAttendanceModal({ cell, onClose, onSuccess }) {
                 type="time" 
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full bg-admin-surface border border-admin-border rounded-lg px-4 py-2.5 text-white focus:border-brand outline-none transition-colors"
+                className="w-full bg-admin-surface border border-admin-border rounded-lg px-4 py-2.5 text-admin-text focus:border-brand outline-none transition-colors"
                 required
               />
             </div>
           )}
 
           <div className="mt-8 flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-admin-text-secondary hover:text-white transition-colors">Cancel</button>
+            <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-admin-text-secondary hover:text-admin-text transition-colors">Cancel</button>
             <button type="submit" disabled={saving} className="bg-brand text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-brand-light transition-colors shadow-lg shadow-brand/20 disabled:opacity-50">
               {saving ? 'Saving...' : 'Save'}
             </button>
