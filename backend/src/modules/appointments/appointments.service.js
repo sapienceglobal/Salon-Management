@@ -49,9 +49,9 @@ class AppointmentService {
     }
 
     const appointmentId = await appointmentRepository.create(
-      appointmentData, 
-      data.service_id, 
-      service.price, 
+      appointmentData,
+      data.service_id,
+      service.price,
       service.duration,
       roomName
     );
@@ -88,7 +88,7 @@ class AppointmentService {
     const date = data.appointment_date || appointment.appointment_date;
     const startTime = data.start_time || appointment.start_time;
     const endTime = data.end_time || appointment.end_time;
-    
+
     if (staffId) {
       const conflict = await appointmentRepository.checkConflict(businessId, staffId, date, startTime, endTime, id);
       if (conflict) throw ApiError.conflict('Staff member has a conflicting appointment at this time');
@@ -105,14 +105,14 @@ class AppointmentService {
 
     const serviceData = {};
     if (data.service_id && data.service_id !== appointment.service_id) {
-       const service = await db('salon_services').where({ id: data.service_id, business_id: businessId }).first();
-       if (service) {
-         serviceData.service_id = data.service_id;
-         serviceData.price = service.price;
-         serviceData.duration = service.duration;
-       }
+      const service = await db('salon_services').where({ id: data.service_id, business_id: businessId }).first();
+      if (service) {
+        serviceData.service_id = data.service_id;
+        serviceData.price = service.price;
+        serviceData.duration = service.duration;
+      }
     }
-    
+
     if (data.staff_id !== undefined) serviceData.staff_id = data.staff_id;
 
     if (data.room_id !== undefined) {
@@ -131,7 +131,7 @@ class AppointmentService {
   async delete(id, businessId) {
     const appointment = await this.getById(id, businessId);
     if (appointment.status !== 'planned' && appointment.status !== 'pending') {
-       throw ApiError.badRequest(`Cannot delete appointment with status '${appointment.status}'. Cancel it instead.`);
+      throw ApiError.badRequest(`Cannot delete appointment with status '${appointment.status}'. Cancel it instead.`);
     }
     await appointmentRepository.delete(id, businessId);
   }
