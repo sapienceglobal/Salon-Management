@@ -1,7 +1,5 @@
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const admin = require('firebase-admin');
-
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,11 +10,14 @@ const __dirname = path.dirname(__filename);
 
 const serviceAccountPath = path.join(__dirname, '../config/firebase-admin.json');
 
+let messaging;
+
 try {
   const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+  const app = initializeApp({
+    credential: cert(serviceAccount)
   });
+  messaging = getMessaging(app);
   logger.info('Firebase Admin initialized successfully');
 } catch (error) {
   logger.error(`Error initializing Firebase Admin: ${error.message}`);
@@ -61,7 +62,11 @@ export const sendTopicNotification = async (topic, title, body, data = {}) => {
       }
     };
 
-    const response = await admin.messaging().send(message);
+    if (!messaging) {
+      logger.error('FCM Messaging is not initialized');
+      return null;
+    }
+    const response = await messaging.send(message);
     logger.info(`Successfully sent FCM message to topic ${topic}: ${response}`);
     return response;
   } catch (error) {
