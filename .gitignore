@@ -50,3 +50,4 @@ coverage/
 
 # Flutter app
 flutter_salon/
+backend/src/config/firebase-admin.json
