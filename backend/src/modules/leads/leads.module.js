@@ -24,7 +24,6 @@ class LeadService {
     if (query.source) base.where('l.source', query.source);
     if (query.is_active !== undefined) base.where('l.is_active', query.is_active === 'true');
     else base.where('l.is_active', true);
-    
     if (query.enquiry_date) {
       if (query.enquiry_date === 'today') {
         base.whereRaw('DATE(l.created_at) = CURDATE()');

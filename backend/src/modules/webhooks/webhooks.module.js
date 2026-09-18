@@ -105,7 +105,8 @@ router.post('/meta', async (req, res) => {
                     phone: phone,
                     source: 'Facebook Ad',
                     status: 'new',
-                    notes: `Form ID: ${formId}`
+                    notes: `Form ID: ${formId}`,
+                    is_active: true
                   });
 
                   const newLead = await db('leads').where('id', insertedId).first();
