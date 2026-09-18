@@ -6,6 +6,8 @@ import { RiAddLine, RiSearchLine, RiDeleteBinLine } from 'react-icons/ri';
 import AddEnquiryModal from '@/components/admin/enquiry/AddEnquiryModal';
 import EnquiryProfilePanel from '@/components/admin/enquiry/EnquiryProfilePanel';
 import toast from 'react-hot-toast';
+import { io } from 'socket.io-client';
+import { useAuth } from '@/context/AuthContext';
 
 export default function EnquiryPage() {
   const [enquiries, setEnquiries] = useState([]);
@@ -13,6 +15,7 @@ export default function EnquiryPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [enquiryToEdit, setEnquiryToEdit] = useState(null);
   const [staffList, setStaffList] = useState([]);
+  const { user } = useAuth();
   
   // Filters
   const [filters, setFilters] = useState({
@@ -64,6 +67,28 @@ export default function EnquiryPage() {
   useEffect(() => {
     fetchEnquiries(filters);
   }, [filters, fetchEnquiries]);
+
+  // Real-time socket listener
+  useEffect(() => {
+    if (!user?.business_id) return;
+    
+    // Connect to backend root url (strip /api/v1)
+    let socketUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+    socketUrl = socketUrl.replace('/api/v1', '');
+    
+    const socket = io(socketUrl);
+    
+    socket.emit('join_business_room', user.business_id);
+    
+    socket.on('new_lead', (newLead) => {
+      toast.success('New Lead Received from Meta!', { icon: '🔥', duration: 5000 });
+      setEnquiries(prev => [newLead, ...prev]);
+    });
+    
+    return () => {
+      socket.disconnect();
+    };
+  }, [user]);
 
   const handleDeleteLead = async (id) => {
     try {
