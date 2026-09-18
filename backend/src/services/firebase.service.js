@@ -1,4 +1,7 @@
-import admin from 'firebase-admin';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const admin = require('firebase-admin');
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -34,7 +37,28 @@ export const sendTopicNotification = async (topic, title, body, data = {}) => {
         body
       },
       data,
-      topic
+      topic,
+      android: {
+        priority: 'high',
+        notification: {
+          sound: 'default',
+          channelId: 'high_importance_channel',
+          icon: '@mipmap/ic_launcher',
+          color: '#e74a8a', // Brand color
+          defaultSound: true,
+          defaultVibrateTimings: true,
+          notificationCount: 1,
+        }
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+            badge: 1,
+            contentAvailable: true,
+          }
+        }
+      }
     };
 
     const response = await admin.messaging().send(message);
