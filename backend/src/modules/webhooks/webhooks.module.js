@@ -3,6 +3,7 @@ import { env } from '../../config/env.js';
 import { getIo } from '../../config/socket.js';
 import { logger } from '../../config/logger.js';
 import { db } from '../../config/database.js';
+import { sendTopicNotification } from '../../services/firebase.service.js';
 import crypto from 'crypto';
 
 const router = Router();
@@ -115,6 +116,14 @@ router.post('/meta', async (req, res) => {
                   const io = getIo();
                   io.to(`business_${businessId}`).emit('new_lead', newLead);
                   logger.info(`Lead saved and socket event emitted for business_${businessId}`);
+
+                  // Send Firebase Push Notification to the Admin Device
+                  await sendTopicNotification(
+                    `business_${businessId}`,
+                    `New Lead: ${name}`,
+                    `A new lead has arrived from Facebook Ad.\nEmail: ${email || 'N/A'}\nPhone: ${phone || 'N/A'}`,
+                    { type: 'new_lead', leadId: newLead.id.toString() }
+                  );
                 }
               }
               

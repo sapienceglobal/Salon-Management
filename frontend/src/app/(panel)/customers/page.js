@@ -192,7 +192,7 @@ export default function CustomersPage() {
 
         <div className="bg-[#A06132] text-white p-5 rounded-2xl flex items-center justify-between shadow-lg shadow-[#A06132]/20 relative overflow-hidden group">
           <div className="relative z-10">
-            <p className="text-sm font-semibold opacity-90 mb-1 flex items-center gap-1">Churn Customers <span className="w-3 h-3 rounded-full border border-white/50 flex items-center justify-center text-[8px]">i</span></p>
+            <p className="text-sm font-semibold opacity-90 mb-1 flex items-center gap-1">Inactive <span className="w-3 h-3 rounded-full border border-white/50 flex items-center justify-center text-[8px]">i</span></p>
             <h3 className="text-4xl font-bold">{stats?.churn || 0}</h3>
           </div>
           <div className="absolute right-4 text-3xl opacity-80">
