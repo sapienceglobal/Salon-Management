@@ -1,5 +1,5 @@
 export const seed = async function(knex) {
-  const BUSINESS_ID = 6;
+  const BUSINESS_ID = 2;
   const now = new Date();
 
   const addDays = (date, days) => {
