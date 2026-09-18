@@ -93,9 +93,9 @@ router.post('/meta', async (req, res) => {
                     if (field.name === 'phone_number') phone = field.values[0];
                   });
 
-                  // Get default business dynamically instead of hardcoding
-                  const defaultBusiness = await db('businesses').first('id');
-                  const businessId = defaultBusiness ? defaultBusiness.id : 1;
+                  // Get business ID of the admin user to ensure lead goes to the right salon
+                  const adminUser = await db('users').where('role', 'admin').first('business_id');
+                  const businessId = adminUser ? adminUser.business_id : 1;
 
                   // Save to database
                   const [insertedId] = await db('leads').insert({
