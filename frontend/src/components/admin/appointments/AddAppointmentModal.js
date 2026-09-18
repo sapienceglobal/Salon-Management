@@ -37,6 +37,10 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+
   useScrollLock(isOpen);
 
   useEffect(() => {
@@ -72,6 +76,10 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
           duration_minutes: duration > 0 ? duration : 60,
           notes: editData.notes || ''
         });
+
+        const cust = customersList.find(c => c.id == editData.customer_id);
+        if (cust) setCustomerSearch(`${cust.first_name} ${cust.last_name || ''} ${cust.phone ? `(${cust.phone})` : ''}`);
+        
       } else {
         setFormData(prev => ({ 
           ...prev, 
@@ -84,12 +92,19 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
           room_id: '',
           notes: ''
         }));
+        
+        if (preselectedCustomerId) {
+           const cust = customersList.find(c => c.id == preselectedCustomerId);
+           if (cust) setCustomerSearch(`${cust.first_name} ${cust.last_name || ''} ${cust.phone ? `(${cust.phone})` : ''}`);
+        } else {
+           setCustomerSearch('');
+        }
       }
 
       setError('');
       setFieldErrors({});
     }
-  }, [isOpen, initialDate, editData]);
+  }, [isOpen, initialDate, editData, preselectedCustomerId, customersList]);
 
   if (!isOpen || !mounted) return null;
 
@@ -182,11 +197,42 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted text-sm pointer-events-none" />
-                  <select className={`w-full border rounded-lg text-sm pl-9 pr-3 py-2.5 bg-admin-surface-light text-admin-text outline-none transition-colors ${fieldErrors.customer_id ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand focus:bg-admin-card'}`}
-                    value={formData.customer_id} onChange={e => setFormData({ ...formData, customer_id: e.target.value })}>
-                    <option value="">Search customer...</option>
-                    {customersList.map(c => <option key={c.id} value={c.id}>{c.first_name} {c.last_name || ''}</option>)}
-                  </select>
+                  <input
+                    type="text"
+                    placeholder="Search name or mobile..."
+                    className={`w-full border rounded-lg text-sm pl-9 pr-3 py-2.5 bg-admin-surface-light text-admin-text outline-none transition-colors ${fieldErrors.customer_id ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand focus:bg-admin-card'}`}
+                    value={customerSearch}
+                    onChange={e => {
+                      setCustomerSearch(e.target.value);
+                      setShowCustomerDropdown(true);
+                      setFormData(prev => ({ ...prev, customer_id: '' })); // clear ID if typing
+                    }}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
+                  />
+                  {showCustomerDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-admin-card border border-admin-border rounded-lg shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
+                      {customersList
+                        .filter(c => `${c.first_name} ${c.last_name || ''} ${c.phone || ''}`.toLowerCase().includes(customerSearch.toLowerCase()))
+                        .map(c => (
+                          <div
+                            key={c.id}
+                            className="px-4 py-2 text-sm hover:bg-admin-surface-light cursor-pointer text-admin-text border-b border-admin-border/50 last:border-0"
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, customer_id: c.id }));
+                              setCustomerSearch(`${c.first_name} ${c.last_name || ''} ${c.phone ? `(${c.phone})` : ''}`);
+                              setShowCustomerDropdown(false);
+                            }}
+                          >
+                            <div className="font-semibold">{c.first_name} {c.last_name || ''}</div>
+                            {c.phone && <div className="text-xs text-admin-text-muted">{c.phone}</div>}
+                          </div>
+                      ))}
+                      {customersList.filter(c => `${c.first_name} ${c.last_name || ''} ${c.phone || ''}`.toLowerCase().includes(customerSearch.toLowerCase())).length === 0 && (
+                        <div className="px-4 py-3 text-sm text-admin-text-muted text-center">No customer found</div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {/* Note: In a complete app, this button would open AddCustomerModal */}
                 <button type="button" onClick={() => setShowAddCustomer(true)} className="w-[42px] h-[42px] rounded-lg bg-brand text-white flex items-center justify-center shrink-0 hover:bg-brand-light transition-colors shadow-sm" title="Add new customer">

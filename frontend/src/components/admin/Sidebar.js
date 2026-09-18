@@ -26,7 +26,7 @@ const NAV_ITEMS = [
   { label: 'Inventory', href: '/inventory', icon: RiArchiveLine },
   { label: 'Marketing', href: '/marketing', icon: RiMegaphoneLine },
   { label: 'Reports', href: '/reports', icon: RiBarChartLine },
-  { label: 'Enquiry', href: '/enquiry', icon: RiContactsLine },
+  { label: 'Leads', href: '/enquiry', icon: RiContactsLine },
   { label: 'Settings', href: '/settings', icon: RiSettings3Line },
 ];
 

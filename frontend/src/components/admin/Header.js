@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { RiMenuLine, RiSearchLine, RiNotification3Line, RiMapPinLine, RiSettings4Line, RiSunLine, RiMoonLine } from 'react-icons/ri';
 import { useTheme } from '@/context/ThemeContext';
 import GlobalSearch from '@/components/admin/GlobalSearch';
+import Link from 'next/link';
 
 export default function Header({ onToggleSidebar }) {
   const today = format(new Date(), 'EEE, d MMM yyyy');
@@ -65,9 +66,9 @@ export default function Header({ onToggleSidebar }) {
           Downtown Branch
         </button>
 
-        <button className="text-xl text-admin-text-secondary p-2 rounded-full hover:text-admin-text hover:bg-admin-surface-light hover:rotate-45 transition-all duration-150" aria-label="Settings">
+        <Link href="/settings" className="text-xl text-admin-text-secondary p-2 rounded-full hover:text-admin-text hover:bg-admin-surface-light hover:rotate-45 transition-all duration-150" aria-label="Settings">
           <RiSettings4Line />
-        </button>
+        </Link>
       </div>
     </header>
   );

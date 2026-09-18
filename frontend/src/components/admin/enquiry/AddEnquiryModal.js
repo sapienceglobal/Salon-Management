@@ -243,7 +243,7 @@ export default function AddEnquiryModal({ isOpen, onClose, onEnquiryAdded, enqui
             </div>
 
             {/* Notes */}
-            <div>
+            <div className="mb-6">
               <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Latest Note / Description</label>
               <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3"
                 className={`w-full bg-admin-surface border rounded-xl p-4 text-sm text-admin-text outline-none transition-colors resize-none ${fieldErrors.notes ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}
@@ -251,22 +251,23 @@ export default function AddEnquiryModal({ isOpen, onClose, onEnquiryAdded, enqui
               {fieldErrors.notes && <p className="text-accent-red text-xs mt-1">{fieldErrors.notes}</p>}
             </div>
             
-            {/* Footer Buttons attached directly inside the form to avoid excessive empty space */}
-            <div className="pt-4 mt-2 border-t border-admin-border flex flex-col sm:flex-row justify-end gap-3">
+          </form>
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="p-6 border-t border-admin-border bg-admin-surface/50 flex justify-end gap-3 shrink-0">
               <button type="button" onClick={handleClose} disabled={loading}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-admin-border text-admin-text-secondary hover:text-admin-text hover:bg-admin-surface-light text-sm font-bold transition-colors">
+                className="px-6 py-2.5 rounded-xl border border-admin-border text-admin-text-secondary hover:text-admin-text hover:bg-admin-surface-light text-sm font-bold transition-colors">
                 Cancel
               </button>
               <button
                 type="submit"
+                form="enquiryForm"
                 disabled={loading}
-                className="px-6 py-2 bg-brand text-white rounded-lg text-sm font-semibold hover:bg-brand-light transition-colors disabled:opacity-50"
+                className="px-6 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-light transition-colors disabled:opacity-50 shadow-sm shadow-brand/20"
               >
                 {loading ? 'Saving...' : enquiryToEdit ? 'Update Enquiry' : 'Save Enquiry'}
               </button>
-            </div>
-            
-          </form>
         </div>
       </div>
     </div>,

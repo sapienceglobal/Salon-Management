@@ -20,6 +20,8 @@ export default function EnquiryPage() {
     assigned_to: '',
     search: '',
     enquiry_date: '',
+    start_date: '',
+    end_date: '',
     follow_up_date: '',
     source: '',
   });
@@ -36,6 +38,8 @@ export default function EnquiryPage() {
       if (currentFilters.assigned_to) params.assigned_to = currentFilters.assigned_to;
       if (currentFilters.search) params.search = currentFilters.search;
       if (currentFilters.enquiry_date) params.enquiry_date = currentFilters.enquiry_date;
+      if (currentFilters.start_date) params.start_date = currentFilters.start_date;
+      if (currentFilters.end_date) params.end_date = currentFilters.end_date;
       if (currentFilters.follow_up_date) params.follow_up_date = currentFilters.follow_up_date;
       if (currentFilters.source) params.source = currentFilters.source;
 
@@ -123,7 +127,7 @@ export default function EnquiryPage() {
       
       {/* Header */}
       <div className="flex justify-between items-center mb-6 shrink-0">
-        <h1 className="text-2xl font-bold">Enquiry</h1>
+        <h1 className="text-2xl font-bold">Leads</h1>
         <button
           onClick={() => {
             setEnquiryToEdit(null);
@@ -146,8 +150,22 @@ export default function EnquiryPage() {
             <option value="today">Today</option>
             <option value="this_week">This Week</option>
             <option value="this_month">This Month</option>
+            <option value="custom">Custom Range</option>
           </select>
         </div>
+
+        {filters.enquiry_date === 'custom' && (
+          <div className="flex gap-2 flex-1 min-w-[280px]">
+             <div className="flex-1">
+               <label className="block text-[10px] font-bold text-admin-text-secondary uppercase tracking-wider mb-1">Start Date</label>
+               <input type="date" name="start_date" value={filters.start_date} onChange={handleFilterChange} className="w-full bg-admin-surface border border-admin-border rounded-lg px-3 py-2 text-sm text-admin-text outline-none focus:border-brand [color-scheme:dark] html[data-theme-mode='light']:![color-scheme:light]" />
+             </div>
+             <div className="flex-1">
+               <label className="block text-[10px] font-bold text-admin-text-secondary uppercase tracking-wider mb-1">End Date</label>
+               <input type="date" name="end_date" value={filters.end_date} onChange={handleFilterChange} className="w-full bg-admin-surface border border-admin-border rounded-lg px-3 py-2 text-sm text-admin-text outline-none focus:border-brand [color-scheme:dark] html[data-theme-mode='light']:![color-scheme:light]" />
+             </div>
+          </div>
+        )}
 
         <div className="flex-1 min-w-[140px]">
           <label className="block text-[10px] font-bold text-admin-text-secondary uppercase tracking-wider mb-1">Follow Up Date</label>

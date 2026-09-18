@@ -32,6 +32,12 @@ class LeadService {
         base.whereRaw('YEARWEEK(l.created_at, 1) = YEARWEEK(CURDATE(), 1)');
       } else if (query.enquiry_date === 'this_month') {
         base.whereRaw('MONTH(l.created_at) = MONTH(CURDATE()) AND YEAR(l.created_at) = YEAR(CURDATE())');
+      } else if (query.enquiry_date === 'custom' && query.start_date) {
+        if (query.end_date && query.end_date !== query.start_date) {
+          base.whereRaw('DATE(l.created_at) >= ? AND DATE(l.created_at) <= ?', [query.start_date, query.end_date]);
+        } else {
+          base.whereRaw('DATE(l.created_at) = ?', [query.start_date]);
+        }
       }
     }
 
