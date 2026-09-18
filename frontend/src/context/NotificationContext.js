@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-hot-toast';
@@ -68,17 +68,17 @@ export function NotificationProvider({ children }) {
     };
   }, [user]);
 
-  const markAsRead = (id) => {
+  const markAsRead = useCallback((id) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
     setUnreadCount((prev) => Math.max(0, prev - 1));
-  };
+  }, []);
 
-  const markAllAsRead = () => {
+  const markAllAsRead = useCallback(() => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
-  };
+  }, []);
 
   const value = {
     socket,

@@ -8,6 +8,7 @@ import EnquiryProfilePanel from '@/components/admin/enquiry/EnquiryProfilePanel'
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import { useAuth } from '@/context/AuthContext';
+import { useNotification } from '@/context/NotificationContext';
 
 export default function EnquiryPage() {
   const [enquiries, setEnquiries] = useState([]);
@@ -16,7 +17,13 @@ export default function EnquiryPage() {
   const [enquiryToEdit, setEnquiryToEdit] = useState(null);
   const [staffList, setStaffList] = useState([]);
   const { user } = useAuth();
+  const { markAllAsRead } = useNotification();
   
+  // Auto-clear notifications when visiting Leads page
+  useEffect(() => {
+    markAllAsRead();
+  }, [markAllAsRead]);
+
   // Filters
   const [filters, setFilters] = useState({
     status: '',
@@ -81,8 +88,14 @@ export default function EnquiryPage() {
     socket.emit('join_business_room', user.business_id);
     
     socket.on('new_lead', (newLead) => {
-      toast.success('New Lead Received from Meta!', { icon: '🔥', duration: 5000 });
-      setEnquiries(prev => [newLead, ...prev]);
+      // NotificationContext already shows the toast, so we just update the list here
+      setEnquiries(prev => {
+        // Prevent duplicate append if it somehow triggers twice
+        if (prev.some(lead => lead.id === newLead.id)) return prev;
+        return [newLead, ...prev];
+      });
+      // Mark as read automatically since we are on the page
+      markAllAsRead();
     });
     
     return () => {
