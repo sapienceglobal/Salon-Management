@@ -3,6 +3,7 @@
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { ConfirmProvider } from '@/context/ConfirmContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 import { Toaster } from 'react-hot-toast';
 
 /**
@@ -15,9 +16,10 @@ export function Providers({ children }) {
     <ThemeProvider>
       <AuthProvider>
         <ConfirmProvider>
-          {children}
-          <Toaster 
-            position="bottom-right"
+          <NotificationProvider>
+            {children}
+            <Toaster 
+              position="bottom-right"
             toastOptions={{
               style: {
                 background: '#1a1a2e',
@@ -39,6 +41,7 @@ export function Providers({ children }) {
               },
             }}
           />
+          </NotificationProvider>
         </ConfirmProvider>
       </AuthProvider>
     </ThemeProvider>

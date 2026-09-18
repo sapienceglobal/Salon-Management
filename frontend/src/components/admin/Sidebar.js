@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useNotification } from '@/context/NotificationContext';
 import { getInitials } from '@/lib/utils';
 import {
   RiDashboardLine, RiCalendarCheckLine, RiUserLine, RiScissorsLine,
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
 export default function Sidebar({ collapsed, onToggle }) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { unreadCount } = useNotification();
 
   return (
     <aside
@@ -86,6 +88,13 @@ export default function Sidebar({ collapsed, onToggle }) {
                 <Icon />
               </span>
               {!collapsed && <span className="overflow-hidden whitespace-nowrap">{item.label}</span>}
+              {item.label === 'Leads' && unreadCount > 0 && (
+                <span className={`ml-auto shrink-0 flex items-center justify-center h-5 px-1.5 min-w-[20px] rounded-full text-[10px] font-bold ${
+                  isActive ? 'bg-white text-brand' : 'bg-brand text-white'
+                }`}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Link>
           );
         })}

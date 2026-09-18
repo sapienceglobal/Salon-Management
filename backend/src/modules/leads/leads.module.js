@@ -4,6 +4,8 @@ import { cleanObject } from '../../utils/helpers.js';
 import { parsePagination, buildPaginationMeta } from '../../utils/pagination.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
+import { getIo } from '../../config/socket.js';
+import { sendTopicNotification } from '../../services/firebase.service.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../../middlewares/authenticate.js';
@@ -77,7 +79,22 @@ class LeadService {
       interested_services: data.interested_services ? JSON.stringify(data.interested_services) : null,
       business_id: businessId,
     });
-    return this.getById(id, businessId);
+    
+    const newLead = await this.getById(id, businessId);
+    
+    // Emit Real-time Socket Event to Admin Dashboard
+    const io = getIo();
+    io.to(`business_${businessId}`).emit('new_lead', newLead);
+    
+    // Send Firebase Push Notification to the Admin Device
+    sendTopicNotification(
+      `business_${businessId}`,
+      `New Lead: ${newLead.name}`,
+      `A new lead has arrived from ${newLead.source || 'Website'}.\nPhone: ${newLead.phone || 'N/A'}`,
+      { type: 'new_lead', leadId: newLead.id.toString() }
+    ).catch(err => console.error('Push notification failed:', err));
+
+    return newLead;
   }
 
   async update(id, businessId, data) {
