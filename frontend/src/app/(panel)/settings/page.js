@@ -63,8 +63,8 @@ export default function SettingsPage() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Manage your salon configuration, billing, and team access.</p>
+          <h1 className="text-2xl font-bold text-admin-text">Settings</h1>
+          <p className="text-sm text-admin-text-muted">Manage your salon configuration, billing, and team access.</p>
         </div>
       </div>
 
@@ -82,10 +82,10 @@ export default function SettingsPage() {
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all whitespace-nowrap lg:whitespace-normal text-left font-medium text-sm
                     ${isActive 
                       ? 'bg-primary text-white shadow-md shadow-primary/20' 
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+                      : 'text-admin-text-secondary hover:bg-admin-surface-light hover:text-admin-text'
                     }`}
                 >
-                  <Icon className={`text-xl ${isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500'}`} />
+                  <Icon className={`text-xl ${isActive ? 'text-white' : 'text-admin-text-muted'}`} />
                   {tab.label}
                 </button>
               );
@@ -94,7 +94,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Tab Content Area */}
-        <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-6 min-h-[500px]">
+        <div className="flex-1 bg-admin-surface rounded-2xl shadow-sm border border-admin-border p-6 min-h-[500px]">
           {activeTab === 'general' && <GeneralSettingsTab business={business} onUpdate={fetchSettings} />}
           {activeTab === 'operations' && <OperationsTab settings={settings} onUpdate={fetchSettings} />}
           {activeTab === 'billing' && <BillingTaxTab settings={settings} onUpdate={fetchSettings} />}

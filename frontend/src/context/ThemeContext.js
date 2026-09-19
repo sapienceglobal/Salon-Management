@@ -30,6 +30,11 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     if (!mounted) return;
     document.documentElement.setAttribute('data-theme-mode', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
     localStorage.setItem('salon-pro-theme', theme);
   }, [theme, mounted]);
 
