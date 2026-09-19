@@ -18,7 +18,7 @@ class ServiceRepository {
     return this.findCategoryById(id, businessId);
   }
   async deleteCategory(id, businessId) {
-    return db('service_categories').where({ id, business_id: businessId }).update({ is_active: false, updated_at: db.fn.now() });
+    return db('service_categories').where({ id, business_id: businessId }).del();
   }
 
   // ===== Services =====
@@ -52,7 +52,7 @@ class ServiceRepository {
     return this.findById(id, businessId);
   }
   async delete(id, businessId) {
-    return db('salon_services').where({ id, business_id: businessId }).update({ is_active: false, updated_at: db.fn.now() });
+    return db('salon_services').where({ id, business_id: businessId }).del();
   }
 }
 

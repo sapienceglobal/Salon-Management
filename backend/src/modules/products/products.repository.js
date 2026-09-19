@@ -43,7 +43,7 @@ class ProductRepository {
   }
 
   async delete(id, businessId) {
-    return db(TABLE).where({ id, business_id: businessId }).update({ is_active: false, updated_at: db.fn.now() });
+    return db(TABLE).where({ id, business_id: businessId }).del();
   }
 
   async getLowStock(businessId) {

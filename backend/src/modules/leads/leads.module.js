@@ -106,7 +106,7 @@ class LeadService {
 
   async delete(id, businessId) {
     await this.getById(id, businessId);
-    await db('leads').where({ id, business_id: businessId }).update({ is_active: false, updated_at: db.fn.now() });
+    await db('leads').where({ id, business_id: businessId }).del();
     return true;
   }
 
