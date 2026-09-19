@@ -131,11 +131,11 @@ export default function Header({ onToggleSidebar }) {
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-admin-text-secondary px-3.5 py-1.5 bg-admin-surface-light rounded-full border border-admin-border">
+        <div className="hidden lg:flex items-center gap-2 text-sm text-admin-text-secondary px-3.5 py-1.5 bg-admin-surface-light rounded-full border border-admin-border">
           📅 {today}
         </div>
 
-        <button className="flex items-center gap-2 text-sm text-admin-text-secondary px-3.5 py-1.5 bg-admin-surface-light rounded-full border border-admin-border hover:border-brand transition-colors duration-150 cursor-pointer">
+        <button className="hidden lg:flex items-center gap-2 text-sm text-admin-text-secondary px-3.5 py-1.5 bg-admin-surface-light rounded-full border border-admin-border hover:border-brand transition-colors duration-150 cursor-pointer">
           <RiMapPinLine />
           Downtown Branch
         </button>

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 /* ============================================
    SALONTIME — Tailwind v4 Design System
    CSS-first configuration with Dark/Light mode

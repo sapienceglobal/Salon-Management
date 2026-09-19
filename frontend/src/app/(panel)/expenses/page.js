@@ -128,7 +128,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Table */}
-        <div className="flex-1 overflow-x-auto relative">
+        <div className="flex-1 overflow-x-auto custom-scrollbar relative">
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center bg-admin-card/50 backdrop-blur-sm z-10 min-h-[300px]">
               <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin"></div>
@@ -140,7 +140,7 @@ export default function ExpensesPage() {
               <p className="text-sm">Add a new expense to track your spending.</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[700px] text-left border-collapse">
               <thead className="bg-admin-surface/70 z-10">
                 <tr className="text-admin-text-secondary text-xs uppercase tracking-wider">
                   <th className="p-4 font-semibold whitespace-nowrap">Date</th>

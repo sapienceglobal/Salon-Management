@@ -169,7 +169,7 @@ export default function CustomersPage() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 shrink-0">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 shrink-0">
         <div className="bg-[#4638A0] text-white p-5 rounded-2xl flex items-center justify-between shadow-lg shadow-[#4638A0]/20 relative overflow-hidden group">
           <div className="relative z-10">
             <p className="text-sm font-semibold opacity-90 mb-1 flex items-center gap-1">New Customers <span className="w-3 h-3 rounded-full border border-white/50 flex items-center justify-center text-[8px]">i</span></p>
@@ -277,7 +277,7 @@ export default function CustomersPage() {
       {/* Table Area */}
       <div className="flex-1 bg-transparent overflow-hidden flex flex-col min-h-0 border-t border-admin-border pt-4">
         <div className="overflow-x-auto flex-1 custom-scrollbar">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
+          <table className="w-full min-w-[1000px] text-left border-collapse whitespace-nowrap">
             <thead className="sticky top-0 z-10">
               <tr className="border-b border-admin-border text-[11px] uppercase tracking-wider text-admin-text-secondary">
                 <th className="py-4 pr-6 font-semibold">First name</th>

@@ -332,7 +332,7 @@ export default function POSPage() {
   );
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-130px)] gap-4">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-130px)] gap-4">
       {/* LEFT PANEL: CATALOGUE */}
       <div className="flex-1 flex flex-col min-w-0 bg-admin-surface rounded-2xl border border-admin-border overflow-hidden relative">
         
@@ -387,7 +387,7 @@ export default function POSPage() {
                 </div>
 
                 {/* Quick Stats Grid */}
-                <div className="grid grid-cols-6 gap-2 w-full max-w-3xl">
+                <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 w-full max-w-3xl mt-2">
                   {/* Membership */}
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1.5 text-admin-text-secondary text-xs font-semibold">
@@ -555,7 +555,7 @@ export default function POSPage() {
               No {activeTab.toLowerCase()} found.
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
               {displayedItems.map((item) => {
                 const typeStr = activeTab.toLowerCase();
                 const cartItem = cart.find(c => String(c.id) === String(item.id) && c.type === typeStr);
@@ -624,7 +624,7 @@ export default function POSPage() {
       </div>
 
       {/* RIGHT PANEL: CART */}
-      <div className="w-full lg:w-[350px] xl:w-[400px] flex flex-col bg-admin-surface rounded-2xl border border-admin-border shrink-0">
+      <div className="w-full md:w-[320px] lg:w-[350px] xl:w-[400px] flex flex-col bg-admin-surface rounded-2xl border border-admin-border shrink-0 z-10">
           <div className="p-4 border-b border-admin-border flex justify-between items-center">
             <h2 className="font-bold text-admin-text text-lg">Cart</h2>
             {mounted && <span className="text-xs font-semibold text-admin-text-secondary">Today | {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}

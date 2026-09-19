@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
-import { RiMailLine, RiLockLine, RiEyeLine, RiEyeOffLine, RiShieldCheckLine, RiArrowRightLine, RiStarFill } from 'react-icons/ri';
+import { RiUserLine, RiLockLine, RiEyeLine, RiEyeOffLine, RiShieldCheckLine, RiArrowRightLine, RiStarFill } from 'react-icons/ri';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +54,8 @@ function AdminLoginForm() {
 
       router.replace('/');
     } catch (err) {
-      setError(err.message || 'Invalid email or password');
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Invalid email or password';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,7 @@ function AdminLoginForm() {
   return (
     <div className="min-h-screen flex bg-admin-bg selection:bg-brand/30 selection:text-white force-dark">
       {/* Left Panel - Branding (Hidden on mobile) */}
-      <div className="hidden lg:flex w-[45%] relative bg-admin-card border-r border-admin-border overflow-hidden items-center justify-center">
+      <div className="hidden md:flex w-[40%] lg:w-[45%] relative bg-admin-card border-r border-admin-border overflow-hidden items-center justify-center">
         {/* Abstract Background Elements */}
         <div className="absolute inset-0 z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-brand/10 blur-[100px]"></div>
@@ -74,7 +75,7 @@ function AdminLoginForm() {
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]"></div>
         </div>
 
-        <div className="relative z-10 w-full max-w-lg px-12">
+        <div className="relative z-10 w-full max-w-lg px-8 lg:px-12">
           <div className="mb-8 animate-[fadeInDown_0.6s_ease-out]">
             <Image 
               src="/logo-dark.png" 
@@ -119,7 +120,7 @@ function AdminLoginForm() {
       {/* Right Panel - Form */}
       <div className="flex-1 flex flex-col items-center justify-center relative p-6 sm:p-12">
         {/* Mobile Logo (visible only on small screens) */}
-        <div className="lg:hidden flex justify-center mb-10 w-full animate-[fadeInDown_0.5s_ease-out]">
+        <div className="md:hidden flex justify-center mb-10 w-full animate-[fadeInDown_0.5s_ease-out]">
             <Image 
               src="/logo-dark.png" 
               alt="SalonTime Logo" 
@@ -144,21 +145,21 @@ function AdminLoginForm() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email */}
+            {/* Username */}
             <div className="group">
               <label htmlFor="admin-email" className="block text-sm font-medium text-admin-text-secondary mb-2 group-focus-within:text-white transition-colors">
-                Email Address
+                Username
               </label>
               <div className="relative">
-                <RiMailLine className="absolute left-4 top-1/2 -translate-y-1/2 text-admin-text-muted text-lg group-focus-within:text-brand transition-colors" />
+                <RiUserLine className="absolute left-4 top-1/2 -translate-y-1/2 text-admin-text-muted text-lg group-focus-within:text-brand transition-colors" />
                 <input 
                   id="admin-email" 
-                  type="email" 
+                  type="text" 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
-                  placeholder="admin@salon.com" 
+                  placeholder="Enter your username" 
                   required 
-                  autoComplete="email"
+                  autoComplete="username"
                   className="w-full bg-admin-surface/50 border border-admin-border hover:border-admin-border-light rounded-xl pl-11 pr-4 py-3.5 text-base text-white placeholder:text-admin-text-muted focus:bg-admin-surface focus:border-brand focus:ring-1 focus:ring-brand/30 outline-none transition-all duration-200" 
                 />
               </div>

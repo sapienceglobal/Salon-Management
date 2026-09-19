@@ -271,16 +271,11 @@ export default function DashboardPage() {
           <h1 className="font-heading text-[1.75rem] font-bold">{greeting}, {user?.first_name || 'Admin'}!</h1>
           <p className="text-sm text-admin-text-secondary mt-1">Here&apos;s your salon business overview for today.</p>
         </div>
-        <div className="bg-gradient-to-br from-[#2d1b4e] to-[#1a1040] rounded-2xl px-7 py-5 flex items-center gap-4 border border-accent-purple/20 overflow-hidden">
-          <div>
-            <h3 className="text-[1.1rem] font-bold text-white mb-1">Manage Beauty Business Smarter</h3>
-            <p className="text-sm text-white/60">Track, optimize, and grow your salon</p>
-          </div>
-        </div>
+       
       </div>
 
       {/* ====== Stat Cards ====== */}
-      <div className="grid grid-cols-4 gap-5 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
         ) : (
@@ -302,7 +297,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ====== Row 2: Appointments Table + Revenue Chart ====== */}
-      <div className="grid grid-cols-2 gap-5 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
 
         {/* Today's Appointments */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
@@ -310,13 +305,13 @@ export default function DashboardPage() {
             <span className="text-[0.95rem] font-semibold">Today&apos;s Appointments</span>
             <Link href="/appointments" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
-          <div className="p-0 max-h-[360px] overflow-y-auto custom-scrollbar relative">
+          <div className="p-0 max-h-[360px] overflow-y-auto overflow-x-auto custom-scrollbar relative">
             {loading ? (
               <TableSkeleton rows={5} />
             ) : todayAppointments.length === 0 ? (
               <EmptyState message="No appointments scheduled for today" />
             ) : (
-              <table className="w-full border-collapse">
+              <table className="w-full min-w-[500px] border-collapse">
                 <thead className="sticky top-0 bg-admin-card z-10 shadow-sm">
                   <tr>
                     {['Time', 'Customer', 'Service', 'Staff', 'Status'].map((h) => (
@@ -455,7 +450,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ====== Row 3: Quick Actions + Upcoming ====== */}
-      <div className="grid grid-cols-[2fr_1fr] gap-5 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5 mb-6">
 
         {/* Quick Actions */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
@@ -463,7 +458,7 @@ export default function DashboardPage() {
             <span className="text-[0.95rem] font-semibold">Quick Actions</span>
           </div>
           <div className="px-5 py-4">
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {QUICK_ACTIONS.map((action, i) => {
                 const Icon = action.icon;
                 return (
@@ -510,7 +505,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ====== Row 4: Top Services + Customers + Inventory + Staff ====== */}
-      <div className="grid grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
         {/* Top Services */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">

@@ -95,7 +95,7 @@ export default function NotificationsTab() {
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium"
           >
             <RiAddLine /> Create Template
           </button>
@@ -124,7 +124,7 @@ export default function NotificationsTab() {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Trigger Event *</label>
                   <select required value={formData.event_type} onChange={e => setFormData({...formData, event_type: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" >
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" >
                     <option value="appointment_created">Appointment Created (Confirmation)</option>
                     <option value="appointment_reminder">Appointment Reminder (24h before)</option>
                     <option value="appointment_cancelled">Appointment Cancelled</option>
@@ -136,7 +136,7 @@ export default function NotificationsTab() {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Channel *</label>
                   <select required value={formData.channel} onChange={e => setFormData({...formData, channel: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" >
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" >
                     <option value="sms">SMS</option>
                     <option value="email">Email</option>
                     <option value="whatsapp">WhatsApp</option>
@@ -148,7 +148,7 @@ export default function NotificationsTab() {
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email Subject *</label>
                     <input type="text" required value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})}
                       placeholder="e.g., Booking Confirmation - Luxe Salon"
-                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" />
+                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
                   </div>
                 )}
 
@@ -159,7 +159,7 @@ export default function NotificationsTab() {
                   <textarea required value={formData.body} onChange={e => setFormData({...formData, body: e.target.value})}
                     rows={6}
                     placeholder={`Hi {{customer_name}}, your appointment for {{services}} is confirmed on {{date}} at {{time}}.`}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors font-mono" />
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors font-mono" />
                   <div className="mt-2 bg-gray-100 dark:bg-gray-800/50 p-2 rounded text-[10px] text-gray-600 dark:text-gray-400">
                     <strong>Variables:</strong> {'{{customer_name}}, {{date}}, {{time}}, {{services}}, {{total_amount}}'}
                   </div>
@@ -167,7 +167,7 @@ export default function NotificationsTab() {
 
                 <div className="flex items-center pt-2">
                   <input type="checkbox" id="is_active" checked={formData.is_active} onChange={e => setFormData({...formData, is_active: e.target.checked})}
-                    className="w-4 h-4 text-primary rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600" />
+                    className="w-4 h-4 text-brand rounded focus:ring-brand dark:bg-gray-700 dark:border-gray-600" />
                   <label htmlFor="is_active" className="ml-2 block text-xs font-medium text-gray-700 dark:text-gray-300">
                     Activate this template immediately
                   </label>
@@ -179,7 +179,7 @@ export default function NotificationsTab() {
               <button type="button" onClick={closeDrawer} className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
                 Cancel
               </button>
-              <button type="submit" form="notifications-form" disabled={submitting} className="px-5 py-2.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-70 shadow-sm">
+              <button type="submit" form="notifications-form" disabled={submitting} className="px-5 py-2.5 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-70 shadow-sm">
                 {submitting ? 'Saving...' : 'Save Template'}
               </button>
             </div>

@@ -63,7 +63,7 @@ export default function OperationsTab({ settings, onUpdate }) {
             name="working_hours_start"
             value={formData.working_hours_start}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
             required
           />
         </div>
@@ -76,7 +76,7 @@ export default function OperationsTab({ settings, onUpdate }) {
             name="working_hours_end"
             value={formData.working_hours_end}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
             required
           />
         </div>
@@ -88,7 +88,7 @@ export default function OperationsTab({ settings, onUpdate }) {
             name="weekly_off_day"
             value={formData.weekly_off_day}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
           >
             <option value={0}>Sunday</option>
             <option value={1}>Monday</option>
@@ -107,7 +107,7 @@ export default function OperationsTab({ settings, onUpdate }) {
             name="appointment_slot_duration"
             value={formData.appointment_slot_duration}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
           >
             <option value={15}>15 Minutes</option>
             <option value={30}>30 Minutes</option>
@@ -126,7 +126,7 @@ export default function OperationsTab({ settings, onUpdate }) {
             onChange={handleChange}
             min={1}
             max={365}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
           />
         </div>
 
@@ -139,7 +139,7 @@ export default function OperationsTab({ settings, onUpdate }) {
             onChange={handleChange}
             rows={3}
             placeholder="E.g., Cancellations must be made 24 hours in advance to avoid a 50% charge."
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
           />
         </div>
 
@@ -149,7 +149,7 @@ export default function OperationsTab({ settings, onUpdate }) {
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg shadow-sm shadow-primary/20 font-medium transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-lg shadow-sm shadow-brand/20 font-medium transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {loading ? 'Saving...' : 'Save Changes'}
         </button>

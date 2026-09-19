@@ -266,8 +266,8 @@ export default function EnquiryPage() {
 
       {/* Table Area */}
       <div className="flex-1 bg-admin-card rounded-xl border border-admin-border overflow-hidden flex flex-col min-h-0">
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
+        <div className="overflow-x-auto custom-scrollbar flex-1">
+          <table className="w-full min-w-[1000px] text-left border-collapse whitespace-nowrap">
             <thead className="sticky top-0 z-10">
               <tr className="bg-admin-surface/70 text-admin-text-secondary border-b border-admin-border text-xs uppercase tracking-wider">
                 <th className="px-6 py-4 font-semibold">Enquiry Date</th>

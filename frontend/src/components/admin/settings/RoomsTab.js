@@ -73,7 +73,7 @@ export default function RoomsTab() {
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium"
           >
             <RiAddLine /> Add Room
           </button>
@@ -106,7 +106,7 @@ export default function RoomsTab() {
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})}
                     placeholder="e.g., Spa Room 1"
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors"
                     required
                   />
                 </div>
@@ -117,7 +117,7 @@ export default function RoomsTab() {
                     value={formData.capacity}
                     onChange={e => setFormData({...formData, capacity: Number(e.target.value)})}
                     min="1"
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors"
                     required
                   />
                 </div>
@@ -128,7 +128,7 @@ export default function RoomsTab() {
               <button type="button" onClick={closeDrawer} className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
                 Cancel
               </button>
-              <button type="submit" form="rooms-form" disabled={submitting} className="px-5 py-2.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-70 shadow-sm">
+              <button type="submit" form="rooms-form" disabled={submitting} className="px-5 py-2.5 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-70 shadow-sm">
                 {submitting ? 'Saving...' : 'Save Room'}
               </button>
             </div>
@@ -146,7 +146,7 @@ export default function RoomsTab() {
         ) : (
           rooms.map(room => (
             <div key={room.id} className="flex items-center p-4 border border-gray-100 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-4">
+              <div className="h-10 w-10 rounded-full bg-brand/10 flex items-center justify-center text-brand mr-4">
                 <RiDoorOpenLine className="text-xl" />
               </div>
               <div>

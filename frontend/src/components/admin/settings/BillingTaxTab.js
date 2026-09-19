@@ -71,7 +71,7 @@ export default function BillingTaxTab({ settings, onUpdate }) {
               name="tax_enabled"
               checked={formData.tax_enabled}
               onChange={handleChange}
-              className="w-5 h-5 text-primary rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+              className="w-5 h-5 text-brand rounded focus:ring-brand dark:bg-gray-700 dark:border-gray-600"
             />
             <label htmlFor="tax_enabled" className="ml-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Enable Taxes on Invoices (GST)
@@ -89,7 +89,7 @@ export default function BillingTaxTab({ settings, onUpdate }) {
                   onChange={handleChange}
                   step="0.01"
                   min="0"
-                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
                 />
               </div>
               <div>
@@ -101,7 +101,7 @@ export default function BillingTaxTab({ settings, onUpdate }) {
                   onChange={handleChange}
                   step="0.01"
                   min="0"
-                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
                 />
               </div>
             </>
@@ -115,7 +115,7 @@ export default function BillingTaxTab({ settings, onUpdate }) {
               value={formData.invoice_prefix}
               onChange={handleChange}
               placeholder="e.g., INV"
-              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
             />
             <p className="mt-1 text-xs text-gray-500">Invoices will look like: {formData.invoice_prefix}-0001</p>
           </div>
@@ -136,7 +136,7 @@ export default function BillingTaxTab({ settings, onUpdate }) {
               value={formData.reward_points_per_100}
               onChange={handleChange}
               min="0"
-              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -148,7 +148,7 @@ export default function BillingTaxTab({ settings, onUpdate }) {
               onChange={handleChange}
               step="0.01"
               min="0"
-              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
             />
           </div>
         </div>
@@ -167,7 +167,7 @@ export default function BillingTaxTab({ settings, onUpdate }) {
               name="feedback_enabled"
               checked={formData.feedback_enabled}
               onChange={handleChange}
-              className="w-5 h-5 text-primary rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+              className="w-5 h-5 text-brand rounded focus:ring-brand dark:bg-gray-700 dark:border-gray-600"
             />
             <label htmlFor="feedback_enabled" className="ml-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Enable Feedback System
@@ -181,7 +181,7 @@ export default function BillingTaxTab({ settings, onUpdate }) {
                 name="auto_feedback_after_visit"
                 checked={formData.auto_feedback_after_visit}
                 onChange={handleChange}
-                className="w-5 h-5 text-primary rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                className="w-5 h-5 text-brand rounded focus:ring-brand dark:bg-gray-700 dark:border-gray-600"
               />
               <label htmlFor="auto_feedback_after_visit" className="ml-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Automatically send feedback link via SMS/WhatsApp after checkout
@@ -195,7 +195,7 @@ export default function BillingTaxTab({ settings, onUpdate }) {
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg shadow-sm shadow-primary/20 font-medium transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-lg shadow-sm shadow-brand/20 font-medium transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {loading ? 'Saving...' : 'Save Changes'}
         </button>

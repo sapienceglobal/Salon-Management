@@ -283,10 +283,10 @@ export default function AppointmentsPage() {
     <div className="w-full min-w-0 flex flex-col gap-6 animate-[fadeIn_0.5s_ease_forwards]">
 
       {/* TOP ROW: MAIN CONTENT + SIDEBAR */}
-      <div className="w-full min-w-0 flex flex-col xl:flex-row gap-6 items-start">
+      <div className="w-full min-w-0 flex flex-col xl:flex-row gap-6 items-stretch">
 
         {/* ====== LEFT MAIN CONTENT ====== */}
-        <div className="w-full min-w-0 flex-1">
+        <div className="w-full min-w-0 flex-1 flex flex-col">
 
         {/* Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -364,7 +364,7 @@ export default function AppointmentsPage() {
         </div>
 
         {/* Main View Area */}
-        <div className="relative w-full rounded-2xl">
+        <div className="relative w-full rounded-2xl flex-1 flex flex-col">
           {loading && (
             <div className="absolute inset-0 bg-white/50 z-50 flex items-center justify-center rounded-2xl backdrop-blur-[2px]">
               <RiLoader2Line className="animate-spin text-brand text-4xl" />
@@ -385,7 +385,7 @@ export default function AppointmentsPage() {
               </button>
             </div>
           ) : (
-            <div className={loading ? "opacity-50 pointer-events-none" : ""}>
+            <div className={`flex-1 flex flex-col ${loading ? "opacity-50 pointer-events-none" : ""}`}>
               <ScheduleGrid 
                 staff={staffList} 
                 appointments={appointments} 
@@ -467,7 +467,7 @@ export default function AppointmentsPage() {
 
       {/* ====== FULL WIDTH BOTTOM SECTION ====== */}
       {viewMode !== 'List' && (
-        <div className={`bg-admin-card border border-admin-border rounded-2xl overflow-hidden mt-6 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className={`bg-admin-card border border-admin-border rounded-2xl overflow-hidden  ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
           <div className="flex items-center gap-6 px-5 border-b border-admin-border overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {TABS.map(tab => (
               <button
@@ -570,7 +570,7 @@ function AppointmentsTable({ appointments, onEdit, onDelete, onViewDetails }) {
 
   return (
     <div className="overflow-x-auto custom-scrollbar pb-24">
-      <table className="w-full border-collapse min-w-full whitespace-nowrap lg:whitespace-normal">
+      <table className="w-full border-collapse min-w-[1000px] whitespace-nowrap lg:whitespace-normal">
         <thead>
           <tr>
             {['#', 'Time', 'Customer', 'Service', 'Staff', 'Status', 'Payment', 'Amount', ''].map((h, i) => (

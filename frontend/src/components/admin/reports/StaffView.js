@@ -81,8 +81,8 @@ export default function StaffView({ startDate, endDate }) {
 
       {/* Staff Performance Table - Matching dark UI */}
       <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full min-w-[600px] text-left border-collapse">
             <thead>
               <tr className="bg-admin-surface/70 text-admin-text-secondary border-b border-admin-border text-xs uppercase tracking-wider">
                 <th className="p-4 font-semibold">Staff Name</th>

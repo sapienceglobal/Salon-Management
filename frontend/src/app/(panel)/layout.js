@@ -27,6 +27,13 @@ export default function AdminPanelLayout({ children }) {
   const mainRef = useRef(null);
 
   useEffect(() => {
+    // Auto-collapse sidebar on tablets/iPads on initial load
+    if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+      setSidebarCollapsed(true);
+    }
+  }, []);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       if (mainRef.current) {
         mainRef.current.scrollTo({ top: 0, behavior: 'instant' });

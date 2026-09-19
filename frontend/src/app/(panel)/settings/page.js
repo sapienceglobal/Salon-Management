@@ -54,7 +54,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent"></div>
       </div>
     );
   }
@@ -81,7 +81,7 @@ export default function SettingsPage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all whitespace-nowrap lg:whitespace-normal text-left font-medium text-sm
                     ${isActive 
-                      ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                      ? 'bg-brand text-white shadow-md shadow-brand/20' 
                       : 'text-admin-text-secondary hover:bg-admin-surface-light hover:text-admin-text'
                     }`}
                 >

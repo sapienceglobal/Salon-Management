@@ -88,7 +88,7 @@ export default function CommissionsTab() {
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium"
           >
             <RiAddLine /> Create Profile
           </button>
@@ -118,13 +118,13 @@ export default function CommissionsTab() {
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Profile Name *</label>
                   <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
                     placeholder="e.g., Senior Stylist 20%"
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" />
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Commission Type *</label>
                   <select required value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" >
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" >
                     <option value="percentage">Percentage (%)</option>
                     <option value="flat">Flat Amount (₹)</option>
                   </select>
@@ -136,7 +136,7 @@ export default function CommissionsTab() {
                   </label>
                   <input type="number" required value={formData.value} onChange={e => setFormData({...formData, value: Number(e.target.value)})}
                     min="0" step={formData.type === 'percentage' ? "1" : "0.01"}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" />
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
                 </div>
               </form>
             </div>
@@ -145,7 +145,7 @@ export default function CommissionsTab() {
               <button type="button" onClick={closeDrawer} className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
                 Cancel
               </button>
-              <button type="submit" form="commissions-form" disabled={submitting} className="px-5 py-2.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-70 shadow-sm">
+              <button type="submit" form="commissions-form" disabled={submitting} className="px-5 py-2.5 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-70 shadow-sm">
                 {submitting ? 'Saving...' : 'Save Profile'}
               </button>
             </div>
@@ -162,7 +162,7 @@ export default function CommissionsTab() {
           </div>
         ) : (
           profiles.map(profile => (
-            <div key={profile.id} className="relative group p-5 border border-gray-100 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all hover:border-primary/30">
+            <div key={profile.id} className="relative group p-5 border border-gray-100 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all hover:border-brand/30">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center">

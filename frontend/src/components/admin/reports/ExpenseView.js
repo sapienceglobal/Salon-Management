@@ -84,8 +84,8 @@ export default function ExpenseView({ startDate, endDate }) {
         <div className="p-5 border-b border-admin-border bg-admin-surface/30">
           <h3 className="font-bold text-lg">Expense Breakdown by Category</h3>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full min-w-[500px] text-left border-collapse">
             <thead>
               <tr className="bg-admin-surface/70 text-admin-text-secondary border-b border-admin-border text-xs uppercase tracking-wider">
                 <th className="p-4 font-semibold">Category</th>

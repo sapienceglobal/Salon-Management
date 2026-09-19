@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
@@ -10,7 +10,8 @@ import { getInitials } from '@/lib/utils';
 import {
   RiDashboardLine, RiCalendarCheckLine, RiUserLine, RiScissorsLine,
   RiGiftLine, RiTeamLine, RiShoppingCartLine, RiArchiveLine,
-  RiMegaphoneLine, RiBarChartLine, RiSettings3Line, RiContactsLine, RiWallet3Line, RiCalendarTodoLine
+  RiMegaphoneLine, RiBarChartLine, RiSettings3Line, RiContactsLine, RiWallet3Line, RiCalendarTodoLine,
+  RiLogoutBoxRLine
 } from 'react-icons/ri';
 import { GiLotus } from 'react-icons/gi';
 
@@ -25,7 +26,7 @@ const NAV_ITEMS = [
   { label: 'POS & Billing', href: '/billing', icon: RiShoppingCartLine },
   { label: 'Expenses', href: '/expenses', icon: RiWallet3Line },
   { label: 'Inventory', href: '/inventory', icon: RiArchiveLine },
-  { label: 'Marketing', href: '/marketing', icon: RiMegaphoneLine },
+  // { label: 'Marketing', href: '/marketing', icon: RiMegaphoneLine },
   { label: 'Reports', href: '/reports', icon: RiBarChartLine },
   { label: 'Leads', href: '/enquiry', icon: RiContactsLine },
   { label: 'Settings', href: '/settings', icon: RiSettings3Line },
@@ -33,8 +34,14 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ collapsed, onToggle }) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, logout } = useAuth();
   const { unreadCount } = useNotification();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   return (
     <aside
@@ -55,7 +62,7 @@ export default function Sidebar({ collapsed, onToggle }) {
             />
           </div>
         ) : (
-          <div className="w-[200px] h-[55px] relative shrink-0 -ml-2">
+          <div className="w-[200px] h-[55px] relative shrink-0 -ml-2 block">
             <Image 
               src="/logo-dark.png" 
               alt="SalonTime Logo" 
@@ -87,7 +94,7 @@ export default function Sidebar({ collapsed, onToggle }) {
               <span className="w-5 h-5 flex items-center justify-center shrink-0 text-lg">
                 <Icon />
               </span>
-              {!collapsed && <span className="overflow-hidden whitespace-nowrap">{item.label}</span>}
+              {!collapsed && <span className="overflow-hidden whitespace-nowrap block">{item.label}</span>}
               {item.label === 'Leads' && unreadCount > 0 && (
                 <span className={`ml-auto shrink-0 flex items-center justify-center h-5 px-1.5 min-w-[20px] rounded-full text-[10px] font-bold ${
                   isActive ? 'bg-white text-brand' : 'bg-brand text-white'
@@ -101,9 +108,8 @@ export default function Sidebar({ collapsed, onToggle }) {
       </nav>
 
       {/* Footer */}
-      {!collapsed && (
-        <div className="p-3 border-t border-white/5">
-          {/* Upgrade Card */}
+      <div className={`p-3 border-t border-white/5 transition-all duration-300 ${collapsed ? 'flex flex-col items-center justify-center gap-3' : 'block'}`}>
+        {!collapsed && (
           <div className="bg-gradient-to-br from-[#e74a8a]/15 to-[#a855f7]/15 border border-[#e74a8a]/25 rounded-2xl p-4 mb-3 text-center">
             <h4 className="text-sm font-semibold text-[#f472b6] mb-1">💎 Grow Your Salon</h4>
             <p className="text-xs text-[#64748b] mb-3">More clients. More bookings. More success.</p>
@@ -111,19 +117,40 @@ export default function Sidebar({ collapsed, onToggle }) {
               Upgrade Plan
             </button>
           </div>
+        )}
 
-          {/* User */}
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-[10px] hover:bg-white/5 transition-colors duration-150">
+        {collapsed ? (
+          <>
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#e74a8a] to-[#c2185b] flex items-center justify-center text-[0.8rem] font-bold text-white mb-2 cursor-help" title={user?.first_name || 'Admin'}>
+              {user ? getInitials(user.first_name, user.last_name) : 'A'}
+            </div>
+            <button 
+              onClick={handleLogout} 
+              className="w-10 h-10 flex items-center justify-center rounded-[10px] text-[#94a3b8] hover:bg-white/5 hover:text-[#e74a8a] transition-colors"
+              title="Logout"
+            >
+              <RiLogoutBoxRLine className="text-xl" />
+            </button>
+          </>
+        ) : (
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-[12px] bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-200 group">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#e74a8a] to-[#c2185b] flex items-center justify-center text-[0.8rem] font-bold text-white shrink-0">
               {user ? getInitials(user.first_name, user.last_name) : 'A'}
             </div>
-            <div className="overflow-hidden">
+            <div className="overflow-hidden flex-1">
               <div className="text-[0.85rem] font-semibold text-[#f1f5f9] whitespace-nowrap">{user?.first_name || 'Admin'}</div>
               <div className="text-[0.7rem] text-[#64748b] whitespace-nowrap">{user?.role?.replace('_', ' ') || 'Super Admin'}</div>
             </div>
+            <button 
+              onClick={handleLogout} 
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#94a3b8] hover:bg-[#e74a8a]/20 hover:text-[#e74a8a] transition-all opacity-0 group-hover:opacity-100" 
+              title="Logout"
+            >
+              <RiLogoutBoxRLine className="text-lg" />
+            </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </aside>
   );
 }

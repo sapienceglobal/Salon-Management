@@ -80,27 +80,31 @@ export default function ScheduleGrid({ staff = [], appointments = [], businessSe
   };
 
   return (
-    <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
-      <div className="overflow-x-auto custom-scrollbar">
-        <div className="min-w-max">
-          
-          {/* Header Row (Hours) */}
-          <div className="grid border-b border-admin-border" style={{ gridTemplateColumns: `180px repeat(${TOTAL_HOURS}, minmax(120px, 1fr))` }}>
-            <div className="px-5 py-4 font-semibold text-sm border-r border-admin-border bg-admin-surface-light flex items-center">
-              Staff
-            </div>
-            {hours.map((hour, idx) => (
-              <div key={idx} className="px-3 py-4 text-xs font-semibold text-admin-text-muted text-center border-r border-admin-border last:border-r-0 bg-admin-surface-light flex items-center justify-center">
-                {hour}
-              </div>
-            ))}
+    <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden h-full flex flex-col">
+      {staff.length === 0 ? (
+        <div className="flex-1 min-h-[250px] flex items-center justify-center p-8">
+          <div className="text-admin-text-muted font-medium">
+            No staff scheduled for today
           </div>
+        </div>
+      ) : (
+        <div className="overflow-x-auto custom-scrollbar">
+          <div className="min-w-max">
+            
+            {/* Header Row (Hours) */}
+            <div className="grid border-b border-admin-border" style={{ gridTemplateColumns: `180px repeat(${TOTAL_HOURS}, minmax(120px, 1fr))` }}>
+              <div className="px-5 py-4 font-semibold text-sm border-r border-admin-border bg-admin-surface-light flex items-center">
+                Staff
+              </div>
+              {hours.map((hour, idx) => (
+                <div key={idx} className="px-3 py-4 text-xs font-semibold text-admin-text-muted text-center border-r border-admin-border last:border-r-0 bg-admin-surface-light flex items-center justify-center">
+                  {hour}
+                </div>
+              ))}
+            </div>
 
-          {/* Staff Rows */}
-          {staff.length === 0 ? (
-            <div className="p-8 text-center text-admin-text-muted">No staff scheduled for today</div>
-          ) : (
-            staff.map((member) => (
+            {/* Staff Rows */}
+            {staff.map((member) => (
               <div key={member.id} className="grid border-b border-admin-border last:border-b-0 group" style={{ gridTemplateColumns: `180px repeat(${TOTAL_HOURS}, minmax(120px, 1fr))` }}>
                 
                 {/* Staff Info Column */}
@@ -172,10 +176,10 @@ export default function ScheduleGrid({ staff = [], appointments = [], businessSe
                   })}
                 </div>
               </div>
-            ))
-          )}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

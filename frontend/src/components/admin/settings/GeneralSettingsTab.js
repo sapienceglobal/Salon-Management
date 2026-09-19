@@ -65,7 +65,7 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
             required
           />
         </div>
@@ -78,7 +78,7 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
             required
           />
         </div>
@@ -91,7 +91,7 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
             name="phone"
             value={formData.phone}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
             required
           />
         </div>
@@ -103,7 +103,7 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
             name="currency"
             value={formData.currency}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
           >
             <option value="INR">INR (₹)</option>
             <option value="USD">USD ($)</option>
@@ -120,7 +120,7 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
             value={formData.address}
             onChange={handleChange}
             rows={2}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
           />
         </div>
 
@@ -132,7 +132,7 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
             name="city"
             value={formData.city}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
           />
         </div>
 
@@ -144,7 +144,7 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
             name="state"
             value={formData.state}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
           />
         </div>
 
@@ -156,7 +156,7 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
             name="pincode"
             value={formData.pincode}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
           />
         </div>
 
@@ -167,7 +167,7 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
             name="timezone"
             value={formData.timezone}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
           >
             <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
             <option value="UTC">UTC</option>
@@ -181,7 +181,7 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg shadow-sm shadow-primary/20 font-medium transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-lg shadow-sm shadow-brand/20 font-medium transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {loading ? 'Saving...' : 'Save Changes'}
         </button>

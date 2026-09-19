@@ -163,7 +163,7 @@ export default function AttendancePage() {
         </div>
 
         {/* Grid Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-max">
             <thead>
               <tr className="border-b border-admin-border text-admin-text-secondary text-xs uppercase tracking-wider">

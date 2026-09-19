@@ -201,7 +201,7 @@ export default function GlobalSearch() {
 
   return (
     <div className="relative z-50" ref={wrapperRef}>
-      <div className="flex items-center gap-2.5 bg-admin-surface-light border border-admin-border rounded-full px-[18px] py-2 w-[420px] focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all duration-200 shadow-sm">
+      <div className="flex items-center gap-2.5 bg-admin-surface-light border border-admin-border rounded-full px-[18px] py-2 w-[280px] md:w-[320px] xl:w-[420px] focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all duration-200 shadow-sm">
         {loading ? (
           <RiLoader2Line className="text-brand text-base shrink-0 animate-spin" />
         ) : (
@@ -230,7 +230,7 @@ export default function GlobalSearch() {
 
       {/* Dropdown Overlay */}
       {isOpen && query.length >= 2 && (
-        <div className="absolute top-[calc(100%+12px)] left-0 w-[550px] bg-admin-card border border-admin-border rounded-2xl shadow-2xl overflow-hidden animate-[fadeOpacity_0.2s_ease_forwards]">
+        <div className="absolute top-[calc(100%+12px)] left-0 w-[90vw] md:w-[450px] xl:w-[550px] bg-admin-card border border-admin-border rounded-2xl shadow-2xl overflow-hidden animate-[fadeOpacity_0.2s_ease_forwards]">
           
           {loading && !results && (
             <div className="p-8 text-center text-admin-text-secondary text-sm flex flex-col items-center gap-3">

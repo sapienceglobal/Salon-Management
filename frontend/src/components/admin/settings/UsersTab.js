@@ -88,7 +88,7 @@ export default function UsersTab() {
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium"
           >
             <RiAddLine /> Add User
           </button>
@@ -125,31 +125,31 @@ export default function UsersTab() {
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">First Name *</label>
                     <input type="text" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})}
-                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" />
+                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
                     <input type="text" value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})}
-                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" />
+                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email (Used for Login) *</label>
                   <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" />
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
                   <input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" />
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">System Role *</label>
                   <select required value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" >
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" >
                     <option value="admin">Admin (Full System Access)</option>
                     <option value="manager">Manager (Operations Access)</option>
                     <option value="receptionist">Receptionist (Front Desk / Appointments)</option>
@@ -160,7 +160,7 @@ export default function UsersTab() {
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Temporary Password *</label>
                   <input type="text" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} minLength={8}
                     placeholder="Min 8 characters"
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" />
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
                 </div>
               </form>
             </div>
@@ -170,7 +170,7 @@ export default function UsersTab() {
               <button type="button" onClick={closeDrawer} className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
                 Cancel
               </button>
-              <button type="submit" form="user-form" disabled={submitting} className="px-5 py-2.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-70 shadow-sm">
+              <button type="submit" form="user-form" disabled={submitting} className="px-5 py-2.5 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-70 shadow-sm">
                 {submitting ? 'Creating...' : 'Create User'}
               </button>
             </div>
@@ -180,8 +180,8 @@ export default function UsersTab() {
       )}
 
       {/* Users Table */}
-      <div className="overflow-x-auto border border-gray-100 dark:border-gray-800 rounded-xl">
-        <table className="w-full text-left border-collapse">
+      <div className="overflow-x-auto border border-gray-100 dark:border-gray-800 rounded-xl custom-scrollbar">
+        <table className="w-full min-w-[700px] text-left border-collapse">
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
               <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
