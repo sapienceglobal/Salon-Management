@@ -4,9 +4,9 @@ export async function seed(knex) {
   console.log('Seeding extensive dummy data...');
 
   // Get business
-  const business = await knex('businesses').where({ slug: 'luxe-salon' }).first();
+  const business = await knex('businesses').first();
   if (!business) {
-    console.error('Luxe Salon business not found. Run 01_initial_seed first.');
+    console.error('No business found. Run 01_initial_seed first.');
     return;
   }
   const businessId = business.id;

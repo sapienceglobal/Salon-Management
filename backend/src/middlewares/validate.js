@@ -76,6 +76,9 @@ export const validate = (schemas) => {
     }
 
     if (errors.length > 0) {
+      import('../config/logger.js').then(({ logger }) => {
+        logger.error('Validation errors: ' + JSON.stringify(errors, null, 2));
+      }).catch(console.error);
       return next(ApiError.validationError(errors));
     }
 

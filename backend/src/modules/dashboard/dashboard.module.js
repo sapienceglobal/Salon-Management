@@ -12,20 +12,33 @@ class DashboardService {
   /**
    * Main dashboard summary — stat cards data
    */
-  async getSummary(businessId) {
-    const cacheKey = `dashboard:summary:${businessId}`;
+  async getSummary(businessId, reqStartDate, reqEndDate) {
+    const cacheKey = `dashboard:summary:${businessId}:${reqStartDate || 'today'}:${reqEndDate || 'today'}`;
 
     return cache.getOrSet(cacheKey, async () => {
       const pad = (n) => n.toString().padStart(2, '0');
       const toYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
       
       const todayObj = new Date();
-      const today = toYMD(todayObj);
-      const startOfMonth = `${today.substring(0, 7)}-01`;
+      const todayStr = toYMD(todayObj);
 
-      const yesterdayObj = new Date(todayObj);
-      yesterdayObj.setDate(todayObj.getDate() - 1);
-      const yesterday = toYMD(yesterdayObj);
+      const startStr = reqStartDate || todayStr;
+      const endStr = reqEndDate || todayStr;
+
+      const startObj = new Date(startStr);
+      const endObj = new Date(endStr);
+      const diffMs = endObj - startObj;
+      const diffDays = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24))) + 1;
+      
+      const prevEndObj = new Date(startObj);
+      prevEndObj.setDate(startObj.getDate() - 1);
+      const prevStartObj = new Date(prevEndObj);
+      prevStartObj.setDate(prevEndObj.getDate() - (diffDays - 1));
+      
+      const prevStartStr = toYMD(prevStartObj);
+      const prevEndStr = toYMD(prevEndObj);
+
+      const startOfMonth = `${todayStr.substring(0, 7)}-01`;
 
       const firstDayLastMonthObj = new Date(todayObj.getFullYear(), todayObj.getMonth() - 1, 1);
       const lastDayLastMonthObj = new Date(todayObj.getFullYear(), todayObj.getMonth(), 0);
@@ -40,11 +53,11 @@ class DashboardService {
         return { value: Math.abs(pct), is_up: pct >= 0 };
       };
 
-      // Today's revenue stats
+      // Current period's revenue stats
       const [todayStats] = await db('invoices')
         .where({ business_id: businessId })
-        .where('created_at', '>=', `${today} 00:00:00`)
-        .where('created_at', '<=', `${today} 23:59:59`)
+        .where('created_at', '>=', `${startStr} 00:00:00`)
+        .where('created_at', '<=', `${endStr} 23:59:59`)
         .whereNot('status', 'cancelled')
         .select(
           db.raw('COUNT(*) as today_invoices'),
@@ -54,8 +67,8 @@ class DashboardService {
 
       const [yesterdayStats] = await db('invoices')
         .where({ business_id: businessId })
-        .where('created_at', '>=', `${yesterday} 00:00:00`)
-        .where('created_at', '<=', `${yesterday} 23:59:59`)
+        .where('created_at', '>=', `${prevStartStr} 00:00:00`)
+        .where('created_at', '<=', `${prevEndStr} 23:59:59`)
         .whereNot('status', 'cancelled')
         .select(
           db.raw('COUNT(*) as yesterday_invoices'),
@@ -63,9 +76,11 @@ class DashboardService {
           db.raw('COALESCE(SUM(paid_amount), 0) as yesterday_collected')
         );
 
-      // Today's appointment counts
+      // Current period's appointment counts
       const [todayAppointments] = await db('appointments')
-        .where({ business_id: businessId, appointment_date: today })
+        .where({ business_id: businessId })
+        .where('appointment_date', '>=', startStr)
+        .where('appointment_date', '<=', endStr)
         .whereNotIn('status', ['cancelled'])
         .select(
           db.raw('COUNT(*) as total'),
@@ -75,7 +90,9 @@ class DashboardService {
         );
 
       const [yesterdayAppointments] = await db('appointments')
-        .where({ business_id: businessId, appointment_date: yesterday })
+        .where({ business_id: businessId })
+        .where('appointment_date', '>=', prevStartStr)
+        .where('appointment_date', '<=', prevEndStr)
         .whereNotIn('status', ['cancelled'])
         .select(
           db.raw('COUNT(*) as total'),
@@ -428,7 +445,7 @@ router.use(authenticate, businessScope(), authorize('super_admin', 'admin', 'man
 
 router.get('/summary', asyncHandler(async (req, res) => {
   const businessId = req.user.business_id;
-  ApiResponse.ok('Dashboard summary', await dashboardService.getSummary(businessId)).send(res);
+  ApiResponse.ok('Dashboard summary', await dashboardService.getSummary(businessId, req.query.startDate, req.query.endDate)).send(res);
 }));
 
 router.get('/revenue-chart', asyncHandler(async (req, res) => {

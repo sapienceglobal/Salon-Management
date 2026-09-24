@@ -4,7 +4,7 @@ export const createCustomerSchema = {
   body: z.object({
     first_name: z.string().min(1, 'First name is required').max(100),
     last_name: z.string().max(100).optional(),
-    phone: z.string().min(10).max(20).optional(),
+    phone: z.string().min(5).max(20).optional(),
     email: z.string().email('Invalid email').max(255).optional(),
     gender: z.enum(['male', 'female', 'other']).optional(),
     date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date format: YYYY-MM-DD').optional(),
@@ -14,7 +14,7 @@ export const createCustomerSchema = {
     sms_opt_in: z.boolean().optional(),
     email_opt_in: z.boolean().optional(),
     whatsapp_opt_in: z.boolean().optional(),
-    source: z.enum(['walk_in', 'referral', 'online', 'campaign']).optional(),
+    source: z.string().max(50).optional(),
     notes: z.string().max(2000).optional(),
   }),
 };
@@ -29,7 +29,7 @@ export const updateCustomerSchema = {
   body: z.object({
     first_name: z.string().min(1).max(100).optional(),
     last_name: z.string().max(100).optional(),
-    phone: z.string().min(10).max(20).optional(),
+    phone: z.string().min(5).max(20).optional(),
     email: z.string().email('Invalid email').max(255).optional(),
     gender: z.enum(['male', 'female', 'other']).optional(),
     date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
@@ -39,7 +39,7 @@ export const updateCustomerSchema = {
     sms_opt_in: z.boolean().optional(),
     email_opt_in: z.boolean().optional(),
     whatsapp_opt_in: z.boolean().optional(),
-    source: z.enum(['walk_in', 'referral', 'online', 'campaign']).optional(),
+    source: z.string().max(50).optional(),
     notes: z.string().max(2000).optional().nullable(),
     is_active: z.boolean().optional(),
   }),

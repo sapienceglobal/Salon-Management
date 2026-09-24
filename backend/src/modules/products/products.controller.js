@@ -11,11 +11,19 @@ export const getProduct = asyncHandler(async (req, res) => {
   ApiResponse.ok('Product fetched', product).send(res);
 });
 export const createProduct = asyncHandler(async (req, res) => {
-  const product = await productService.create(req.user.business_id, req.body);
+  const payload = { ...req.body };
+  if (req.file) {
+    payload.image_url = `/uploads/${req.file.filename}`;
+  }
+  const product = await productService.create(req.user.business_id, payload);
   ApiResponse.created('Product created', product).send(res);
 });
 export const updateProduct = asyncHandler(async (req, res) => {
-  const product = await productService.update(req.params.id, req.user.business_id, req.body);
+  const payload = { ...req.body };
+  if (req.file) {
+    payload.image_url = `/uploads/${req.file.filename}`;
+  }
+  const product = await productService.update(req.params.id, req.user.business_id, payload);
   ApiResponse.ok('Product updated', product).send(res);
 });
 export const updateStock = asyncHandler(async (req, res) => {

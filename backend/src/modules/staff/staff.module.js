@@ -8,18 +8,19 @@ import { z } from 'zod';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorize, businessScope } from '../../middlewares/authorize.js';
 import { validate } from '../../middlewares/validate.js';
+import { singleImage } from '../../utils/fileUpload.js';
 
 const idParam = z.object({ id: z.string().regex(/^\d+$/).transform(Number) });
 
 // ===== VALIDATION =====
 const createStaffSchema = {
   body: z.object({
-    user_id: z.number().int().positive(),
+    user_id: z.coerce.number().int().positive(),
     designation: z.string().max(100).optional(),
-    specializations: z.array(z.string()).optional(),
+    specializations: z.any().optional(),
     joining_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    salary: z.number().nonnegative().optional(),
-    commission_profile_id: z.number().int().positive().optional(),
+    salary: z.coerce.number().nonnegative().optional(),
+    commission_profile_id: z.coerce.number().int().positive().optional(),
     bio: z.string().max(2000).optional(),
   }),
 };
@@ -50,7 +51,7 @@ class StaffService {
     const staff = await db('staff_members as sm')
       .join('users as u', 'sm.user_id', 'u.id')
       .where({ 'sm.id': id, 'sm.business_id': businessId })
-      .select('sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role', 'u.avatar_url')
+      .select('sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role', 'u.avatar_url', 'u.is_active')
       .first();
     if (!staff) throw ApiError.notFound('Staff member not found');
 
@@ -159,6 +160,80 @@ class StaffService {
 
     return { ...appointmentStats, ...commissionStats, ...attendanceStats };
   }
+
+  // Profile - Services
+  async getServices(staffId, businessId) {
+    // Return all salon services and annotate if assigned to this staff
+    const allServices = await db('salon_services as ss')
+      .leftJoin('service_categories as sc', 'ss.category_id', 'sc.id')
+      .where('ss.business_id', businessId)
+      .select('ss.*', 'sc.name as category_name');
+    
+    const assigned = await db('staff_services').where({ staff_id: staffId, is_assigned: true });
+    
+    return allServices.map(s => {
+      const match = assigned.find(a => a.service_id === s.id);
+      return {
+        ...s,
+        is_assigned: !!match,
+        duration_mins: match && match.duration_mins ? match.duration_mins : s.duration_minutes,
+        price: match && match.price ? match.price : s.price
+      };
+    });
+  }
+
+  async updateServices(staffId, businessId, data) {
+    // data is array of { service_id, is_assigned, duration_mins, price }
+    await db('staff_services').where({ staff_id: staffId }).del();
+    const rows = data.filter(d => d.is_assigned).map(d => ({
+      staff_id: staffId,
+      service_id: d.service_id,
+      duration_mins: d.duration_mins,
+      price: d.price
+    }));
+    if (rows.length > 0) {
+      await db('staff_services').insert(rows);
+    }
+    return this.getServices(staffId, businessId);
+  }
+
+  // Profile - Schedule
+  async getSchedule(staffId, businessId) {
+    return db('staff_schedules').where({ staff_id: staffId }).orderBy('day_of_week');
+  }
+
+  async updateSchedule(staffId, businessId, schedules) {
+    await db('staff_schedules').where({ staff_id: staffId }).del();
+    if (schedules.length > 0) {
+      const rows = schedules.map(s => ({ staff_id: staffId, ...s }));
+      await db('staff_schedules').insert(rows);
+    }
+    return this.getSchedule(staffId, businessId);
+  }
+
+  // Profile - Leaves
+  async getLeaves(staffId, businessId) {
+    return db('staff_leaves').where({ staff_id: staffId }).orderBy('date', 'desc');
+  }
+
+  async addLeave(staffId, businessId, data) {
+    const [id] = await db('staff_leaves').insert({ staff_id: staffId, ...data });
+    return db('staff_leaves').where({ id }).first();
+  }
+  async deleteStaff(id, businessId) {
+    const staff = await this.getById(id, businessId);
+    // Soft delete by deactivating the user account
+    await db('users').where({ id: staff.user_id }).update({ is_active: false, updated_at: db.fn.now() });
+    await db('staff_members').where({ id, business_id: businessId }).update({ updated_at: db.fn.now() });
+    return { success: true };
+  }
+
+  async toggleActive(id, businessId) {
+    const staff = await this.getById(id, businessId);
+    const newStatus = !staff.is_active;
+    await db('users').where({ id: staff.user_id }).update({ is_active: newStatus, updated_at: db.fn.now() });
+    return this.getById(id, businessId);
+  }
 }
 
 const staffService = new StaffService();
@@ -174,11 +249,26 @@ const getStaffMember = asyncHandler(async (req, res) => {
 });
 const createStaffMember = asyncHandler(async (req, res) => {
   const staff = await staffService.create(req.user.business_id, req.body);
+  if (req.file) {
+    await db('users').where({ id: req.body.user_id }).update({ avatar_url: `/uploads/${req.file.filename}` });
+  }
   ApiResponse.created('Staff member created', staff).send(res);
 });
 const updateStaffMember = asyncHandler(async (req, res) => {
   const staff = await staffService.update(req.params.id, req.user.business_id, req.body);
+  if (req.file) {
+    const staffRec = await staffService.getById(req.params.id, req.user.business_id);
+    await db('users').where({ id: staffRec.user_id }).update({ avatar_url: `/uploads/${req.file.filename}` });
+  }
   ApiResponse.ok('Staff member updated', staff).send(res);
+});
+const deleteStaffMember = asyncHandler(async (req, res) => {
+  const result = await staffService.deleteStaff(req.params.id, req.user.business_id);
+  ApiResponse.ok('Staff member deactivated', result).send(res);
+});
+const toggleStaffActive = asyncHandler(async (req, res) => {
+  const staff = await staffService.toggleActive(req.params.id, req.user.business_id);
+  ApiResponse.ok('Staff status updated', staff).send(res);
 });
 const markAttendance = asyncHandler(async (req, res) => {
   const record = await staffService.markAttendance(req.user.business_id, req.user.id, req.body);
@@ -198,6 +288,30 @@ const getPerformance = asyncHandler(async (req, res) => {
   const perf = await staffService.getPerformance(req.params.id, req.user.business_id, startDate, endDate);
   ApiResponse.ok('Performance fetched', perf).send(res);
 });
+const getStaffServices = asyncHandler(async (req, res) => {
+  const data = await staffService.getServices(req.params.id, req.user.business_id);
+  ApiResponse.ok('Services fetched', data).send(res);
+});
+const updateStaffServices = asyncHandler(async (req, res) => {
+  const data = await staffService.updateServices(req.params.id, req.user.business_id, req.body.services);
+  ApiResponse.ok('Services updated', data).send(res);
+});
+const getStaffSchedule = asyncHandler(async (req, res) => {
+  const data = await staffService.getSchedule(req.params.id, req.user.business_id);
+  ApiResponse.ok('Schedule fetched', data).send(res);
+});
+const updateStaffSchedule = asyncHandler(async (req, res) => {
+  const data = await staffService.updateSchedule(req.params.id, req.user.business_id, req.body.schedules);
+  ApiResponse.ok('Schedule updated', data).send(res);
+});
+const getStaffLeaves = asyncHandler(async (req, res) => {
+  const data = await staffService.getLeaves(req.params.id, req.user.business_id);
+  ApiResponse.ok('Leaves fetched', data).send(res);
+});
+const addStaffLeave = asyncHandler(async (req, res) => {
+  const data = await staffService.addLeave(req.params.id, req.user.business_id, req.body);
+  ApiResponse.created('Leave added', data).send(res);
+});
 
 // ===== ROUTES =====
 const router = Router();
@@ -208,8 +322,16 @@ router.get('/attendance', getAttendance);
 router.get('/commissions', authorize('super_admin', 'admin', 'manager'), getCommissions);
 router.get('/:id', validate({ params: idParam }), getStaffMember);
 router.get('/:id/performance', validate({ params: idParam }), getPerformance);
-router.post('/', authorize('super_admin', 'admin'), validate(createStaffSchema), createStaffMember);
-router.put('/:id', authorize('super_admin', 'admin', 'manager'), validate(updateStaffSchema), updateStaffMember);
+router.get('/:id/services', validate({ params: idParam }), getStaffServices);
+router.post('/:id/services', validate({ params: idParam }), updateStaffServices);
+router.get('/:id/schedule', validate({ params: idParam }), getStaffSchedule);
+router.post('/:id/schedule', validate({ params: idParam }), updateStaffSchedule);
+router.get('/:id/leaves', validate({ params: idParam }), getStaffLeaves);
+router.post('/:id/leaves', validate({ params: idParam }), addStaffLeave);
+router.post('/', authorize('super_admin', 'admin'), singleImage('image'), validate(createStaffSchema), createStaffMember);
+router.put('/:id', authorize('super_admin', 'admin', 'manager'), singleImage('image'), validate(updateStaffSchema), updateStaffMember);
+router.delete('/:id', authorize('super_admin', 'admin'), validate({ params: idParam }), deleteStaffMember);
+router.patch('/:id/toggle-active', authorize('super_admin', 'admin'), validate({ params: idParam }), toggleStaffActive);
 router.post('/attendance', authorize('super_admin', 'admin', 'manager', 'receptionist'), validate(markAttendanceSchema), markAttendance);
 
 export default router;

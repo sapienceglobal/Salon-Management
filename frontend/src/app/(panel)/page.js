@@ -57,6 +57,7 @@ function CardSkeleton() {
     <div className="bg-admin-card border border-admin-border rounded-2xl p-5 flex items-center gap-4">
       <Skeleton className="w-[52px] h-[52px] rounded-[10px]" />
       <div className="flex-1 space-y-2">
+      
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-7 w-16" />
         <Skeleton className="h-3 w-32" />

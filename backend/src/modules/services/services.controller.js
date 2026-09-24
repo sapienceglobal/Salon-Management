@@ -34,11 +34,31 @@ export const getServicesByCategory = asyncHandler(async (req, res) => {
   ApiResponse.ok('Services by category fetched', services).send(res);
 });
 export const createService = asyncHandler(async (req, res) => {
-  const service = await serviceService.create(req.user.business_id, req.body);
+  const data = { ...req.body };
+  let allImages = [];
+  if (data.existing_images) {
+    allImages = allImages.concat(data.existing_images.split(',').filter(Boolean));
+  }
+  delete data.existing_images;
+  if (req.files && req.files.length > 0) {
+    allImages = allImages.concat(req.files.map(f => `/uploads/${f.filename}`));
+  }
+  data.image_url = allImages.length > 0 ? allImages.join(',') : null;
+  const service = await serviceService.create(req.user.business_id, data);
   ApiResponse.created('Service created', service).send(res);
 });
 export const updateService = asyncHandler(async (req, res) => {
-  const service = await serviceService.update(req.params.id, req.user.business_id, req.body);
+  const data = { ...req.body };
+  let allImages = [];
+  if (data.existing_images) {
+    allImages = allImages.concat(data.existing_images.split(',').filter(Boolean));
+  }
+  delete data.existing_images;
+  if (req.files && req.files.length > 0) {
+    allImages = allImages.concat(req.files.map(f => `/uploads/${f.filename}`));
+  }
+  data.image_url = allImages.length > 0 ? allImages.join(',') : null;
+  const service = await serviceService.update(req.params.id, req.user.business_id, data);
   ApiResponse.ok('Service updated', service).send(res);
 });
 export const deleteService = asyncHandler(async (req, res) => {

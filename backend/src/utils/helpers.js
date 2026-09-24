@@ -43,7 +43,9 @@ export function generateInvoiceNumber(prefix = 'INV', counter = 1) {
  * @returns {Object} - { cgst, sgst, totalTax, amountWithTax }
  */
 export function calculateGST(amount, taxPercentage) {
-  const totalTax = (amount * taxPercentage) / 100;
+  const safeAmount = Number(amount) || 0;
+  const safeTax = Number(taxPercentage) || 0;
+  const totalTax = (safeAmount * safeTax) / 100;
   const cgst = totalTax / 2;
   const sgst = totalTax / 2;
   return {

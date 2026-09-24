@@ -17,8 +17,19 @@ export const getCustomerProfile = asyncHandler(async (req, res) => {
   ApiResponse.ok('Customer profile fetched successfully', profile).send(res);
 });
 
+const mapSource = (source) => {
+  if (!source) return undefined;
+  const s = source.toLowerCase();
+  if (s.includes('walk')) return 'walk_in';
+  if (s.includes('refer')) return 'referral';
+  if (s.includes('campaign')) return 'campaign';
+  return 'online';
+};
+
 export const createCustomer = asyncHandler(async (req, res) => {
-  const customer = await customerService.create(req.user.business_id, req.body);
+  const data = { ...req.body };
+  if (data.source) data.source = mapSource(data.source);
+  const customer = await customerService.create(req.user.business_id, data);
   ApiResponse.created('Customer created successfully', customer).send(res);
 });
 
@@ -28,7 +39,9 @@ export const importCustomers = asyncHandler(async (req, res) => {
 });
 
 export const updateCustomer = asyncHandler(async (req, res) => {
-  const customer = await customerService.update(req.params.id, req.user.business_id, req.body);
+  const data = { ...req.body };
+  if (data.source) data.source = mapSource(data.source);
+  const customer = await customerService.update(req.params.id, req.user.business_id, data);
   ApiResponse.ok('Customer updated successfully', customer).send(res);
 });
 

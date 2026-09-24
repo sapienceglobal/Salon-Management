@@ -70,11 +70,12 @@ class BillingService {
           if (!mem) throw ApiError.notFound(`Membership ID ${item.item_id} not found`);
           itemName = mem.name;
           unitPrice = item.unit_price || mem.price;
-          taxPercentage = settings.tax_enabled ? (settings.default_cgst + settings.default_sgst) : 0;
+          taxPercentage = settings.tax_enabled ? (Number(settings.default_cgst) + Number(settings.default_sgst)) : 0;
         }
 
-        const lineDiscount = item.discount || 0;
-        const discountedPrice = unitPrice * item.quantity - lineDiscount;
+        const lineDiscount = Number(item.discount) || 0;
+        const safeUnitPrice = Number(unitPrice) || 0;
+        const discountedPrice = (safeUnitPrice * item.quantity) - lineDiscount;
         const gst = settings.tax_enabled ? calculateGST(discountedPrice, taxPercentage) : { cgst: 0, sgst: 0, totalTax: 0, amountWithTax: discountedPrice };
 
         subtotal += discountedPrice;
@@ -346,11 +347,24 @@ class BillingService {
     if (query.end_date) base.where('i.created_at', '<=', `${query.end_date} 23:59:59`);
 
     const [{ count }] = await base.clone().count('* as count');
-    const invoices = await base.clone()
+    const rawInvoices = await base.clone()
       .select('i.*', 'c.first_name as customer_first_name', 'c.last_name as customer_last_name', 'c.phone as customer_phone')
       .orderBy('i.created_at', 'desc')
       .limit(parseInt(limit, 10))
       .offset(offset);
+      
+    const invoices = rawInvoices.map(invoice => {
+      invoice.customer = {
+        id: invoice.customer_id,
+        first_name: invoice.customer_first_name,
+        last_name: invoice.customer_last_name,
+        phone: invoice.customer_phone,
+      };
+      delete invoice.customer_first_name;
+      delete invoice.customer_last_name;
+      delete invoice.customer_phone;
+      return invoice;
+    });
 
     return { invoices, meta: { page: parseInt(page, 10), limit: parseInt(limit, 10), total: parseInt(count, 10), totalPages: Math.ceil(parseInt(count, 10) / parseInt(limit, 10)) } };
   }
@@ -370,6 +384,23 @@ class BillingService {
       .select('ii.*', 'u.first_name as staff_name');
 
     invoice.payments = await db('payments').where({ invoice_id: id }).orderBy('created_at', 'asc');
+
+    // Format customer object for frontend
+    invoice.customer = {
+      id: invoice.customer_id,
+      first_name: invoice.customer_first_name,
+      last_name: invoice.customer_last_name,
+      phone: invoice.customer_phone,
+      email: invoice.customer_email,
+      gst_number: invoice.customer_gst_number,
+    };
+    
+    // Clean up flat fields
+    delete invoice.customer_first_name;
+    delete invoice.customer_last_name;
+    delete invoice.customer_phone;
+    delete invoice.customer_email;
+    delete invoice.customer_gst_number;
 
     return invoice;
   }

@@ -16,7 +16,9 @@ class ProductService {
       const existing = await productRepository.findBySku(data.sku, businessId);
       if (existing) throw ApiError.conflict('A product with this SKU already exists');
     }
-    return productRepository.create({ ...data, business_id: businessId });
+    // 'supplier' column might not exist in db, so we strip it to prevent Unknown column error
+    const { supplier, ...dbData } = data;
+    return productRepository.create({ ...dbData, business_id: businessId });
   }
 
   async update(id, businessId, data) {
@@ -25,7 +27,8 @@ class ProductService {
       const existing = await productRepository.findBySku(data.sku, businessId);
       if (existing && existing.id !== id) throw ApiError.conflict('SKU already in use');
     }
-    return productRepository.update(id, businessId, cleanObject(data));
+    const { supplier, ...dbData } = data;
+    return productRepository.update(id, businessId, cleanObject(dbData));
   }
 
   async updateStock(id, businessId, quantityChange) {
