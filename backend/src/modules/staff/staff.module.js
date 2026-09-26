@@ -248,18 +248,18 @@ const getStaffMember = asyncHandler(async (req, res) => {
   ApiResponse.ok('Staff member fetched', staff).send(res);
 });
 const createStaffMember = asyncHandler(async (req, res) => {
-  const staff = await staffService.create(req.user.business_id, req.body);
   if (req.file) {
     await db('users').where({ id: req.body.user_id }).update({ avatar_url: `/uploads/${req.file.filename}` });
   }
+  const staff = await staffService.create(req.user.business_id, req.body);
   ApiResponse.created('Staff member created', staff).send(res);
 });
 const updateStaffMember = asyncHandler(async (req, res) => {
-  const staff = await staffService.update(req.params.id, req.user.business_id, req.body);
   if (req.file) {
     const staffRec = await staffService.getById(req.params.id, req.user.business_id);
     await db('users').where({ id: staffRec.user_id }).update({ avatar_url: `/uploads/${req.file.filename}` });
   }
+  const staff = await staffService.update(req.params.id, req.user.business_id, req.body);
   ApiResponse.ok('Staff member updated', staff).send(res);
 });
 const deleteStaffMember = asyncHandler(async (req, res) => {

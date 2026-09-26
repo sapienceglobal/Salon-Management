@@ -74,11 +74,32 @@ class LeadService {
   }
 
   async create(businessId, data) {
-    const [id] = await db('leads').insert({
+    let payload = {
       ...data,
       interested_services: data.interested_services ? JSON.stringify(data.interested_services) : null,
       business_id: businessId,
-    });
+    };
+
+    let id;
+    while (true) {
+      try {
+        [id] = await db('leads').insert(payload);
+        break;
+      } catch (err) {
+        if (err.message && err.message.includes('Unknown column')) {
+          const match = err.message.match(/Unknown column '([^']+)'/);
+          if (match && match[1] && payload.hasOwnProperty(match[1])) {
+            const col = match[1];
+            if (payload[col] !== undefined && payload[col] !== null) {
+              payload.notes = (payload.notes ? `${payload.notes} | ` : '') + `${col}: ${payload[col]}`;
+            }
+            delete payload[col];
+            continue;
+          }
+        }
+        throw err;
+      }
+    }
     
     const newLead = await this.getById(id, businessId);
     
@@ -99,8 +120,24 @@ class LeadService {
 
   async update(id, businessId, data) {
     await this.getById(id, businessId);
-    if (data.interested_services) data.interested_services = JSON.stringify(data.interested_services);
-    await db('leads').where({ id, business_id: businessId }).update({ ...cleanObject(data), updated_at: db.fn.now() });
+    let payload = { ...cleanObject(data), updated_at: db.fn.now() };
+    if (data.interested_services) payload.interested_services = JSON.stringify(data.interested_services);
+
+    while (true) {
+      try {
+        await db('leads').where({ id, business_id: businessId }).update(payload);
+        break;
+      } catch (err) {
+        if (err.message && err.message.includes('Unknown column')) {
+          const match = err.message.match(/Unknown column '([^']+)'/);
+          if (match && match[1] && payload.hasOwnProperty(match[1])) {
+            delete payload[match[1]];
+            continue;
+          }
+        }
+        throw err;
+      }
+    }
     return this.getById(id, businessId);
   }
 

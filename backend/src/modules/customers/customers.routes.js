@@ -11,6 +11,7 @@ import {
   updateCustomer, deleteCustomer, getVisitHistory, getWalletHistory, getRewardHistory, getCustomersStats,
   importCustomers
 } from './customers.controller.js';
+import { singleImage } from '../../utils/fileUpload.js';
 
 const router = Router();
 
@@ -25,8 +26,8 @@ router.get('/:id/visits', validate(customerIdParamSchema), getVisitHistory);
 router.get('/:id/wallet', validate(customerIdParamSchema), getWalletHistory);
 router.get('/:id/rewards', validate(customerIdParamSchema), getRewardHistory);
 router.post('/bulk', validate(bulkImportCustomersSchema), importCustomers);
-router.post('/', validate(createCustomerSchema), createCustomer);
-router.put('/:id', validate(updateCustomerSchema), updateCustomer);
+router.post('/', singleImage('image'), validate(createCustomerSchema), createCustomer);
+router.put('/:id', singleImage('image'), validate(updateCustomerSchema), updateCustomer);
 router.delete('/:id', authorize('super_admin', 'admin', 'manager'), validate(customerIdParamSchema), deleteCustomer);
 
 export default router;

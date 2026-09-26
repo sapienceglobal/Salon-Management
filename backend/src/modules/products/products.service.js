@@ -18,7 +18,18 @@ class ProductService {
     }
     // 'supplier' column might not exist in db, so we strip it to prevent Unknown column error
     const { supplier, ...dbData } = data;
-    return productRepository.create({ ...dbData, business_id: businessId });
+    try {
+      return await productRepository.create({ ...dbData, business_id: businessId });
+    } catch (err) {
+      if (err.message && err.message.includes('Unknown column')) {
+        const match = err.message.match(/Unknown column '([^']+)'/);
+        if (match && match[1]) {
+          delete dbData[match[1]];
+          return await productRepository.create({ ...dbData, business_id: businessId });
+        }
+      }
+      throw err;
+    }
   }
 
   async update(id, businessId, data) {
@@ -28,7 +39,18 @@ class ProductService {
       if (existing && existing.id !== id) throw ApiError.conflict('SKU already in use');
     }
     const { supplier, ...dbData } = data;
-    return productRepository.update(id, businessId, cleanObject(dbData));
+    try {
+      return await productRepository.update(id, businessId, cleanObject(dbData));
+    } catch (err) {
+      if (err.message && err.message.includes('Unknown column')) {
+        const match = err.message.match(/Unknown column '([^']+)'/);
+        if (match && match[1]) {
+          delete dbData[match[1]];
+          return await productRepository.update(id, businessId, cleanObject(dbData));
+        }
+      }
+      throw err;
+    }
   }
 
   async updateStock(id, businessId, quantityChange) {

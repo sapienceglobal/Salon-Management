@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+const booleanField = z.union([
+  z.boolean(),
+  z.string().transform((v) => v === 'true' || v === '1'),
+]).optional();
+
 export const createCustomerSchema = {
   body: z.object({
     first_name: z.string().min(1, 'First name is required').max(100),
@@ -11,11 +16,12 @@ export const createCustomerSchema = {
     anniversary: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date format: YYYY-MM-DD').optional(),
     address: z.string().max(1000).optional(),
     gst_number: z.string().max(20).optional(),
-    sms_opt_in: z.boolean().optional(),
-    email_opt_in: z.boolean().optional(),
-    whatsapp_opt_in: z.boolean().optional(),
+    sms_opt_in: booleanField,
+    email_opt_in: booleanField,
+    whatsapp_opt_in: booleanField,
     source: z.string().max(50).optional(),
     notes: z.string().max(2000).optional(),
+    profile_image_url: z.string().max(500).optional().nullable(),
   }),
 };
 
@@ -36,12 +42,13 @@ export const updateCustomerSchema = {
     anniversary: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
     address: z.string().max(1000).optional().nullable(),
     gst_number: z.string().max(20).optional().nullable(),
-    sms_opt_in: z.boolean().optional(),
-    email_opt_in: z.boolean().optional(),
-    whatsapp_opt_in: z.boolean().optional(),
+    sms_opt_in: booleanField,
+    email_opt_in: booleanField,
+    whatsapp_opt_in: booleanField,
     source: z.string().max(50).optional(),
     notes: z.string().max(2000).optional().nullable(),
-    is_active: z.boolean().optional(),
+    profile_image_url: z.string().max(500).optional().nullable(),
+    is_active: z.union([z.boolean(), z.string().transform((v) => v === 'true' || v === '1')]).optional(),
   }),
   params: z.object({
     id: z.string().regex(/^\d+$/).transform(Number),

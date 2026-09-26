@@ -28,6 +28,9 @@ const mapSource = (source) => {
 
 export const createCustomer = asyncHandler(async (req, res) => {
   const data = { ...req.body };
+  if (req.file) {
+    data.profile_image_url = `/uploads/${req.file.filename}`;
+  }
   if (data.source) data.source = mapSource(data.source);
   const customer = await customerService.create(req.user.business_id, data);
   ApiResponse.created('Customer created successfully', customer).send(res);
@@ -40,6 +43,9 @@ export const importCustomers = asyncHandler(async (req, res) => {
 
 export const updateCustomer = asyncHandler(async (req, res) => {
   const data = { ...req.body };
+  if (req.file) {
+    data.profile_image_url = `/uploads/${req.file.filename}`;
+  }
   if (data.source) data.source = mapSource(data.source);
   const customer = await customerService.update(req.params.id, req.user.business_id, data);
   ApiResponse.ok('Customer updated successfully', customer).send(res);

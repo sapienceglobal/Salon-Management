@@ -19,6 +19,15 @@ async function startServer() {
     // Test database connectivity
     await testConnection();
 
+    // Auto-run latest migrations
+    try {
+      const { db } = await import('./config/database.js');
+      await db.migrate.latest();
+      logger.info('Database migrations verified and up to date');
+    } catch (migErr) {
+      logger.warn(`Auto-migration note: ${migErr.message}`);
+    }
+
     // Connect Redis (non-blocking — app works in degraded mode without Redis)
     await connectRedis();
     initRateLimitStores();

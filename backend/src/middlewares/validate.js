@@ -21,7 +21,7 @@ export const validate = (schemas) => {
 
     // Validate body
     if (schemas.body) {
-      const result = schemas.body.safeParse(req.body);
+      const result = schemas.body.safeParse(req.body || {});
       if (!result.success) {
         result.error.issues.forEach((err) => {
           errors.push({
