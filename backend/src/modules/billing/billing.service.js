@@ -42,12 +42,14 @@ class BillingService {
         if (item.item_type === 'service') {
           const service = await trx('salon_services').where({ id: item.item_id, business_id: businessId }).first();
           if (!service) throw ApiError.notFound(`Service ID ${item.item_id} not found`);
+          if (!data.appointment_id && !service.is_active) throw ApiError.badRequest(`Service "${service.name}" is inactive and cannot be billed`);
           itemName = service.name;
           unitPrice = item.unit_price || service.price;
           taxPercentage = service.tax_percentage;
         } else if (item.item_type === 'product') {
           const product = await trx('products').where({ id: item.item_id, business_id: businessId }).first();
           if (!product) throw ApiError.notFound(`Product ID ${item.item_id} not found`);
+          if (!product.is_active) throw ApiError.badRequest(`Product "${product.name}" is inactive and cannot be billed`);
           if (product.stock_quantity < item.quantity) throw ApiError.badRequest(`Insufficient stock for ${product.name}`);
           itemName = product.name;
           unitPrice = item.unit_price || product.selling_price;
@@ -71,6 +73,17 @@ class BillingService {
           itemName = mem.name;
           unitPrice = item.unit_price || mem.price;
           taxPercentage = settings.tax_enabled ? (Number(settings.default_cgst) + Number(settings.default_sgst)) : 0;
+        }
+
+        // Validate assigned staff is active
+        if (item.staff_member_id) {
+          const staffMember = await trx('staff_members as sm')
+            .join('users as u', 'sm.user_id', 'u.id')
+            .where({ 'sm.id': item.staff_member_id, 'sm.business_id': businessId })
+            .select('sm.id', 'u.is_active')
+            .first();
+          if (!staffMember) throw ApiError.notFound(`Staff member ID ${item.staff_member_id} not found`);
+          if (!staffMember.is_active) throw ApiError.badRequest(`Assigned staff member is inactive`);
         }
 
         const lineDiscount = Number(item.discount) || 0;

@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { RiCloseLine, RiUserStarLine, RiMoneyDollarCircleLine, RiScissorsLine, RiCalendarCheckLine, RiDeleteBinLine, RiPhoneLine, RiMailLine } from 'react-icons/ri';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, parseSpecializations } from '@/lib/utils';
 import api from '@/lib/api';
 import { useConfirm } from '@/context/ConfirmContext';
+import toast from 'react-hot-toast';
 
-export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, onDelete }) {
+export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, onDelete, onStatusChange }) {
   const { confirm } = useConfirm();
   const [mounted, setMounted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -53,11 +54,23 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
     }
   };
 
+  const handleToggleActive = async () => {
+    if (!staff) return;
+    const newStatus = !staff.is_active;
+    setStaff(prev => ({ ...prev, is_active: newStatus }));
+    try {
+      await api.patch(`/staff/${staff.id}/toggle-active`);
+      toast.success(`Staff member marked as ${newStatus ? 'Active' : 'Inactive'}`);
+      if (onStatusChange) onStatusChange(staff.id, newStatus);
+    } catch (err) {
+      setStaff(prev => ({ ...prev, is_active: staff.is_active }));
+      toast.error(err.response?.data?.message || 'Failed to update staff status');
+    }
+  };
+
   if (!mounted || !isOpen) return null;
 
-  const specs = staff?.specializations 
-    ? (typeof staff.specializations === 'string' ? JSON.parse(staff.specializations) : staff.specializations)
-    : [];
+  const specs = parseSpecializations(staff?.specializations);
 
   return createPortal(
     <div className={`fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm ${isClosing ? 'animate-[fadeOut_0.2s_ease_forwards]' : 'animate-[fadeIn_0.2s_ease_forwards]'}`} onMouseDown={handleClose}>
@@ -107,12 +120,39 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">{staff.first_name} {staff.last_name}</h2>
-                  <div className="flex items-center gap-2 mt-1 mb-2">
+                  <div className="flex items-center gap-2.5 mt-1.5 mb-2 flex-wrap">
                     <span className="text-sm font-semibold text-admin-text-secondary uppercase tracking-wider">{staff.designation || 'Staff'}</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-admin-border"></span>
-                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${staff.is_active ? 'bg-accent-green/10 text-accent-green border border-accent-green/20' : 'bg-accent-red/10 text-accent-red border border-accent-red/20'}`}>
+                    <button
+                      type="button"
+                      onClick={handleToggleActive}
+                      className={`inline-flex items-center gap-1.5 text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-md transition-colors cursor-pointer ${
+                        staff.is_active 
+                          ? 'bg-accent-green/10 text-accent-green hover:bg-accent-green/20 border border-accent-green/20' 
+                          : 'bg-accent-red/10 text-accent-red hover:bg-accent-red/20 border border-accent-red/20'
+                      }`}
+                      title={`Click to ${staff.is_active ? 'deactivate' : 'activate'}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${staff.is_active ? 'bg-accent-green animate-pulse' : 'bg-accent-red'}`}></span>
                       {staff.is_active ? 'Active' : 'Inactive'}
-                    </span>
+                    </button>
+                    {/* Inline switch */}
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={staff.is_active}
+                      onClick={handleToggleActive}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        staff.is_active ? 'bg-accent-green' : 'bg-admin-surface border border-admin-border'
+                      }`}
+                      title={staff.is_active ? 'Click to deactivate' : 'Click to activate'}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          staff.is_active ? 'translate-x-4' : 'translate-x-0 bg-admin-text-muted'
+                        }`}
+                      />
+                    </button>
                   </div>
                   <div className="flex items-center gap-4 mt-2">
                     <a href={`mailto:${staff.email}`} className="flex items-center gap-1.5 text-sm text-admin-text-muted hover:text-brand transition-colors">

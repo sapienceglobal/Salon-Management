@@ -161,9 +161,9 @@ export default function AppointmentsPage() {
         api.get(apptQuery),
         api.get(upcomingQuery),
         api.get(monthQuery),
-        api.get('/staff'),
+        api.get('/staff?active_only=true'),
         api.get('/customers?limit=100'),
-        api.get('/services'),
+        api.get('/services?active_only=true'),
         api.get(statsQuery),
         api.get('/settings')
       ]);
@@ -171,9 +171,15 @@ export default function AppointmentsPage() {
       if (apptsRes.status === 'fulfilled') setAppointments(apptsRes.value.data?.appointments || apptsRes.value.data || []);
       if (upcomingRes.status === 'fulfilled') setUpcomingAppointments(upcomingRes.value.data?.appointments || upcomingRes.value.data || []);
       if (monthRes.status === 'fulfilled') setMonthAppointments(monthRes.value.data?.appointments || monthRes.value.data || []);
-      if (staffRes.status === 'fulfilled') setStaffList(staffRes.value.data?.users || staffRes.value.data || []);
+      if (staffRes.status === 'fulfilled') {
+        const rawStaff = staffRes.value.data?.users || staffRes.value.data || [];
+        setStaffList(Array.isArray(rawStaff) ? rawStaff.filter(s => s.is_active !== false) : []);
+      }
       if (custRes.status === 'fulfilled') setCustomersList(custRes.value.data?.customers || custRes.value.data || []);
-      if (servRes.status === 'fulfilled') setServicesList(servRes.value.data?.services || servRes.value.data || []);
+      if (servRes.status === 'fulfilled') {
+        const rawServices = servRes.value.data?.services || servRes.value.data || [];
+        setServicesList(Array.isArray(rawServices) ? rawServices.filter(s => s.is_active !== false) : []);
+      }
       if (statsRes.status === 'fulfilled') setBackendStats(statsRes.value.data?.data || statsRes.value.data);
       if (settingsRes.status === 'fulfilled') setBusinessSettings(settingsRes.value.data?.settings || settingsRes.value.data?.data?.settings || null);
 

@@ -76,9 +76,10 @@ export default function POSPage() {
   
   const fetchStaff = async () => {
     try {
-      const res = await api.get('/staff');
-      console.log('STAFF API RESPONSE:', res.data);
-      setStaffList(res.data || []);
+      const res = await api.get('/staff', { params: { active_only: true } });
+      const raw = res.data || [];
+      const activeStaff = Array.isArray(raw) ? raw.filter(s => s.is_active !== false) : [];
+      setStaffList(activeStaff);
     } catch (error) {
       console.error('Failed to fetch staff:', error);
     }
@@ -153,16 +154,21 @@ export default function POSPage() {
   const fetchItems = async () => {
     try {
       const [servicesRes, productsRes, packagesRes, membershipsRes] = await Promise.all([
-        api.get('/services', { params: { limit: 100 } }),
-        api.get('/products', { params: { limit: 100 } }),
+        api.get('/services', { params: { limit: 100, active_only: true } }),
+        api.get('/products', { params: { limit: 100, is_active: true } }),
         api.get('/catalog/packages'),
         api.get('/catalog/memberships')
       ]);
+      const rawServices = servicesRes.data || [];
+      const rawProducts = productsRes.data || [];
+      const rawPackages = packagesRes.data || [];
+      const rawMemberships = membershipsRes.data || [];
+
       setItems({
-        services: servicesRes.data || [],
-        products: productsRes.data || [],
-        packages: packagesRes.data || [],
-        memberships: membershipsRes.data || [],
+        services: Array.isArray(rawServices) ? rawServices.filter(s => s.is_active !== false) : [],
+        products: Array.isArray(rawProducts) ? rawProducts.filter(p => p.is_active !== false) : [],
+        packages: Array.isArray(rawPackages) ? rawPackages.filter(pkg => pkg.is_active !== false) : [],
+        memberships: Array.isArray(rawMemberships) ? rawMemberships.filter(m => m.is_active !== false) : [],
         'prepaid plan': [] // No endpoint for prepaid plans yet
       });
     } catch (error) {

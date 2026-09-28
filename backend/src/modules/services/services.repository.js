@@ -38,10 +38,12 @@ class ServiceRepository {
       .select('s.*', 'c.name as category_name')
       .first();
   }
-  async findByCategory(categoryId, businessId) {
-    return db('salon_services')
-      .where({ category_id: categoryId, business_id: businessId, is_active: true })
+  async findByCategory(categoryId, businessId, activeOnly = false) {
+    const query = db('salon_services')
+      .where({ category_id: categoryId, business_id: businessId })
       .orderBy('sort_order', 'asc');
+    if (activeOnly) query.where('is_active', true);
+    return query;
   }
   async create(data) {
     const [id] = await db('salon_services').insert(data);

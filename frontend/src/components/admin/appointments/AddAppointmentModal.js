@@ -247,7 +247,13 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
               <select className={`w-full border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text outline-none transition-colors ${fieldErrors.service_id ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand focus:bg-admin-card'}`}
                 value={formData.service_id} onChange={e => setFormData({ ...formData, service_id: e.target.value })}>
                 <option value="">Choose a service...</option>
-                {servicesList.map(s => <option key={s.id} value={s.id}>{s.name} - {formatCurrency(s.price)}</option>)}
+                {(servicesList || [])
+                  .filter(s => s.is_active !== false || (editData && editData.service_id == s.id))
+                  .map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} {s.is_active === false ? '(Inactive)' : ''} - {formatCurrency(s.price)}
+                    </option>
+                  ))}
               </select>
               {fieldErrors.service_id && <p className="text-accent-red text-xs mt-1">{fieldErrors.service_id}</p>}
             </div>
@@ -257,7 +263,13 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
               <select className={`w-full border rounded-lg text-sm px-3 py-2.5 bg-admin-surface-light text-admin-text outline-none transition-colors ${fieldErrors.staff_id ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand focus:bg-admin-card'}`}
                 value={formData.staff_id} onChange={e => setFormData({ ...formData, staff_id: e.target.value })}>
                 <option value="">Anyone available</option>
-                {staffList.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
+                {(staffList || [])
+                  .filter(s => s.is_active !== false || (editData && editData.staff_member_id == s.id))
+                  .map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.first_name} {s.last_name || ''} {s.is_active === false ? '(Inactive)' : ''}
+                    </option>
+                  ))}
               </select>
               {fieldErrors.staff_id && <p className="text-accent-red text-xs mt-1">{fieldErrors.staff_id}</p>}
             </div>

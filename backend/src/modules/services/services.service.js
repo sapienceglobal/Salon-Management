@@ -24,7 +24,13 @@ class ServiceService {
     if (!service) throw ApiError.notFound('Service not found');
     return service;
   }
-  async getByCategory(categoryId, businessId) { return serviceRepository.findByCategory(categoryId, businessId); }
+  async getByCategory(categoryId, businessId, activeOnly = false) { return serviceRepository.findByCategory(categoryId, businessId, activeOnly); }
+  async toggleActive(id, businessId) {
+    const service = await this.getById(id, businessId);
+    const newStatus = !service.is_active;
+    await serviceRepository.update(id, businessId, { is_active: newStatus });
+    return this.getById(id, businessId);
+  }
   async create(businessId, data) { return serviceRepository.create({ ...data, business_id: businessId }); }
   async update(id, businessId, data) {
     await this.getById(id, businessId);

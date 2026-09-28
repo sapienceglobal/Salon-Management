@@ -22,7 +22,8 @@ export const deleteCategory = asyncHandler(async (req, res) => {
 
 // Services
 export const getServices = asyncHandler(async (req, res) => {
-  const services = await serviceService.getAll(req.user.business_id, req.query.active_only === 'true');
+  const activeOnly = req.query.active_only === 'true' || req.query.is_active === 'true';
+  const services = await serviceService.getAll(req.user.business_id, activeOnly);
   ApiResponse.ok('Services fetched', services).send(res);
 });
 export const getService = asyncHandler(async (req, res) => {
@@ -30,8 +31,13 @@ export const getService = asyncHandler(async (req, res) => {
   ApiResponse.ok('Service fetched', service).send(res);
 });
 export const getServicesByCategory = asyncHandler(async (req, res) => {
-  const services = await serviceService.getByCategory(req.params.id, req.user.business_id);
+  const activeOnly = req.query.active_only === 'true' || req.query.is_active === 'true';
+  const services = await serviceService.getByCategory(req.params.id, req.user.business_id, activeOnly);
   ApiResponse.ok('Services by category fetched', services).send(res);
+});
+export const toggleServiceActive = asyncHandler(async (req, res) => {
+  const service = await serviceService.toggleActive(req.params.id, req.user.business_id);
+  ApiResponse.ok(`Service ${service.is_active ? 'activated' : 'deactivated'}`, service).send(res);
 });
 export const createService = asyncHandler(async (req, res) => {
   const data = { ...req.body };

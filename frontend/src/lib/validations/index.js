@@ -26,6 +26,7 @@ export const serviceSchema = z.object({
   duration_minutes: z.string().min(1, 'Duration is required').or(z.number().min(1)),
   price: z.string().min(1, 'Price is required').or(z.number().min(0)),
   type: z.enum(['service', 'product', 'package']).optional(),
+  is_active: z.boolean().optional(),
 });
 
 export const staffSchema = z.object({

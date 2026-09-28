@@ -19,6 +19,8 @@ export default function ServicesPage() {
   const [services, setServices] = useState([]);
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const [highlightedServiceId, setHighlightedServiceId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'inactive'
+  const [svcSearch, setSvcSearch] = useState('');
   
   const [loadingCats, setLoadingCats] = useState(true);
   const [loadingSvcs, setLoadingSvcs] = useState(false);
@@ -134,6 +136,35 @@ export default function ServicesPage() {
     }
   };
 
+  const handleToggleServiceStatus = async (svc, e) => {
+    e.stopPropagation();
+    const newStatus = !svc.is_active;
+    // Optimistic UI update
+    setServices(prev => prev.map(s => s.id === svc.id ? { ...s, is_active: newStatus } : s));
+    try {
+      await api.patch(`/services/${svc.id}/toggle-active`);
+      toast.success(`Service marked as ${newStatus ? 'Active' : 'Inactive'}`);
+    } catch (err) {
+      // Revert on error
+      setServices(prev => prev.map(s => s.id === svc.id ? { ...s, is_active: svc.is_active } : s));
+      toast.error(err.response?.data?.message || 'Failed to update service status');
+    }
+  };
+
+  const allCount = services.length;
+  const activeCount = services.filter(s => s.is_active !== false).length;
+  const inactiveCount = services.filter(s => s.is_active === false).length;
+
+  const displayedServices = services.filter(svc => {
+    const matchesStatus = 
+      statusFilter === 'active' ? (svc.is_active !== false) :
+      statusFilter === 'inactive' ? (svc.is_active === false) : true;
+    const matchesSearch = !svcSearch || 
+      svc.name.toLowerCase().includes(svcSearch.toLowerCase()) || 
+      (svc.description || '').toLowerCase().includes(svcSearch.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
   const formatDuration = (mins) => {
     if (mins < 60) return `${mins} mins`;
     const h = Math.floor(mins / 60);
@@ -231,21 +262,62 @@ export default function ServicesPage() {
         {/* RIGHT: Services List */}
         <div className="flex-1 bg-admin-card border border-admin-border rounded-2xl flex flex-col overflow-hidden">
           {/* Active Category Header */}
-          <div className="px-6 py-5 border-b border-admin-border flex items-center justify-between bg-admin-surface/30 shrink-0">
+          <div className="px-6 py-4 border-b border-admin-border bg-admin-surface/30 shrink-0 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold">
-                {categories.find(c => c.id === activeCategoryId)?.name || 'Select a Category'}
-              </h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-bold">
+                  {categories.find(c => c.id === activeCategoryId)?.name || 'Select a Category'}
+                </h2>
+                {activeCategoryId && (
+                  <span className="text-xs font-semibold px-2.5 py-0.5 bg-admin-surface-light text-admin-text-secondary rounded-full border border-admin-border">
+                    {allCount} {allCount === 1 ? 'Service' : 'Services'}
+                  </span>
+                )}
+              </div>
               {categories.find(c => c.id === activeCategoryId)?.description && (
-                <p className="text-sm text-admin-text-secondary mt-0.5">
+                <p className="text-xs text-admin-text-secondary mt-0.5 line-clamp-1">
                   {categories.find(c => c.id === activeCategoryId)?.description}
                 </p>
               )}
             </div>
-            {activeCategoryId && (
-              <span className="text-xs font-semibold px-3 py-1 bg-admin-surface-light rounded-full border border-admin-border">
-                {services.length} {services.length === 1 ? 'Service' : 'Services'}
-              </span>
+
+            {/* Filter Controls & Search */}
+            {activeCategoryId && allCount > 0 && (
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Filter Tabs */}
+                <div className="flex items-center bg-admin-surface-light border border-admin-border rounded-lg p-1 text-xs font-medium">
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className={`px-3 py-1 rounded-md transition-colors ${statusFilter === 'all' ? 'bg-brand text-white shadow-sm' : 'text-admin-text-secondary hover:text-admin-text'}`}
+                  >
+                    All ({allCount})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('active')}
+                    className={`px-3 py-1 rounded-md transition-colors ${statusFilter === 'active' ? 'bg-accent-green text-white shadow-sm' : 'text-admin-text-secondary hover:text-admin-text'}`}
+                  >
+                    Active ({activeCount})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('inactive')}
+                    className={`px-3 py-1 rounded-md transition-colors ${statusFilter === 'inactive' ? 'bg-accent-red text-white shadow-sm' : 'text-admin-text-secondary hover:text-admin-text'}`}
+                  >
+                    Inactive ({inactiveCount})
+                  </button>
+                </div>
+
+                {/* Mini Search */}
+                <div className="flex items-center gap-1.5 bg-admin-surface-light border border-admin-border rounded-lg px-2.5 py-1 text-xs focus-within:border-brand transition-colors w-40">
+                  <RiSearchLine className="text-admin-text-muted shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search services..."
+                    value={svcSearch}
+                    onChange={(e) => setSvcSearch(e.target.value)}
+                    className="bg-transparent border-none text-xs w-full outline-none"
+                  />
+                </div>
+              </div>
             )}
           </div>
 
@@ -269,25 +341,61 @@ export default function ServicesPage() {
                    Add the first service
                  </button>
                </div>
+            ) : displayedServices.length === 0 ? (
+               <div className="h-full flex flex-col items-center justify-center text-admin-text-muted p-6 text-center">
+                 <RiScissorsLine className="text-4xl mb-3 opacity-20" />
+                 <p className="font-medium">No services match the current filter.</p>
+                 <button 
+                  onClick={() => { setStatusFilter('all'); setSvcSearch(''); }}
+                  className="mt-3 text-brand font-semibold text-sm hover:underline"
+                 >
+                   Clear filters
+                 </button>
+               </div>
             ) : (
                <div className="divide-y divide-admin-border">
-                  {services.map(svc => (
+                  {displayedServices.map(svc => (
                     <div 
                       key={svc.id} 
                       id={`service-${svc.id}`}
-                      className={`p-6 transition-all duration-700 flex items-start gap-4 group border-l-4 ${highlightedServiceId == svc.id ? 'bg-brand/10 border-brand' : 'hover:bg-white/[0.02] border-transparent'}`}
+                      className={`p-5 transition-all duration-300 flex items-start gap-4 group border-l-4 ${
+                        highlightedServiceId == svc.id 
+                          ? 'bg-brand/10 border-brand' 
+                          : !svc.is_active 
+                            ? 'bg-admin-surface/20 border-accent-red/40 opacity-80 hover:opacity-100' 
+                            : 'hover:bg-white/[0.02] border-transparent'
+                      }`}
                     >
                      
-                     <div className="w-12 h-12 rounded-xl bg-admin-surface-light border border-admin-border flex items-center justify-center text-xl shrink-0">
+                     {/* Gender Target Icon */}
+                     <div className={`w-12 h-12 rounded-xl border flex items-center justify-center text-xl shrink-0 transition-colors ${
+                       svc.is_active !== false 
+                         ? 'bg-admin-surface-light border-admin-border text-brand' 
+                         : 'bg-admin-surface border-admin-border/50 text-admin-text-muted'
+                     }`}>
                        {getGenderIcon(svc.gender_target)}
                      </div>
 
                      <div className="flex-1 min-w-0">
-                       <div className="flex items-center gap-3 mb-1">
-                         <h3 className="font-bold text-base">{svc.name}</h3>
-                         {!svc.is_active && (
-                           <span className="text-[0.65rem] uppercase tracking-wider font-bold px-2 py-0.5 bg-admin-surface-light text-admin-text-muted rounded-md border border-admin-border">Inactive</span>
-                         )}
+                       <div className="flex items-center gap-3 mb-1 flex-wrap">
+                         <h3 className={`font-bold text-base ${svc.is_active === false ? 'text-admin-text-secondary line-through decoration-admin-text-muted/40' : 'text-admin-text'}`}>
+                           {svc.name}
+                         </h3>
+
+                         {/* Status Badge (Clickable to toggle) */}
+                         <button
+                           type="button"
+                           onClick={(e) => handleToggleServiceStatus(svc, e)}
+                           className={`inline-flex items-center gap-1.5 text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-md transition-colors cursor-pointer ${
+                             svc.is_active !== false
+                               ? 'bg-accent-green/10 text-accent-green hover:bg-accent-green/20 border border-accent-green/20' 
+                               : 'bg-accent-red/10 text-accent-red hover:bg-accent-red/20 border border-accent-red/20'
+                           }`}
+                           title={`Click to ${svc.is_active !== false ? 'deactivate' : 'activate'}`}
+                         >
+                           <span className={`w-1.5 h-1.5 rounded-full ${svc.is_active !== false ? 'bg-accent-green animate-pulse' : 'bg-accent-red'}`}></span>
+                           {svc.is_active !== false ? 'Active' : 'Inactive'}
+                         </button>
                        </div>
                        
                        {svc.description && (
@@ -310,26 +418,48 @@ export default function ServicesPage() {
                        </div>
                      </div>
 
-                     {/* Actions */}
-                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                       <button 
-                         onClick={() => { setSvcToEdit(svc); setIsSvcModalOpen(true); }}
-                         className="p-2 text-admin-text-secondary hover:text-brand bg-admin-surface-light hover:bg-brand/10 rounded-lg transition-colors" 
-                         title="Edit"
-                       >
-                         <RiEdit2Line />
-                       </button>
-                       <button 
-                         onClick={() => handleDeleteService(svc.id)}
-                         className="p-2 text-admin-text-secondary hover:text-accent-red bg-admin-surface-light hover:bg-accent-red/10 rounded-lg transition-colors" 
-                         title="Delete"
-                       >
-                         <RiDeleteBin7Line />
-                       </button>
+                     {/* Quick Toggle Switch & Actions */}
+                     <div className="flex items-center gap-3 shrink-0 pt-0.5">
+                       {/* Toggle Switch */}
+                       <div className="flex items-center" title={svc.is_active !== false ? 'Active — Click to deactivate' : 'Inactive — Click to activate'}>
+                         <button
+                           type="button"
+                           role="switch"
+                           aria-checked={svc.is_active !== false}
+                           onClick={(e) => handleToggleServiceStatus(svc, e)}
+                           className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                             svc.is_active !== false ? 'bg-accent-green' : 'bg-admin-surface border border-admin-border'
+                           }`}
+                         >
+                           <span
+                             className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                               svc.is_active !== false ? 'translate-x-5' : 'translate-x-0 bg-admin-text-muted'
+                             }`}
+                           />
+                         </button>
+                       </div>
+
+                       {/* Edit & Delete Action Buttons */}
+                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button 
+                           onClick={() => { setSvcToEdit(svc); setIsSvcModalOpen(true); }}
+                           className="p-2 text-admin-text-secondary hover:text-brand bg-admin-surface-light hover:bg-brand/10 rounded-lg transition-colors" 
+                           title="Edit Service"
+                         >
+                           <RiEdit2Line />
+                         </button>
+                         <button 
+                           onClick={() => handleDeleteService(svc.id)}
+                           className="p-2 text-admin-text-secondary hover:text-accent-red bg-admin-surface-light hover:bg-accent-red/10 rounded-lg transition-colors" 
+                           title="Delete Service"
+                         >
+                           <RiDeleteBin7Line />
+                         </button>
+                       </div>
                      </div>
 
-                   </div>
-                 ))}
+                    </div>
+                  ))}
                </div>
             )}
           </div>

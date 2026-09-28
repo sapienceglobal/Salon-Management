@@ -36,14 +36,13 @@ export default function PackagesMembershipsPage() {
       const [pkgRes, memRes, svcRes] = await Promise.all([
         api.get('/catalog/packages'),
         api.get('/catalog/memberships'),
-        api.get('/services') // Assuming this endpoint returns flat list of all services
+        api.get('/services?active_only=true')
       ]);
       setPackages(pkgRes.data || []);
       setMemberships(memRes.data || []);
       
-      // If /services doesn't exist, we might need to fetch categories then map services. 
-      // Assuming a generic /services exists or we handle it gracefully if it fails.
-      setServices(svcRes.data || []);
+      const rawSvcs = svcRes.data || [];
+      setServices(Array.isArray(rawSvcs) ? rawSvcs.filter(s => s.is_active !== false) : []);
     } catch (err) {
       console.error(err);
       // Fallback if /services flat endpoint fails but others succeed
@@ -52,8 +51,9 @@ export default function PackagesMembershipsPage() {
             const cats = await api.get('/services/categories');
             let allSvcs = [];
             for (const cat of cats.data) {
-                const sRes = await api.get(`/services/category/${cat.id}`);
-                allSvcs = [...allSvcs, ...(sRes.data || [])];
+                const sRes = await api.get(`/services/category/${cat.id}?active_only=true`);
+                const catSvcs = sRes.data || [];
+                allSvcs = [...allSvcs, ...(Array.isArray(catSvcs) ? catSvcs.filter(s => s.is_active !== false) : [])];
             }
             setServices(allSvcs);
          } catch(e) {

@@ -64,8 +64,9 @@ export default function EnquiryPage() {
 
   const fetchStaff = useCallback(async () => {
     try {
-      const res = await api.get('/staff');
-      setStaffList(res.data.staff || []);
+      const res = await api.get('/staff', { params: { active_only: true } });
+      const raw = res.data?.staff || res.data || [];
+      setStaffList(Array.isArray(raw) ? raw.filter(s => s.is_active !== false) : []);
     } catch (err) {
       console.error(err);
     }

@@ -55,7 +55,12 @@ export default function AddEnquiryModal({ isOpen, onClose, onEnquiryAdded, enqui
   useEffect(() => {
     if (isOpen) {
       setIsClosing(false);
-      api.get('/staff').then(res => setStaffList(res.data || [])).catch(console.error);
+      api.get('/staff', { params: { active_only: true } })
+        .then(res => {
+          const raw = res.data?.staff || res.data || [];
+          setStaffList(Array.isArray(raw) ? raw.filter(s => s.is_active !== false) : []);
+        })
+        .catch(console.error);
     }
   }, [isOpen]);
 

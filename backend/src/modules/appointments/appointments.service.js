@@ -17,17 +17,25 @@ class AppointmentService {
     const customer = await db('customers').where({ id: data.customer_id, business_id: businessId }).first();
     if (!customer) throw ApiError.notFound('Customer not found');
 
-    // Check staff conflict if staff assigned
+    // Verify staff exists and is active if assigned
     if (data.staff_id) {
+      const staffMember = await db('staff_members as sm')
+        .join('users as u', 'sm.user_id', 'u.id')
+        .where({ 'sm.id': data.staff_id, 'sm.business_id': businessId })
+        .select('sm.id', 'u.is_active')
+        .first();
+      if (!staffMember) throw ApiError.notFound('Staff member not found');
+      if (!staffMember.is_active) throw ApiError.badRequest('Selected staff member is inactive');
+
       const conflict = await appointmentRepository.checkConflict(
         businessId, data.staff_id, data.appointment_date, data.start_time, data.end_time
       );
       if (conflict) throw ApiError.conflict('Staff member has a conflicting appointment at this time');
     }
 
-    // Verify service
+    // Verify service exists and is active
     const service = await db('salon_services').where({ id: data.service_id, business_id: businessId, is_active: true }).first();
-    if (!service) throw ApiError.notFound('Service not found');
+    if (!service) throw ApiError.badRequest('Selected service is inactive or not found');
 
     const appointmentData = {
       business_id: businessId,
@@ -89,6 +97,16 @@ class AppointmentService {
     const startTime = data.start_time || appointment.start_time;
     const endTime = data.end_time || appointment.end_time;
 
+    if (data.staff_id) {
+      const staffMember = await db('staff_members as sm')
+        .join('users as u', 'sm.user_id', 'u.id')
+        .where({ 'sm.id': data.staff_id, 'sm.business_id': businessId })
+        .select('sm.id', 'u.is_active')
+        .first();
+      if (!staffMember) throw ApiError.notFound('Staff member not found');
+      if (!staffMember.is_active) throw ApiError.badRequest('Selected staff member is inactive');
+    }
+
     if (staffId) {
       const conflict = await appointmentRepository.checkConflict(businessId, staffId, date, startTime, endTime, id);
       if (conflict) throw ApiError.conflict('Staff member has a conflicting appointment at this time');
@@ -105,12 +123,11 @@ class AppointmentService {
 
     const serviceData = {};
     if (data.service_id && data.service_id !== appointment.service_id) {
-      const service = await db('salon_services').where({ id: data.service_id, business_id: businessId }).first();
-      if (service) {
-        serviceData.service_id = data.service_id;
-        serviceData.price = service.price;
-        serviceData.duration = service.duration;
-      }
+      const service = await db('salon_services').where({ id: data.service_id, business_id: businessId, is_active: true }).first();
+      if (!service) throw ApiError.badRequest('Selected service is inactive or not found');
+      serviceData.service_id = data.service_id;
+      serviceData.price = service.price;
+      serviceData.duration = service.duration;
     }
 
     if (data.staff_id !== undefined) serviceData.staff_id = data.staff_id;

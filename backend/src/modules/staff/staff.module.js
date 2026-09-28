@@ -22,6 +22,7 @@ const createStaffSchema = {
     salary: z.coerce.number().nonnegative().optional(),
     commission_profile_id: z.coerce.number().int().positive().optional(),
     bio: z.string().max(2000).optional(),
+    is_active: z.coerce.boolean().optional(),
   }),
 };
 const updateStaffSchema = { body: createStaffSchema.body.partial(), params: idParam };
@@ -37,14 +38,45 @@ const markAttendanceSchema = {
   }),
 };
 
+// Helper to safely parse specializations in any format (JSON array, string, comma-separated)
+const parseSpecializations = (val) => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+      if (typeof parsed === 'string') {
+        return parsed.split(',').map(s => s.trim()).filter(Boolean);
+      }
+      return [];
+    } catch {
+      return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+};
+
 // ===== SERVICE =====
 class StaffService {
-  async getAll(businessId) {
-    return db('staff_members as sm')
+  async getAll(businessId, activeOnly = false) {
+    let query = db('staff_members as sm')
       .join('users as u', 'sm.user_id', 'u.id')
       .leftJoin('commission_profiles as cp', 'sm.commission_profile_id', 'cp.id')
-      .where('sm.business_id', businessId)
-      .select('sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role', 'u.avatar_url', 'u.is_active', 'cp.name as commission_profile_name');
+      .where('sm.business_id', businessId);
+
+    if (activeOnly) {
+      query = query.where('u.is_active', true);
+    }
+
+    const list = await query.select('sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role', 'u.avatar_url', 'u.is_active', 'cp.name as commission_profile_name');
+
+    return list.map(item => ({
+      ...item,
+      specializations: parseSpecializations(item.specializations),
+    }));
   }
 
   async getById(id, businessId) {
@@ -55,6 +87,7 @@ class StaffService {
       .first();
     if (!staff) throw ApiError.notFound('Staff member not found');
 
+    staff.specializations = parseSpecializations(staff.specializations);
     staff.working_hours = await db('staff_working_hours').where({ staff_member_id: id }).orderBy('day_of_week');
     return staff;
   }
@@ -65,18 +98,27 @@ class StaffService {
     const existing = await db('staff_members').where({ user_id: data.user_id }).first();
     if (existing) throw ApiError.conflict('Staff profile already exists for this user');
 
+    const specs = parseSpecializations(data.specializations);
     const [id] = await db('staff_members').insert({
       ...data,
-      specializations: data.specializations ? JSON.stringify(data.specializations) : null,
+      specializations: specs.length > 0 ? JSON.stringify(specs) : null,
       business_id: businessId,
     });
     return this.getById(id, businessId);
   }
 
   async update(id, businessId, data) {
-    await this.getById(id, businessId);
-    if (data.specializations) data.specializations = JSON.stringify(data.specializations);
-    await db('staff_members').where({ id, business_id: businessId }).update({ ...cleanObject(data), updated_at: db.fn.now() });
+    const staff = await this.getById(id, businessId);
+    if (data.specializations !== undefined) {
+      const specs = parseSpecializations(data.specializations);
+      data.specializations = specs.length > 0 ? JSON.stringify(specs) : null;
+    }
+    if (data.is_active !== undefined) {
+      await db('users').where({ id: staff.user_id }).update({ is_active: !!data.is_active, updated_at: db.fn.now() });
+    }
+    const staffData = { ...data };
+    delete staffData.is_active;
+    await db('staff_members').where({ id, business_id: businessId }).update({ ...cleanObject(staffData), updated_at: db.fn.now() });
     return this.getById(id, businessId);
   }
 
@@ -240,7 +282,8 @@ const staffService = new StaffService();
 
 // ===== CONTROLLER =====
 const getStaff = asyncHandler(async (req, res) => {
-  const staff = await staffService.getAll(req.user.business_id);
+  const activeOnly = req.query.active_only === 'true' || req.query.is_active === 'true';
+  const staff = await staffService.getAll(req.user.business_id, activeOnly);
   ApiResponse.ok('Staff fetched', staff).send(res);
 });
 const getStaffMember = asyncHandler(async (req, res) => {

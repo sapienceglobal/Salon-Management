@@ -73,3 +73,28 @@ export function truncateText(text, maxLength = 50) {
 export function cn(...classes) {
   return classes.filter(Boolean).join(' ');
 }
+
+/**
+ * Safely parse specializations or any JSON / comma-separated array
+ */
+export function parseSpecializations(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+      if (typeof parsed === 'string') {
+        return parsed.split(',').map(s => s.trim()).filter(Boolean);
+      }
+      return [];
+    } catch {
+      // Handles plain text, comma-separated strings, or malformed JSON like "hchuf"
+      return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+

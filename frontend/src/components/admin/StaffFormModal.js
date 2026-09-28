@@ -5,6 +5,7 @@ import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
 import { RiCloseLine, RiFileCopyLine, RiCheckLine, RiInformationLine } from 'react-icons/ri';
 import api from '@/lib/api';
+import { parseSpecializations } from '@/lib/utils';
 import { staffSchema, formatZodErrors } from '@/lib/validations';
 
 export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData }) {
@@ -25,7 +26,8 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
     joining_date: new Date().toISOString().split('T')[0],
     specializations: '', // Will be comma separated string in UI, array in API
     commission_profile_id: '',
-    bio: ''
+    bio: '',
+    is_active: true
   });
   
   const [commissionProfiles, setCommissionProfiles] = useState([]);
@@ -74,17 +76,17 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
           designation: initialData.designation || '',
           salary: initialData.salary || '',
           joining_date: initialData.joining_date ? initialData.joining_date.split('T')[0] : '',
-          specializations: initialData.specializations ? 
-            (typeof initialData.specializations === 'string' ? JSON.parse(initialData.specializations).join(', ') : initialData.specializations.join(', ')) 
-            : '',
+          specializations: initialData.specializations ? parseSpecializations(initialData.specializations).join(', ') : '',
           commission_profile_id: initialData.commission_profile_id || '',
           bio: initialData.bio || '',
-          password: ''
+          password: '',
+          is_active: initialData.is_active !== false
         });
       } else {
         setFormData({
           first_name: '', last_name: '', email: '', phone: '', role: 'staff', password: '',
-          designation: '', salary: '', joining_date: new Date().toISOString().split('T')[0], specializations: '', commission_profile_id: '', bio: ''
+          designation: '', salary: '', joining_date: new Date().toISOString().split('T')[0], specializations: '', commission_profile_id: '', bio: '',
+          is_active: true
         });
         generatePassword();
       }
@@ -147,7 +149,8 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
         salary: formData.salary ? parseFloat(formData.salary) : undefined,
         commission_profile_id: formData.commission_profile_id ? parseInt(formData.commission_profile_id) : undefined,
         specializations: formData.specializations ? formData.specializations.split(',').map(s => s.trim()).filter(Boolean) : undefined,
-        bio: formData.bio
+        bio: formData.bio,
+        is_active: formData.is_active
       };
 
       if (isEditing) {
@@ -158,7 +161,8 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
            first_name: formData.first_name,
            last_name: formData.last_name,
            phone: formData.phone,
-           role: formData.role
+           role: formData.role,
+           is_active: formData.is_active
         };
         await api.put(`/settings/users/${initialData.user_id}`, userUpdatePayload);
       } else {
@@ -398,6 +402,34 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                 />
                 {fieldErrors.bio && <p className="text-accent-red text-xs mt-1">{fieldErrors.bio}</p>}
               </div>
+
+              {/* Active Status Toggle (Edit only) */}
+              {isEditing && (
+                <div className="flex items-center justify-between p-4 bg-admin-surface-light rounded-xl border border-admin-border">
+                  <div>
+                    <div className="text-sm font-semibold flex items-center gap-2">
+                      Active Status
+                      <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${
+                        formData.is_active 
+                          ? 'bg-accent-green/10 text-accent-green border border-accent-green/20' 
+                          : 'bg-accent-red/10 text-accent-red border border-accent-red/20'
+                      }`}>
+                        {formData.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-admin-text-muted mt-1">Inactive staff cannot log in or take appointments.</div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                    />
+                    <div className="w-11 h-6 bg-admin-surface rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-green"></div>
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* Footer Buttons attached directly inside the form to avoid excessive empty space */}
