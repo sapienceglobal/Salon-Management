@@ -109,16 +109,6 @@ export default function Sidebar({ collapsed, onToggle }) {
 
       {/* Footer */}
       <div className={`p-3 border-t border-white/5 transition-all duration-300 ${collapsed ? 'flex flex-col items-center justify-center gap-3' : 'block'}`}>
-        {!collapsed && (
-          <div className="bg-gradient-to-br from-[#e74a8a]/15 to-[#a855f7]/15 border border-[#e74a8a]/25 rounded-2xl p-4 mb-3 text-center">
-            <h4 className="text-sm font-semibold text-[#f472b6] mb-1">💎 Grow Your Salon</h4>
-            <p className="text-xs text-[#64748b] mb-3">More clients. More bookings. More success.</p>
-            <button className="bg-white/5 text-[#f1f5f9] px-5 py-2 rounded-full text-[0.8rem] font-semibold border border-white/10 hover:bg-white/10 hover:border-[#e74a8a] transition-all duration-150">
-              Upgrade Plan
-            </button>
-          </div>
-        )}
-
         {collapsed ? (
           <>
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#e74a8a] to-[#c2185b] flex items-center justify-center text-[0.8rem] font-bold text-white mb-2 cursor-help" title={user?.first_name || 'Admin'}>
