@@ -42,7 +42,7 @@ router.post('/refresh', refresh);
 // Forgot password — send OTP email
 router.post(
   '/forgot-password',
-  passwordResetLimiter,
+  // passwordResetLimiter, // Disabled for testing
   validate(forgotPasswordSchema),
   forgotPassword
 );
@@ -50,7 +50,7 @@ router.post(
 // Verify OTP
 router.post(
   '/verify-otp',
-  passwordResetLimiter,
+  // passwordResetLimiter, // Disabled for testing
   validate(verifyOtpSchema),
   verifyOtp
 );
@@ -58,7 +58,7 @@ router.post(
 // Reset password with OTP
 router.post(
   '/reset-password',
-  passwordResetLimiter,
+  // passwordResetLimiter, // Disabled for testing
   validate(resetPasswordSchema),
   resetPassword
 );

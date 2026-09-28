@@ -93,8 +93,10 @@ export const apiLimiter = rateLimit({
 });
 
 /**
- * Password reset rate limiter — 3 attempts / 1 hour per IP.
+ * Password reset rate limiter — 3 attempts / 1 hour per IP (Disabled for testing)
  */
+export const passwordResetLimiter = (req, res, next) => next();
+/*
 export const passwordResetLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 3,
@@ -105,6 +107,7 @@ export const passwordResetLimiter = rateLimit({
     message: 'Too many password reset attempts. Please try again after 1 hour.',
   },
 });
+*/
 
 /**
  * Initialize Redis-backed stores for all rate limiters.
@@ -120,7 +123,7 @@ export function initRateLimitStores() {
     { limiter: globalLimiter, prefix: 'global' },
     { limiter: authLimiter, prefix: 'auth' },
     { limiter: apiLimiter, prefix: 'api' },
-    { limiter: passwordResetLimiter, prefix: 'pwd-reset' },
+    // { limiter: passwordResetLimiter, prefix: 'pwd-reset' },
   ];
 
   for (const { limiter, prefix } of limiters) {

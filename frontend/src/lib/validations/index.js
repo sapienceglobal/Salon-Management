@@ -137,6 +137,18 @@ export const packageSchema = z.object({
   })).min(1, 'At least one service must be included').optional()
 });
 
+export const loginSchema = z.object({
+  email: z.string().min(1, 'Email or username is required').refine(val => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) return false;
+    if (trimmed.includes('@')) {
+      return z.string().email().safeParse(trimmed).success;
+    }
+    return trimmed.length >= 3;
+  }, 'Please enter a valid email address or username'),
+  password: z.string().min(1, 'Password is required').min(4, 'Password must be at least 4 characters'),
+});
+
 export const formatZodErrors = (zodError) => {
   const errors = {};
   zodError.issues.forEach(issue => {
@@ -145,3 +157,4 @@ export const formatZodErrors = (zodError) => {
   });
   return errors;
 };
+
