@@ -76,8 +76,20 @@ class AuthService {
   async login({ email, password }, ipAddress, userAgent) {
     // Find user by email
     const user = await db('users')
-      .select('id', 'business_id', 'email', 'password_hash', 'first_name', 'last_name', 'role', 'is_active', 'google_id')
-      .where({ email })
+      .leftJoin('businesses', 'users.business_id', 'businesses.id')
+      .select(
+        'users.id',
+        'users.business_id',
+        'users.email',
+        'users.password_hash',
+        'users.first_name',
+        'users.last_name',
+        'users.role',
+        'users.is_active',
+        'users.google_id',
+        'businesses.name as business_name'
+      )
+      .where({ 'users.email': email })
       .first();
 
     if (!user) {
@@ -164,8 +176,18 @@ class AuthService {
 
     // Fetch user
     const user = await db('users')
-      .select('id', 'business_id', 'email', 'first_name', 'last_name', 'role', 'is_active')
-      .where({ id: storedToken.user_id, is_active: true })
+      .leftJoin('businesses', 'users.business_id', 'businesses.id')
+      .select(
+        'users.id',
+        'users.business_id',
+        'users.email',
+        'users.first_name',
+        'users.last_name',
+        'users.role',
+        'users.is_active',
+        'businesses.name as business_name'
+      )
+      .where({ 'users.id': storedToken.user_id, 'users.is_active': true })
       .first();
 
     if (!user) {

@@ -1,0 +1,495 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useScrollLock } from '@/hooks/useScrollLock';
+import {
+  RiCloseLine,
+  RiUserShared2Line,
+  RiPhoneLine,
+  RiMailLine,
+  RiMapPinLine,
+  RiCalendarLine,
+  RiTimeLine,
+  RiUserLine,
+  RiInformationLine,
+  RiWhatsappLine,
+  RiLoader2Line,
+  RiCheckLine,
+  RiPriceTag3Line,
+  RiGroupLine,
+} from 'react-icons/ri';
+import api from '@/lib/api';
+import toast from 'react-hot-toast';
+
+export default function ConvertLeadModal({
+  isOpen,
+  onClose,
+  lead,
+  staffList = [],
+  servicesList = [],
+  onSuccess,
+}) {
+  const [loading, setLoading] = useState(false);
+  const [copyAllDetails, setCopyAllDetails] = useState(true);
+
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    dob: '1998-03-12',
+    gender: 'Female',
+    customer_group: 'Regular Customer',
+    preferred_branch: 'Downtown Branch',
+    preferred_services: ['Hair Spa', 'Hair Colour'],
+    preferred_staff_id: '',
+    remarks: '',
+  });
+
+  useScrollLock(isOpen);
+
+  useEffect(() => {
+    if (isOpen && lead) {
+      const names = (lead.name || '').trim().split(' ');
+      const fName = names[0] || '';
+      const lName = names.slice(1).join(' ') || '';
+
+      let services = ['Hair Spa', 'Hair Colour'];
+      if (Array.isArray(lead.interested_services) && lead.interested_services.length > 0) {
+        services = lead.interested_services;
+      } else if (typeof lead.interested_services === 'string') {
+        try {
+          const parsed = JSON.parse(lead.interested_services);
+          if (Array.isArray(parsed) && parsed.length > 0) services = parsed;
+        } catch {
+          if (lead.interested_services.trim()) services = [lead.interested_services];
+        }
+      }
+
+      setFormData({
+        first_name: fName,
+        last_name: lName,
+        phone: lead.phone || '',
+        email: lead.email || '',
+        dob: '1998-03-12',
+        gender: lead.gender || 'Female',
+        customer_group: 'Regular Customer',
+        preferred_branch: lead.preferred_branch || 'Downtown Branch',
+        preferred_services: services,
+        preferred_staff_id: lead.assigned_to || '',
+        remarks: lead.notes || `Converted from lead. Interested in ${services.join(' and ')}. Looking for weekend appointment.`,
+      });
+    }
+  }, [isOpen, lead]);
+
+  if (!isOpen || !lead) return null;
+
+  const handleConvert = async (e) => {
+    e.preventDefault();
+    if (!formData.first_name.trim()) return toast.error('Please enter customer name');
+    if (!formData.phone.trim()) return toast.error('Please enter phone number');
+
+    setLoading(true);
+    try {
+      await api.post(`/leads/${lead.id}/convert`, {
+        first_name: formData.first_name.trim(),
+        last_name: formData.last_name.trim() || undefined,
+        phone: formData.phone.trim(),
+        email: formData.email.trim() || undefined,
+        gender: formData.gender,
+        dob: formData.dob || undefined,
+        customer_group: formData.customer_group,
+        preferred_branch: formData.preferred_branch,
+        preferred_services: formData.preferred_services,
+        preferred_staff_id: formData.preferred_staff_id ? Number(formData.preferred_staff_id) : undefined,
+        remarks: formData.remarks.trim() || undefined,
+      });
+
+      toast.success(`${formData.first_name} converted to customer successfully!`);
+      onSuccess();
+      onClose();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to convert lead to customer');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeService = (svcName) => {
+    setFormData((prev) => ({
+      ...prev,
+      preferred_services: prev.preferred_services.filter((s) => s !== svcName),
+    }));
+  };
+
+  const addService = (svcName) => {
+    if (!svcName || formData.preferred_services.includes(svcName)) return;
+    setFormData((prev) => ({
+      ...prev,
+      preferred_services: [...prev.preferred_services, svcName],
+    }));
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-[#1a1a2e] w-full max-w-3xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-pink-50 dark:bg-pink-950/50 text-[#E91E63] flex items-center justify-center text-xl shrink-0 shadow-xs">
+              <RiGroupLine />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                Convert Lead to Customer
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                Create a customer profile from this lead. Lead details will be saved in customer history.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <RiCloseLine className="text-lg" />
+          </button>
+        </div>
+
+        {/* Modal Body (Scrollable) */}
+        <form onSubmit={handleConvert} className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+          {/* Top Summary: Split Left Lead Card & Right Lead Information Card */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-stretch">
+            {/* Left Card: Lead Profile Card */}
+            <div className="md:col-span-7 p-4 rounded-2xl bg-gray-50/70 dark:bg-white/[0.02] border border-gray-200/80 dark:border-white/5 flex items-start gap-3.5">
+              <img
+                src={lead.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(lead.name)}&background=E91E63&color=fff`}
+                alt={lead.name}
+                className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-white/10 shadow-sm shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white truncate">
+                    {lead.name}
+                  </h3>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/50">
+                    New Lead
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 font-semibold mt-1">
+                  <span>{lead.phone}</span>
+                  <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px]">
+                    <RiWhatsappLine />
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{lead.email || 'priya.sharma@gmail.com'}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{lead.location || 'Noida, Uttar Pradesh - 201301'}</div>
+                <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                  <span>Enquired: {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '06 Aug 2026'}</span>
+                  <span>•</span>
+                  <span className="text-[#E91E63] font-semibold">Source: {lead.source || 'Instagram'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Card: Lead Information Box (pink subtle tone) */}
+            <div className="md:col-span-5 p-4 rounded-2xl bg-pink-50/50 dark:bg-pink-950/20 border border-pink-200/60 dark:border-pink-900/30 flex flex-col justify-between text-xs space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-gray-900 dark:text-white text-sm">
+                <RiUserLine className="text-[#E91E63]" />
+                <span>Lead Information</span>
+              </div>
+
+              <div>
+                <span className="text-xs text-gray-400 block font-medium">Interested In</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                  {formData.preferred_services.join(', ') || 'Hair Spa, Hair Colour'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-xs text-gray-400 block font-medium">Preferred Date</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
+                    {lead.follow_up_date || '10 Aug 2026'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-400 block font-medium">Preferred Time</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
+                    {lead.follow_up_time || '11:00 AM'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs text-gray-400 block font-medium">Assigned To</span>
+                <span className="font-bold text-[#E91E63] text-sm">
+                  {lead.assigned_first_name
+                    ? `${lead.assigned_first_name} ${lead.assigned_last_name || ''}`
+                    : 'Sneha Kapoor'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Details Form Header & Copy Details Checkbox */}
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <h3 className="text-base font-bold text-gray-900 dark:text-white">Customer Details</h3>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Review and update the information before converting.</p>
+            </div>
+            <label className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={copyAllDetails}
+                onChange={(e) => setCopyAllDetails(e.target.checked)}
+                className="w-4 h-4 rounded text-[#E91E63] border-gray-300 focus:ring-[#E91E63]"
+              />
+              <span>Copy all lead details to customer</span>
+            </label>
+          </div>
+
+          {/* 2-Column Form Fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Left Column: Personal info */}
+            <div className="space-y-3.5">
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs sm:text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Full Name <span className="text-[#E91E63]">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    required
+                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-800 dark:text-gray-100 outline-none focus:border-[#E91E63]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-800 dark:text-gray-100 outline-none focus:border-[#E91E63]"
+                  />
+                </div>
+              </div>
+
+              {/* Phone Number with Flag & WhatsApp */}
+              <div>
+                <label className="block text-xs sm:text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Phone Number <span className="text-[#E91E63]">*</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-2.5 py-2.5 text-sm font-bold text-gray-700 dark:text-gray-300 shrink-0">
+                    <span>🇮🇳 +91</span>
+                  </div>
+                  <div className="relative flex-1">
+                    <input
+                      type="tel"
+                      value={formData.phone.replace('+91', '').trim()}
+                      onChange={(e) => setFormData({ ...formData, phone: '+91 ' + e.target.value.replace(/[^0-9]/g, '') })}
+                      required
+                      placeholder="98765 43210"
+                      className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl pl-3.5 pr-9 py-2.5 text-sm font-medium text-gray-800 dark:text-gray-100 outline-none focus:border-[#E91E63]"
+                    />
+                    <RiWhatsappLine className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 text-base" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Address */}
+              <div>
+                <label className="block text-xs sm:text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email Address</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="Enter email address"
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-800 dark:text-gray-100 outline-none focus:border-[#E91E63]"
+                />
+              </div>
+
+              {/* Date of Birth & Gender */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs sm:text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Date of Birth</label>
+                  <input
+                    type="date"
+                    value={formData.dob}
+                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 dark:text-gray-100 outline-none focus:border-[#E91E63] dark:[color-scheme:dark]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Gender</label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 dark:text-gray-100 outline-none focus:border-[#E91E63] cursor-pointer"
+                  >
+                    <option value="Female">Female</option>
+                    <option value="Male">Male</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Salon Preferences */}
+            <div className="space-y-3.5">
+              {/* Customer Group & Preferred Branch */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs sm:text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Customer Group</label>
+                  <select
+                    value={formData.customer_group}
+                    onChange={(e) => setFormData({ ...formData, customer_group: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 dark:text-gray-100 outline-none focus:border-[#E91E63] cursor-pointer"
+                  >
+                    <option value="Regular Customer">Regular Customer</option>
+                    <option value="VIP Client">VIP Client</option>
+                    <option value="Walk-in">Walk-in</option>
+                    <option value="Member">Member</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Preferred Branch</label>
+                  <select
+                    value={formData.preferred_branch}
+                    onChange={(e) => setFormData({ ...formData, preferred_branch: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 dark:text-gray-100 outline-none focus:border-[#E91E63] cursor-pointer"
+                  >
+                    <option value="Downtown Branch">Downtown Branch</option>
+                    <option value="Uptown Branch">Uptown Branch</option>
+                    <option value="Westside Branch">Westside Branch</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Preferred Services (Pill badges with x) */}
+              <div>
+                <label className="block text-xs sm:text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Preferred Services</label>
+                <div className="min-h-[44px] bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-1.5 flex flex-wrap gap-1.5 items-center">
+                  {formData.preferred_services.map((svc) => (
+                    <span
+                      key={svc}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#E91E63]/10 text-[#E91E63] border border-[#E91E63]/20"
+                    >
+                      <span>{svc}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeService(svc)}
+                        className="hover:text-red-600 transition-colors text-xs font-bold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        addService(e.target.value);
+                        e.target.value = '';
+                      }
+                    }}
+                    defaultValue=""
+                    className="bg-transparent text-sm text-gray-500 outline-none cursor-pointer py-1 font-medium"
+                  >
+                    <option value="" disabled>
+                      + Add Service
+                    </option>
+                    {[
+                      'Hair Spa',
+                      'Hair Colour',
+                      'Keratin Treatment',
+                      'Haircut',
+                      'Facial',
+                      'Bridal Makeup',
+                      'Manicure',
+                      'Pedicure',
+                      'Smoothening',
+                    ].map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Preferred Staff */}
+              <div>
+                <label className="block text-xs sm:text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Preferred Staff</label>
+                <select
+                  value={formData.preferred_staff_id}
+                  onChange={(e) => setFormData({ ...formData, preferred_staff_id: e.target.value })}
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 dark:text-gray-100 outline-none focus:border-[#E91E63] cursor-pointer"
+                >
+                  <option value="">Select Preferred Staff</option>
+                  {staffList.map((st) => (
+                    <option key={st.id} value={st.id}>
+                      {st.first_name} {st.last_name || ''} ({st.designation || 'Staff'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Remarks (Optional) with character count */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs sm:text-[13px] font-semibold text-gray-700 dark:text-gray-300">Remarks (Optional)</label>
+                  <span className="text-xs text-gray-400 font-mono">
+                    {formData.remarks.length}/500
+                  </span>
+                </div>
+                <textarea
+                  maxLength={500}
+                  rows={2}
+                  value={formData.remarks}
+                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                  placeholder="Add any specific preferences or notes from the lead conversation..."
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 outline-none focus:border-[#E91E63] transition-colors resize-none font-medium"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Information Alert Banner */}
+          <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/70 dark:border-blue-900/30 flex items-start gap-2.5 text-blue-700 dark:text-blue-300 text-xs sm:text-sm">
+            <RiInformationLine className="text-lg shrink-0 mt-0.5" />
+            <div className="leading-relaxed">
+              <span className="font-bold">Once converted, this lead will be moved to Customers / CRM.</span>{' '}
+              <span>All lead activity, notes, and follow-ups will be retained in the customer history.</span>
+            </div>
+          </div>
+
+          {/* Footer Buttons */}
+          <div className="pt-2 border-t border-gray-100 dark:border-white/10 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#E91E63] to-[#F43F5E] hover:from-[#D81B60] hover:to-[#E11D48] text-white text-sm font-bold shadow-md shadow-[#E91E63]/25 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              {loading ? <RiLoader2Line className="animate-spin text-base" /> : <RiUserShared2Line className="text-base" />}
+              <span>Convert to Customer</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+}

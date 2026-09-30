@@ -115,9 +115,17 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
               </div>
               
               <div className="flex items-center gap-5 mt-2">
-                <div className="w-20 h-20 rounded-2xl bg-brand/10 text-brand flex items-center justify-center text-3xl shrink-0 font-bold border border-brand/20">
-                  {staff.first_name.charAt(0)}{staff.last_name.charAt(0)}
-                </div>
+                {staff.avatar_url ? (
+                  <img
+                    src={staff.avatar_url}
+                    alt={`${staff.first_name} ${staff.last_name}`}
+                    className="w-20 h-20 rounded-2xl object-cover shadow-sm border-2 border-white dark:border-white/10 ring-2 ring-[#E91E63]/30 shrink-0"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-brand/10 text-brand flex items-center justify-center text-3xl shrink-0 font-bold border border-brand/20">
+                    {staff.first_name ? staff.first_name.charAt(0) : ''}{staff.last_name ? staff.last_name.charAt(0) : ''}
+                  </div>
+                )}
                 <div>
                   <h2 className="text-2xl font-bold">{staff.first_name} {staff.last_name}</h2>
                   <div className="flex items-center gap-2.5 mt-1.5 mb-2 flex-wrap">

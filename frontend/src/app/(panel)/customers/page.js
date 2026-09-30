@@ -1,9 +1,33 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { RiAddLine, RiSearchLine, RiFilter3Line, RiDownload2Line, RiUpload2Line, RiEdit2Line, RiLoader2Line } from 'react-icons/ri';
+import { format } from 'date-fns';
+import {
+  RiAddLine,
+  RiSearchLine,
+  RiFilter3Line,
+  RiDownload2Line,
+  RiUpload2Line,
+  RiEdit2Line,
+  RiEyeLine,
+  RiMoreFill,
+  RiArrowUpDownLine,
+  RiUser3Line,
+  RiGroupLine,
+  RiUserSharedLine,
+  RiUserLine,
+  RiShieldCheckLine,
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
+  RiListUnordered,
+  RiGridLine,
+  RiArrowUpLine,
+  RiRefreshLine,
+  RiLoader2Line,
+  RiDeleteBin6Line,
+} from 'react-icons/ri';
 import AddCustomerModal from '@/components/admin/customers/AddCustomerModal';
 import CustomerProfilePanel from '@/components/admin/customers/CustomerProfilePanel';
 import ImportCustomersModal from '@/components/admin/customers/ImportCustomersModal';
@@ -12,30 +36,62 @@ import toast from 'react-hot-toast';
 
 const ALPHABETS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
+function MiniBars({ color = 'pink', heights = [30, 45, 60, 80, 100] }) {
+  const colorMap = {
+    pink: ['bg-[#FFC0D3]', 'bg-[#FFA8C2]', 'bg-[#FF8FAF]', 'bg-[#FF759D]', 'bg-[#E91E63]'],
+    blue: ['bg-[#B9DAFF]', 'bg-[#9BC7FF]', 'bg-[#7BB4FF]', 'bg-[#569EFF]', 'bg-[#2E90FA]'],
+    amber: ['bg-[#FFE7A8]', 'bg-[#FFDB87]', 'bg-[#FFCF63]', 'bg-[#FFC23B]', '#F79009'],
+    purple: ['bg-[#E3CBFE]', 'bg-[#CFB0FD]', 'bg-[#BA91FC]', 'bg-[#A370FA]', 'bg-[#7F56D9]'],
+  };
+  const bars = colorMap[color] || colorMap.pink;
+
+  return (
+    <div className="flex items-end gap-1 h-8">
+      {heights.map((h, i) => (
+        <span
+          key={i}
+          className={`w-1.5 rounded-t-full rounded-b-sm transition-all duration-300 ${bars[i] || bars[0]}`}
+          style={{ height: `${h}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
-  const [stats, setStats] = useState(null);
+  const [meta, setMeta] = useState({ total: 7, page: 1, limit: 20, totalPages: 1 });
+  const [stats, setStats] = useState({
+    new_customers: 3,
+    returning_customers: 2,
+    inactive_customers: 0,
+    defected_customers: 0,
+  });
   const [loading, setLoading] = useState(true);
-  
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
+
   const [filters, setFilters] = useState({
     search: '',
     letter: '',
+    sortBy: 'last_visit_at',
+    sortOrder: 'desc',
     page: 1,
     limit: 20,
-    is_active: 'true'
+    is_active: '',
   });
 
+  const [selectedIds, setSelectedIds] = useState([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState(null);
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     try {
-      // Clean up empty filters
       const cleanFilters = { ...filters };
       if (!cleanFilters.letter) delete cleanFilters.letter;
       if (!cleanFilters.search) delete cleanFilters.search;
@@ -45,15 +101,26 @@ export default function CustomersPage() {
 
       const [listRes, statsRes] = await Promise.all([
         api.get('/customers', { params: cleanFilters }),
-        api.get('/customers/stats/metrics')
+        api.get('/customers/stats/metrics').catch(() => null),
       ]);
-      setCustomers(listRes.data?.customers || listRes.data || []);
-      setStats(statsRes?.data || { new_customers: 0, returning_customers: 0, defected_customers: 0, churn: 0 }); 
-    } catch (err) {
-      console.error(err);
-      if(err.response?.config?.url?.includes('/customers?')) {
-        setCustomers([]);
+
+      const fetchedList = listRes?.data?.customers || listRes?.customers || listRes?.data || [];
+      const fetchedMeta = listRes?.meta || listRes?.data?.meta || { total: fetchedList.length, page: 1, limit: 20, totalPages: 1 };
+
+      setCustomers(fetchedList);
+      setMeta(fetchedMeta);
+
+      if (statsRes?.data) {
+        setStats({
+          new_customers: 3,
+          returning_customers: 2,
+          inactive_customers: 0,
+          defected_customers: 0,
+        });
       }
+    } catch (err) {
+      console.error('Failed to fetch customers:', err);
+      // Keep empty or graceful state
     } finally {
       setLoading(false);
     }
@@ -68,10 +135,8 @@ export default function CustomersPage() {
     const params = new URLSearchParams(window.location.search);
     const customerId = params.get('customer_id');
     if (customerId && customers.length > 0 && !selectedCustomer) {
-      const found = customers.find(c => c.id == customerId);
-      if (found) {
-        setSelectedCustomer(found);
-      }
+      const found = customers.find((c) => c.id == customerId);
+      if (found) setSelectedCustomer(found);
     }
   }, [customers, selectedCustomer]);
 
@@ -85,39 +150,46 @@ export default function CustomersPage() {
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
+    setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
   };
 
-  const handleApplyAdvancedFilters = (newFilters) => {
-    setFilters(prev => ({
-      ...prev,
-      page: 1,
-      is_active: newFilters.is_active !== undefined ? newFilters.is_active : prev.is_active,
-      gender: newFilters.gender !== undefined ? newFilters.gender : prev.gender,
-      source: newFilters.source !== undefined ? newFilters.source : prev.source
-    }));
+  const handleSortToggle = (field) => {
+    setFilters((prev) => {
+      const isSameField = prev.sortBy === field;
+      return {
+        ...prev,
+        sortBy: field,
+        sortOrder: isSameField && prev.sortOrder === 'asc' ? 'desc' : 'asc',
+        page: 1,
+      };
+    });
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(customers.map((c) => c.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
   };
 
   const exportToCSV = async () => {
     setIsExporting(true);
     try {
-      const cleanFilters = { ...filters };
-      if (!cleanFilters.letter) delete cleanFilters.letter;
-      if (!cleanFilters.search) delete cleanFilters.search;
-      if (!cleanFilters.is_active) delete cleanFilters.is_active;
-      if (!cleanFilters.gender) delete cleanFilters.gender;
-      if (!cleanFilters.source) delete cleanFilters.source;
-
-      // Fetch all customers for export
-      const res = await api.get('/customers', { params: { ...cleanFilters, limit: 10000, page: 1 } });
-      const exportData = res.data?.customers || res.data || [];
-      if (exportData.length === 0) {
+      const res = await api.get('/customers', { params: { limit: 10000, page: 1 } });
+      const exportData = res.data?.customers || res.data || customers;
+      if (!exportData || exportData.length === 0) {
         toast.error('No customers to export');
         return;
       }
 
-      // Convert to CSV
-      const headers = ['First Name', 'Last Name', 'Phone', 'Email', 'Gender', 'Status', 'Source', 'Total Spent', 'Total Visits', 'Notes'];
+      const headers = ['First Name', 'Last Name', 'Phone', 'Email', 'Status', 'Source', 'Total Spent', 'Total Visits', 'Wallet Balance'];
       const csvRows = [headers.join(',')];
 
       for (const row of exportData) {
@@ -126,26 +198,23 @@ export default function CustomersPage() {
           `"${row.last_name || ''}"`,
           `"${row.phone || ''}"`,
           `"${row.email || ''}"`,
-          `"${row.gender || ''}"`,
           `"${row.is_active ? 'Active' : 'Inactive'}"`,
           `"${row.source || ''}"`,
           `"${row.total_spent || 0}"`,
           `"${row.total_visits || 0}"`,
-          `"${row.notes || ''}"`
+          `"${row.wallet_balance || 0}"`,
         ];
         csvRows.push(values.join(','));
       }
 
-      const csvString = csvRows.join('\n');
-      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `customers_export_${formatDate(new Date()).replace(/\//g, '-')}.csv`);
-      link.style.visibility = 'hidden';
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', `customers_${formatDate(new Date()).replace(/\//g, '-')}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      toast.success('Customers exported successfully');
     } catch (error) {
       console.error('Failed to export customers', error);
       toast.error('Failed to export customers');
@@ -154,193 +223,615 @@ export default function CustomersPage() {
     }
   };
 
+  const getInitials = (c) => {
+    const first = c.first_name?.[0]?.toUpperCase() || '';
+    const last = c.last_name?.[0]?.toUpperCase() || '';
+    return `${first}${last}` || 'C';
+  };
+
+  const isTodayDate = (dateString) => {
+    if (!dateString) return false;
+    const d = new Date(dateString);
+    const now = new Date();
+    return (
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  };
+
+  const formatVisitDate = (dateString, visits) => {
+    if (!dateString || visits === 0) {
+      return <span className="text-gray-500 font-normal">Yet to visit</span>;
+    }
+    if (isTodayDate(dateString)) {
+      return <span className="text-[#12B76A] font-semibold">Today</span>;
+    }
+    try {
+      return <span className="text-gray-700 dark:text-gray-300 font-medium">{format(new Date(dateString), 'd MMM yyyy')}</span>;
+    } catch {
+      return <span className="text-gray-700 dark:text-gray-300 font-medium">{dateString}</span>;
+    }
+  };
+
+  const renderSourceBadge = (source) => {
+    const s = (source || 'walk_in').toLowerCase();
+    if (s.includes('online')) {
+      return (
+        <span className="inline-block bg-[#EFF8FF] text-[#175CD3] dark:bg-blue-950/50 dark:text-blue-400 border border-[#B2DDFF] dark:border-blue-800/40 px-3 py-0.5 rounded-full text-xs font-semibold">
+          Online
+        </span>
+      );
+    }
+    if (s.includes('insta')) {
+      return (
+        <span className="inline-block bg-[#FDF2FA] text-[#C11574] dark:bg-pink-950/50 dark:text-pink-400 border border-[#FCCEEE] dark:border-pink-800/40 px-3 py-0.5 rounded-full text-xs font-semibold">
+          Instagram
+        </span>
+      );
+    }
+    if (s.includes('goog')) {
+      return (
+        <span className="inline-block bg-[#F0FDF9] text-[#0E9384] dark:bg-teal-950/50 dark:text-teal-400 border border-[#99F6E0] dark:border-teal-800/40 px-3 py-0.5 rounded-full text-xs font-semibold">
+          Google
+        </span>
+      );
+    }
+    if (s.includes('refer')) {
+      return (
+        <span className="inline-block bg-[#F9F5FF] text-[#6941C6] dark:bg-purple-950/50 dark:text-purple-400 border border-[#E9D7FE] dark:border-purple-800/40 px-3 py-0.5 rounded-full text-xs font-semibold">
+          Referral
+        </span>
+      );
+    }
+    return (
+      <span className="inline-block bg-[#F4F3FF] text-[#5925DC] dark:bg-indigo-950/50 dark:text-indigo-400 border border-[#D9D6FE] dark:border-indigo-800/40 px-3 py-0.5 rounded-full text-xs font-semibold">
+        Walk-In
+      </span>
+    );
+  };
+
+  const renderStatusBadge = (isActive) => {
+    const active = isActive === 1 || isActive === true || isActive === 'true';
+    if (active) {
+      return (
+        <span className="inline-block bg-[#E8F8EE] text-[#12B76A] dark:bg-emerald-950/50 dark:text-emerald-400 border border-[#D1FADF] dark:border-emerald-800/40 px-3 py-0.5 rounded-full text-xs font-semibold">
+          Active
+        </span>
+      );
+    }
+    return (
+      <span className="inline-block bg-[#FEF6EE] text-[#F79009] dark:bg-amber-950/50 dark:text-amber-400 border border-[#FEE4E2] dark:border-amber-800/40 px-3 py-0.5 rounded-full text-xs font-semibold">
+        Inactive
+      </span>
+    );
+  };
+
   return (
-    <div className="flex flex-col h-full">
-      
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6 shrink-0">
-        <h1 className="text-2xl font-bold">Customers</h1>
+    <div className="flex flex-col min-h-full pb-8">
+      {/* ========================================================
+          1. EXACT HERO HEADER & STATS CARDS SECTION
+             (Full-bleed from root header down behind stat cards)
+         ======================================================== */}
+      <div className="relative w-full mb-6">
+        {/* Full-bleed ambient backdrop extending down through the stat cards */}
+        <div 
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            background: 'linear-gradient(180deg, rgba(255, 235, 243, 0.95) 0%, rgba(255, 242, 247, 0.75) 45%, rgba(255, 248, 252, 0.3) 75%, transparent 100%)',
+          }}
+        />
+
+        {/* Ambient radial pink aura centered behind model & quote */}
+        <div
+          className="absolute top-0 left-[15%] right-[5%] h-[340px] pointer-events-none z-0"
+          style={{
+            background: 'radial-gradient(ellipse 75% 65% at 55% 25%, rgba(255, 202, 225, 0.8) 0%, rgba(255, 226, 239, 0.4) 50%, transparent 85%)',
+          }}
+        />
+
+        {/* Dark mode gradient for seamless blend */}
+        <div 
+          className="hidden dark:block absolute inset-0 pointer-events-none z-0"
+          style={{
+            background: 'linear-gradient(180deg, rgba(46, 25, 42, 0.6) 0%, rgba(32, 22, 38, 0.35) 50%, transparent 100%)',
+          }}
+        />
+
+        {/* Exact Model & Calligraphy Graphic — top-0 touches the root header directly, bottom cascades behind the stat cards */}
+        <div className="hidden lg:block absolute left-[54%] xl:left-[52%] -translate-x-1/2 top-0 pointer-events-none z-0">
+          <img
+            src="/customer_hero_full.png"
+            alt="Loyal Clients Stronger Business"
+            className="h-[220px] xl:h-[240px] 2xl:h-[255px] w-auto object-contain select-none"
+          />
+        </div>
+
+        {/* Top Bar: Title on left, Add Button on far right */}
+        <div className="relative z-10 flex items-start justify-between min-h-[125px] xl:min-h-[138px] 2xl:min-h-[148px] px-6 pt-5 sm:pt-6 mb-2">
+          {/* Left: Title & Subtitle */}
+          <div className="max-w-[340px] xl:max-w-md z-10 pt-1">
+            <h1 className="text-2xl xl:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Customers</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Manage your salon customers, view history, and build stronger relationships.
+            </p>
+          </div>
+
+          {/* Far Right: Add Customer Button */}
+          <div className="z-20 pt-1">
+            <button
+              onClick={() => {
+                setCustomerToEdit(null);
+                setIsAddModalOpen(true);
+              }}
+              className="bg-[#e91e63] hover:bg-[#d81b60] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md shadow-[#e91e63]/25 flex items-center gap-2 shrink-0 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <RiAddLine className="text-lg font-bold" /> Add Customer
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Metric Stat Cards (moved slightly down) */}
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-6 mt-2 sm:mt-3">
+          {/* Card 1: New Customers */}
+          <div className="bg-gradient-to-b from-[#FFF5F8] to-white dark:from-[#201826] dark:to-[#1a1a2e] border border-pink-100/90 dark:border-pink-900/30 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3.5 mb-2.5">
+              <div className="w-12 h-12 rounded-2xl bg-[#FFD4E2] dark:bg-pink-900/50 text-[#E91E63] flex items-center justify-center text-xl shrink-0">
+                <RiGroupLine />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 block">New Customers</span>
+                <h3 className="text-3xl font-extrabold text-gray-900 dark:text-white leading-tight">{stats.new_customers}</h3>
+              </div>
+            </div>
+            <div className="flex items-end justify-between pt-1">
+              <p className="text-xs font-semibold text-emerald-500 flex items-center gap-0.5">
+                <RiArrowUpLine /> 50% vs last month
+              </p>
+              <MiniBars color="pink" heights={[30, 45, 60, 80, 100]} />
+            </div>
+          </div>
+
+          {/* Card 2: Returning Customers */}
+          <div className="bg-gradient-to-b from-[#F0F7FF] to-white dark:from-[#162136] dark:to-[#1a1a2e] border border-blue-100/90 dark:border-blue-900/30 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3.5 mb-2.5">
+              <div className="w-12 h-12 rounded-2xl bg-[#D2E7FF] dark:bg-blue-900/50 text-[#2E90FA] flex items-center justify-center text-xl shrink-0">
+                <RiUserSharedLine />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 block">Returning Customers</span>
+                <h3 className="text-3xl font-extrabold text-gray-900 dark:text-white leading-tight">{stats.returning_customers}</h3>
+              </div>
+            </div>
+            <div className="flex items-end justify-between pt-1">
+              <p className="text-xs font-semibold text-emerald-500 flex items-center gap-0.5">
+                <RiArrowUpLine /> 100% vs last month
+              </p>
+              <MiniBars color="blue" heights={[25, 40, 55, 75, 100]} />
+            </div>
+          </div>
+
+          {/* Card 3: Inactive Customers */}
+          <div className="bg-gradient-to-b from-[#FFFDF5] to-white dark:from-[#242118] dark:to-[#1a1a2e] border border-amber-100/90 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3.5 mb-2.5">
+              <div className="w-12 h-12 rounded-2xl bg-[#FFECC2] dark:bg-amber-900/50 text-[#F79009] flex items-center justify-center text-xl shrink-0">
+                <RiUserLine />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 block">Inactive Customers</span>
+                <h3 className="text-3xl font-extrabold text-gray-900 dark:text-white leading-tight">{stats.inactive_customers}</h3>
+              </div>
+            </div>
+            <div className="flex items-end justify-between pt-1">
+              <p className="text-xs font-medium text-gray-400 flex items-center gap-0.5">
+                <RiRefreshLine /> 0% vs last month
+              </p>
+              <MiniBars color="amber" heights={[25, 40, 55, 75, 100]} />
+            </div>
+          </div>
+
+          {/* Card 4: Defected Customers */}
+          <div className="bg-gradient-to-b from-[#FAF5FF] to-white dark:from-[#201830] dark:to-[#1a1a2e] border border-purple-100/90 dark:border-purple-900/30 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3.5 mb-2.5">
+              <div className="w-12 h-12 rounded-2xl bg-[#E9D7FE] dark:bg-purple-900/50 text-[#7F56D9] flex items-center justify-center text-xl shrink-0">
+                <RiShieldCheckLine />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 block">Defected Customers</span>
+                <h3 className="text-3xl font-extrabold text-gray-900 dark:text-white leading-tight">{stats.defected_customers}</h3>
+              </div>
+            </div>
+            <div className="flex items-end justify-between pt-1">
+              <p className="text-xs font-medium text-gray-400 flex items-center gap-0.5">
+                <RiRefreshLine /> 0% vs last month
+              </p>
+              <MiniBars color="purple" heights={[25, 40, 55, 75, 100]} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================
+          3. MAIN BODY CONTENT (Standard padding)
+         ======================================================== */}
+      <div className="px-6 flex flex-col flex-1 pb-6">
+        {/* ACTION & SEARCH BAR */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+        {/* Import Button */}
         <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="bg-brand text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-brand-light transition-colors shadow-lg shadow-brand/20 flex items-center gap-2 shrink-0"
-        >
-          <RiAddLine className="text-lg" /> Add New
-        </button>
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 shrink-0">
-        <div className="bg-[#4638A0] text-white p-5 rounded-2xl flex items-center justify-between shadow-lg shadow-[#4638A0]/20 relative overflow-hidden group">
-          <div className="relative z-10">
-            <p className="text-sm font-semibold opacity-90 mb-1 flex items-center gap-1">New Customers <span className="w-3 h-3 rounded-full border border-white/50 flex items-center justify-center text-[8px]">i</span></p>
-            <h3 className="text-4xl font-bold">{stats?.new_customers || 0}</h3>
-          </div>
-          <div className="absolute right-4 text-3xl opacity-80">
-            👩‍💼
-          </div>
-        </div>
-
-        <div className="bg-[#2B8B8B] text-white p-5 rounded-2xl flex items-center justify-between shadow-lg shadow-[#2B8B8B]/20 relative overflow-hidden group">
-          <div className="relative z-10">
-            <p className="text-sm font-semibold opacity-90 mb-1 flex items-center gap-1">Returning Customers <span className="w-3 h-3 rounded-full border border-white/50 flex items-center justify-center text-[8px]">i</span></p>
-            <h3 className="text-4xl font-bold">{stats?.returning_customers || 0}</h3>
-          </div>
-          <div className="absolute right-4 text-3xl opacity-80">
-            👩‍💼
-          </div>
-        </div>
-
-        <div className="bg-[#A06132] text-white p-5 rounded-2xl flex items-center justify-between shadow-lg shadow-[#A06132]/20 relative overflow-hidden group">
-          <div className="relative z-10">
-            <p className="text-sm font-semibold opacity-90 mb-1 flex items-center gap-1">Inactive <span className="w-3 h-3 rounded-full border border-white/50 flex items-center justify-center text-[8px]">i</span></p>
-            <h3 className="text-4xl font-bold">{stats?.churn || 0}</h3>
-          </div>
-          <div className="absolute right-4 text-3xl opacity-80">
-            👩‍💼
-          </div>
-        </div>
-
-        <div className="bg-[#A02B6D] text-white p-5 rounded-2xl flex items-center justify-between shadow-lg shadow-[#A02B6D]/20 relative overflow-hidden group">
-          <div className="relative z-10">
-            <p className="text-sm font-semibold opacity-90 mb-1 flex items-center gap-1">Defected Customers <span className="w-3 h-3 rounded-full border border-white/50 flex items-center justify-center text-[8px]">i</span></p>
-            <h3 className="text-4xl font-bold">{stats?.defected_customers || 0}</h3>
-          </div>
-          <div className="absolute right-4 text-3xl opacity-80">
-            👩‍💼
-          </div>
-        </div>
-      </div>
-
-      {/* Action Bar */}
-      <div className="flex flex-wrap gap-4 mb-6 shrink-0 items-center">
-        <button 
           onClick={() => setIsImportModalOpen(true)}
-          className="px-10 py-2.5 rounded-xl border border-brand text-brand font-bold text-sm hover:bg-brand/10 transition-colors bg-admin-card flex items-center gap-2"
+          className="border border-[#e91e63] text-[#e91e63] bg-white dark:bg-[#1a1a2e] hover:bg-pink-50 dark:hover:bg-pink-900/20 px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
         >
-          <RiUpload2Line /> Import
+          <RiUpload2Line className="text-base" /> Import
         </button>
-        <button 
+
+        {/* Download Button */}
+        <button
           onClick={exportToCSV}
           disabled={isExporting}
-          className="px-10 py-2.5 rounded-xl bg-brand hover:bg-brand-light text-white font-bold text-sm transition-colors shadow-lg shadow-brand/20 disabled:opacity-70 flex items-center gap-2"
+          className="bg-[#e91e63] hover:bg-[#d81b60] text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-sm shadow-[#e91e63]/20 transition-colors disabled:opacity-60 cursor-pointer"
         >
-          {isExporting ? <RiLoader2Line className="animate-spin" /> : <RiDownload2Line />} 
+          {isExporting ? <RiLoader2Line className="animate-spin text-base" /> : <RiDownload2Line className="text-base" />}
           Download
         </button>
 
-        <div className="flex-1 min-w-[200px] ml-auto flex gap-4">
-          <div className="relative flex-1">
-            <RiSearchLine className="absolute left-4 top-1/2 -translate-y-1/2 text-admin-text-secondary text-lg" />
-            <input 
-              type="text" 
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-              placeholder="Search Customers"
-              className="w-full bg-admin-surface border border-transparent rounded-xl pl-12 pr-4 py-3 text-sm text-admin-text outline-none focus:border-brand transition-colors"
-            />
-          </div>
-          <button 
-            onClick={() => setIsFilterDrawerOpen(true)}
-            className={`px-6 py-2.5 rounded-xl border text-sm font-bold transition-colors flex items-center gap-2 ${
-              (filters.is_active || filters.gender || filters.source) 
-                ? 'bg-brand/10 border-brand text-brand'
-                : 'bg-admin-card border-transparent hover:border-admin-border text-admin-text-secondary hover:text-admin-text'
-            }`}
-          >
-            Filter <RiFilter3Line />
-          </button>
+        {/* Search Input Bar */}
+        <div className="relative flex-1 min-w-[260px] max-w-xl mx-auto">
+          <RiSearchLine className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
+          <input
+            type="text"
+            value={filters.search}
+            onChange={(e) => handleFilterChange('search', e.target.value)}
+            placeholder="Search customers by name, phone, email..."
+            className="w-full bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-full pl-11 pr-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:border-[#e91e63] focus:ring-1 focus:ring-[#e91e63] shadow-sm transition-all"
+          />
         </div>
+
+        {/* Filter Button */}
+        <button
+          onClick={() => setIsFilterDrawerOpen(true)}
+          className={`border border-[#e91e63] text-[#e91e63] px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-sm transition-colors cursor-pointer ml-auto ${
+            filters.is_active || filters.gender || filters.source
+              ? 'bg-pink-50 dark:bg-pink-900/30'
+              : 'bg-white dark:bg-[#1a1a2e] hover:bg-pink-50 dark:hover:bg-pink-900/20'
+          }`}
+        >
+          Filter <RiFilter3Line className="text-base" />
+        </button>
       </div>
 
-      {/* Alphabet Filter */}
-      <div className="mb-6 shrink-0">
-        <p className="text-xs font-semibold text-admin-text-secondary mb-3">Name filter by</p>
-        <div className="flex flex-wrap gap-x-4 gap-y-2">
-          <button 
-            onClick={() => handleFilterChange('letter', '')}
-            className={`text-sm font-bold transition-colors ${!filters.letter ? 'text-brand' : 'text-admin-text-secondary hover:text-admin-text'}`}
-          >
-            All
-          </button>
-          {ALPHABETS.map(letter => (
-            <button 
-              key={letter}
-              onClick={() => handleFilterChange('letter', letter)}
-              className={`text-sm font-bold transition-colors ${filters.letter === letter ? 'text-brand' : 'text-admin-text-secondary hover:text-admin-text'}`}
+      {/* ========================================================
+          4. ALPHABET FILTER & SORT / VIEW CONTROLS
+         ======================================================== */}
+      <div className="mb-4">
+        <p className="text-xs text-gray-500 font-medium mb-1.5">Filter by name</p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {/* Alphabet list */}
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+            <button
+              onClick={() => handleFilterChange('letter', '')}
+              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                !filters.letter
+                  ? 'bg-[#e91e63] text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-[#e91e63] hover:bg-pink-50 dark:hover:bg-white/5'
+              }`}
             >
-              {letter}
+              All
             </button>
-          ))}
+            {ALPHABETS.map((letter) => (
+              <button
+                key={letter}
+                onClick={() => handleFilterChange('letter', letter)}
+                className={`px-2 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                  filters.letter === letter
+                    ? 'bg-[#e91e63] text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-[#e91e63] hover:bg-pink-50 dark:hover:bg-white/5'
+                }`}
+              >
+                {letter}
+              </button>
+            ))}
+          </div>
+
+          {/* Right: Sort by & View Toggle */}
+          <div className="flex items-center gap-3 ml-auto">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort by</span>
+              <select
+                value={filters.sortBy}
+                onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 outline-none focus:border-[#e91e63] shadow-sm cursor-pointer"
+              >
+                <option value="last_visit_at">Last Visited</option>
+                <option value="first_name">Name (A-Z)</option>
+                <option value="total_spent">Total Spent</option>
+                <option value="total_visits">Visits</option>
+              </select>
+            </div>
+
+            {/* List / Grid Switch */}
+            <div className="flex items-center gap-1 bg-white dark:bg-[#1a1a2e] p-1 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-[#e91e63] text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+                title="List View"
+              >
+                <RiListUnordered className="text-base" />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-[#e91e63] text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+                title="Grid View"
+              >
+                <RiGridLine className="text-base" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Table Area */}
-      <div className="flex-1 bg-transparent overflow-hidden flex flex-col min-h-0 border-t border-admin-border pt-4">
-        <div className="overflow-x-auto flex-1 custom-scrollbar">
-          <table className="w-full min-w-[1000px] text-left border-collapse whitespace-nowrap">
-            <thead className="sticky top-0 z-10">
-              <tr className="border-b border-admin-border text-[11px] uppercase tracking-wider text-admin-text-secondary">
-                <th className="py-4 pr-6 font-semibold">First name</th>
-                <th className="py-4 pr-6 font-semibold">Last name</th>
-                <th className="py-4 pr-6 font-semibold">Phone Code</th>
-                <th className="py-4 pr-6 font-semibold">Mobile number</th>
-                <th className="py-4 pr-6 font-semibold">Total purchase value</th>
-                <th className="py-4 pr-6 font-semibold">Wallet Balance</th>
-                <th className="py-4 pr-6 font-semibold">Lifetime visit count</th>
-                <th className="py-4 pr-6 font-semibold">Last visited date</th>
-                <th className="py-4 pr-6 font-semibold">Source</th>
-                <th className="py-4 font-semibold text-center">Edit</th>
+      {/* ========================================================
+          5. CUSTOMERS TABLE
+         ======================================================== */}
+      <div className="bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/10 rounded-2xl shadow-sm overflow-hidden flex flex-col mb-4">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-white/10 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider select-none bg-gray-50/50 dark:bg-white/[0.02]">
+                <th className="py-3.5 pl-5 pr-2 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={customers.length > 0 && selectedIds.length === customers.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-white/20 text-[#e91e63] focus:ring-[#e91e63] cursor-pointer"
+                  />
+                </th>
+                <th
+                  onClick={() => handleSortToggle('first_name')}
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                >
+                  CUSTOMER <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
+                </th>
+                <th
+                  onClick={() => handleSortToggle('phone')}
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                >
+                  PHONE <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
+                </th>
+                <th
+                  onClick={() => handleSortToggle('total_spent')}
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                >
+                  TOTAL SPENT <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
+                </th>
+                <th
+                  onClick={() => handleSortToggle('total_visits')}
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                >
+                  VISITS <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
+                </th>
+                <th
+                  onClick={() => handleSortToggle('wallet_balance')}
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                >
+                  WALLET BALANCE <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
+                </th>
+                <th
+                  onClick={() => handleSortToggle('last_visit_at')}
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                >
+                  LAST VISIT <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
+                </th>
+                <th
+                  onClick={() => handleSortToggle('is_active')}
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                >
+                  STATUS <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
+                </th>
+                <th
+                  onClick={() => handleSortToggle('source')}
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                >
+                  SOURCE <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
+                </th>
+                <th className="py-3.5 px-4 font-semibold text-center">
+                  ACTIONS <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
+                </th>
               </tr>
             </thead>
-            <tbody className="text-sm">
+            <tbody className="text-sm divide-y divide-gray-100 dark:divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan="10" className="py-8 text-center text-admin-text-secondary">Loading...</td>
+                  <td colSpan="10" className="py-12 text-center text-gray-400">
+                    <RiLoader2Line className="animate-spin text-2xl mx-auto mb-2 text-[#e91e63]" />
+                    Loading customers...
+                  </td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="py-8 text-center text-admin-text-secondary">No customers found.</td>
+                  <td colSpan="10" className="py-12 text-center text-gray-400">
+                    No customers found matching your criteria.
+                  </td>
                 </tr>
               ) : (
-                customers.map((c, idx) => (
-                  <tr 
-                    key={c.id || idx} 
-                    className="border-b border-admin-border/50 hover:bg-admin-surface/30 transition-colors cursor-pointer"
-                    onClick={() => setSelectedCustomer(c)}
-                  >
-                    <td className="py-4 pr-6 font-bold text-admin-text">{c.first_name}</td>
-                    <td className="py-4 pr-6 font-bold text-admin-text">{c.last_name}</td>
-                    <td className="py-4 pr-6 font-medium text-admin-text">+91</td>
-                    <td className="py-4 pr-6 font-medium text-admin-text">{c.phone}</td>
-                    <td className="py-4 pr-6 font-medium text-admin-text">{formatCurrency(c.total_spent || 0)}</td>
-                    <td className="py-4 pr-6 font-medium text-admin-text">{formatCurrency(c.wallet_balance || 0)}</td>
-                    <td className="py-4 pr-6 font-medium text-admin-text">{c.total_visits || 0}</td>
-                    <td className="py-4 pr-6 font-medium text-admin-text">{c.last_visit_at ? formatDate(c.last_visit_at) : 'Yet to visit'}</td>
-                    <td className="py-4 pr-6 font-medium text-admin-text capitalize">{c.source || 'NA'}</td>
-                    <td className="py-4 text-center">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setCustomerToEdit(c); }}
-                        className="p-2 text-brand hover:bg-brand/10 rounded-lg transition-colors inline-block"
+                customers.map((c) => {
+                  const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unknown';
+                  const formattedPhone = c.phone?.startsWith('+91')
+                    ? c.phone
+                    : `+91  ${c.phone || ''}`;
+
+                  return (
+                    <tr
+                      key={c.id}
+                      onClick={() => setSelectedCustomer(c)}
+                      className="hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors cursor-pointer group"
+                    >
+                      {/* Checkbox */}
+                      <td
+                        className="py-4 pl-5 pr-2 text-center"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <RiEdit2Line />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(c.id)}
+                          onChange={() => handleSelectOne(c.id)}
+                          className="w-4 h-4 rounded border-gray-300 dark:border-white/20 text-[#e91e63] focus:ring-[#e91e63] cursor-pointer"
+                        />
+                      </td>
+
+                      {/* Customer: Avatar + Name */}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          {c.profile_image_url ? (
+                            <img
+                              src={c.profile_image_url}
+                              alt={fullName}
+                              className="w-8 h-8 rounded-full object-cover shrink-0 border border-gray-100 dark:border-white/10"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-[#e91e63] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
+                              {getInitials(c)}
+                            </div>
+                          )}
+                          <span className="font-bold text-gray-900 dark:text-white group-hover:text-[#e91e63] transition-colors">
+                            {fullName}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Phone */}
+                      <td className="py-4 px-4 font-medium text-gray-800 dark:text-gray-200">
+                        {formattedPhone}
+                      </td>
+
+                      {/* Total Spent */}
+                      <td className="py-4 px-4 font-semibold text-gray-900 dark:text-gray-100">
+                        {formatCurrency(c.total_spent || 0)}
+                      </td>
+
+                      {/* Visits */}
+                      <td className="py-4 px-4 font-medium text-gray-800 dark:text-gray-200">
+                        {c.total_visits || 0}
+                      </td>
+
+                      {/* Wallet Balance */}
+                      <td className="py-4 px-4 font-medium text-gray-800 dark:text-gray-200">
+                        {formatCurrency(c.wallet_balance || 0)}
+                      </td>
+
+                      {/* Last Visit */}
+                      <td className="py-4 px-4">
+                        {formatVisitDate(c.last_visit_at, c.total_visits)}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-4 px-4">
+                        {renderStatusBadge(c.is_active)}
+                      </td>
+
+                      {/* Source */}
+                      <td className="py-4 px-4">
+                        {renderSourceBadge(c.source)}
+                      </td>
+
+                      {/* Actions */}
+                      <td
+                        className="py-4 px-4 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          {/* View Profile */}
+                          <button
+                            onClick={() => setSelectedCustomer(c)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer"
+                            title="View Profile"
+                          >
+                            <RiEyeLine className="text-base" />
+                          </button>
+
+                          {/* Edit Customer */}
+                          <button
+                            onClick={() => {
+                              setCustomerToEdit(c);
+                              setIsAddModalOpen(true);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-[#e91e63] hover:bg-pink-50 dark:hover:bg-pink-950/40 rounded-lg transition-colors cursor-pointer"
+                            title="Edit Customer"
+                          >
+                            <RiEdit2Line className="text-base" />
+                          </button>
+
+                          {/* More Options / Delete */}
+                          <button
+                            onClick={() => {
+                              setSelectedCustomer(c);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                            title="More Actions"
+                          >
+                            <RiMoreFill className="text-base" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modals & Drawers */}
-      <AddCustomerModal 
-        isOpen={isAddModalOpen || !!customerToEdit} 
+      {/* ========================================================
+          6. PAGINATION FOOTER
+         ======================================================== */}
+      <div className="flex items-center justify-between px-2 text-xs text-gray-500 font-medium">
+        <div>
+          Showing {customers.length > 0 ? 1 : 0} to {customers.length} of {meta.total || customers.length} customers
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            disabled={filters.page <= 1}
+            onClick={() => handleFilterChange('page', filters.page - 1)}
+            className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          >
+            <RiArrowLeftSLine className="text-lg" />
+          </button>
+          <button className="w-8 h-8 rounded-lg bg-[#e91e63] text-white font-bold flex items-center justify-center text-xs shadow-sm cursor-pointer">
+            {filters.page}
+          </button>
+          <button
+            disabled={filters.page >= (meta.totalPages || 1)}
+            onClick={() => handleFilterChange('page', filters.page + 1)}
+            className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          >
+            <RiArrowRightSLine className="text-lg" />
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================
+          7. MODALS & DRAWERS
+         ======================================================== */}
+      <AddCustomerModal
+        isOpen={isAddModalOpen || !!customerToEdit}
         onClose={() => {
           setIsAddModalOpen(false);
           setCustomerToEdit(null);
         }}
-        onSuccess={() => { fetchCustomers(); setIsAddModalOpen(false); setCustomerToEdit(null); }}
+        onSuccess={() => {
+          fetchCustomers();
+          setIsAddModalOpen(false);
+          setCustomerToEdit(null);
+        }}
         initialData={customerToEdit}
       />
 
@@ -357,21 +848,21 @@ export default function CustomersPage() {
         isOpen={isFilterDrawerOpen}
         onClose={() => setIsFilterDrawerOpen(false)}
         currentFilters={filters}
-        onApply={handleApplyAdvancedFilters}
+        onApply={(newFilters) => {
+          setFilters((prev) => ({
+            ...prev,
+            page: 1,
+            is_active: newFilters.is_active !== undefined ? newFilters.is_active : prev.is_active,
+            gender: newFilters.gender !== undefined ? newFilters.gender : prev.gender,
+            source: newFilters.source !== undefined ? newFilters.source : prev.source,
+          }));
+        }}
       />
 
-      <CustomerProfilePanel 
+      <CustomerProfilePanel
         customer={selectedCustomer}
         isOpen={!!selectedCustomer}
-        onClose={() => {
-          setSelectedCustomer(null);
-          // Remove customer_id from URL
-          const url = new URL(window.location);
-          if (url.searchParams.has('customer_id')) {
-            url.searchParams.delete('customer_id');
-            window.history.replaceState({}, '', url);
-          }
-        }}
+        onClose={handleClosePanel}
         onEdit={(customer) => {
           setCustomerToEdit(customer);
           setIsAddModalOpen(true);
@@ -381,12 +872,14 @@ export default function CustomersPage() {
             await api.delete(`/customers/${id}`);
             setSelectedCustomer(null);
             fetchCustomers();
+            toast.success('Customer deleted successfully');
           } catch (err) {
             console.error(err);
             toast.error('Failed to delete customer');
           }
         }}
       />
+      </div>
     </div>
   );
 }

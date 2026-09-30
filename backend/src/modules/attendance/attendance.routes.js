@@ -8,6 +8,7 @@ router.use(authenticate); // Ensure user is authenticated
 
 router.get('/', attendanceController.getAttendance);
 router.post('/mark', attendanceController.markAttendance);
+router.post('/bulk-mark', attendanceController.bulkMarkAttendance);
 router.post('/import', attendanceController.importAttendance);
 
 export default router;

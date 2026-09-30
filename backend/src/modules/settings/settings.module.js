@@ -74,14 +74,23 @@ class SettingsService {
     if (existing) throw ApiError.conflict('Email already exists');
     const bcrypt = (await import('bcryptjs')).default;
     const hash = await bcrypt.hash(data.password, 12);
-    const [id] = await db('users').insert({ business_id: businessId, email: data.email, password_hash: hash, first_name: data.first_name, last_name: data.last_name, phone: data.phone, role: data.role });
-    return db('users').where({ id }).select('id', 'email', 'first_name', 'last_name', 'role', 'is_active').first();
+    const [id] = await db('users').insert({
+      business_id: businessId,
+      email: data.email,
+      password_hash: hash,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      phone: data.phone,
+      role: data.role,
+      avatar_url: data.avatar_url || null,
+    });
+    return db('users').where({ id }).select('id', 'email', 'first_name', 'last_name', 'role', 'avatar_url', 'is_active').first();
   }
   async updateUser(userId, businessId, data) {
     const user = await db('users').where({ id: userId, business_id: businessId }).first();
     if (!user) throw ApiError.notFound('User not found');
     await db('users').where({ id: userId }).update({ ...cleanObject(data), updated_at: db.fn.now() });
-    return db('users').where({ id: userId }).select('id', 'email', 'first_name', 'last_name', 'role', 'is_active').first();
+    return db('users').where({ id: userId }).select('id', 'email', 'first_name', 'last_name', 'role', 'avatar_url', 'is_active').first();
   }
 }
 
@@ -133,10 +142,12 @@ router.post('/users', validate({ body: z.object({
   email: z.string().email(), password: z.string().min(8), first_name: z.string().min(1).max(100),
   last_name: z.string().max(100).optional(), phone: z.string().max(20).optional(),
   role: z.enum(['admin', 'manager', 'staff', 'receptionist']),
+  avatar_url: z.string().max(500).optional().nullable(),
 }) }), asyncHandler(async (req, res) => { ApiResponse.created('User created', await settingsService.createUser(req.user.business_id, req.body)).send(res); }));
 router.put('/users/:id', validate({ params: idParam, body: z.object({
   first_name: z.string().min(1).max(100).optional(), last_name: z.string().max(100).optional(),
   phone: z.string().max(20).optional(), role: z.enum(['admin', 'manager', 'staff', 'receptionist']).optional(), is_active: z.boolean().optional(),
+  avatar_url: z.string().max(500).optional().nullable(),
 }) }), asyncHandler(async (req, res) => { ApiResponse.ok('User updated', await settingsService.updateUser(req.params.id, req.user.business_id, req.body)).send(res); }));
 
 export default router;

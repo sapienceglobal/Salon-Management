@@ -15,8 +15,11 @@ export const customerSchema = z.object({
 });
 
 export const categorySchema = z.object({
-  name: z.string().min(1, 'Category name is required').max(100),
-  description: z.string().max(500).optional().or(z.literal('')),
+  name: z.string().min(1, 'Category name is required').max(50, 'Max 50 characters allowed'),
+  description: z.string().max(200, 'Max 200 characters allowed').optional().or(z.literal('')),
+  icon: z.string().max(100).optional().or(z.literal('')),
+  display_order: z.union([z.number(), z.string()]).optional(),
+  sort_order: z.union([z.number(), z.string()]).optional(),
 });
 
 export const serviceSchema = z.object({
@@ -25,8 +28,19 @@ export const serviceSchema = z.object({
   description: z.string().max(1000).optional().or(z.literal('')),
   duration_minutes: z.string().min(1, 'Duration is required').or(z.number().min(1)),
   price: z.string().min(1, 'Price is required').or(z.number().min(0)),
+  discounted_price: z.string().optional().or(z.number().optional()).or(z.literal('')),
   type: z.enum(['service', 'product', 'package']).optional(),
   is_active: z.boolean().optional(),
+  online_booking: z.boolean().optional(),
+  is_featured: z.boolean().optional(),
+  requires_consultation: z.boolean().optional(),
+  tags: z.string().max(500).optional().or(z.literal('')),
+  service_color: z.string().max(20).optional().or(z.literal('')),
+  service_staff: z.string().max(255).optional().or(z.literal('')),
+  sort_order: z.string().optional().or(z.number().optional()).or(z.literal('')),
+  tax_applicable: z.string().optional().or(z.boolean().optional()),
+  image_url: z.string().optional().or(z.literal('')),
+  icon: z.string().max(100).optional().or(z.literal('')),
 });
 
 export const staffSchema = z.object({
@@ -34,10 +48,11 @@ export const staffSchema = z.object({
   last_name: z.string().min(1, 'Last name is required').max(100),
   email: z.string().email('Invalid email address').max(255),
   phone: z.string().min(10, 'Phone must be at least 10 digits').max(20).optional().or(z.literal('')),
-  role: z.enum(['admin', 'manager', 'staff']),
+  role: z.enum(['admin', 'manager', 'staff', 'receptionist']),
   password: z.string().min(6, 'Password must be at least 6 characters').optional().or(z.literal('')),
   designation: z.string().max(100).optional().or(z.literal('')),
   specializations: z.string().optional().or(z.literal('')),
+  commission_profile_id: z.string().optional().or(z.number().optional()).or(z.literal('')),
   bio: z.string().max(1000).optional().or(z.literal('')),
   is_active: z.boolean().optional(),
   color_code: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color code').optional().or(z.literal('')),
@@ -45,15 +60,20 @@ export const staffSchema = z.object({
   employee_id: z.string().max(50).optional().or(z.literal('')),
   joining_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date format: YYYY-MM-DD').optional().or(z.literal('')),
   salary: z.string().optional().or(z.number().optional()).or(z.literal('')),
+  avatar_url: z.string().optional().or(z.literal('')),
 });
 
 export const expenseSchema = z.object({
-  category_id: z.string().min(1, 'Category is required').or(z.number()),
-  amount: z.string().min(1, 'Amount is required').or(z.number().min(0.01)),
-  expense_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date format: YYYY-MM-DD'),
-  tax_amount: z.number().optional(),
-  payment_method: z.enum(['cash', 'card', 'upi', 'bank_transfer', 'other']),
-  description: z.string().max(1000).optional().or(z.literal('')),
+  category_id: z.union([z.number(), z.string()]).optional().nullable(),
+  amount: z.union([z.number().positive('Amount must be greater than 0'), z.string().min(1, 'Amount is required')]),
+  tax_amount: z.union([z.number().nonnegative(), z.string()]).optional(),
+  include_in_tax: z.boolean().optional(),
+  description: z.string().min(1, 'Description is required').max(200, 'Description cannot exceed 200 characters'),
+  payment_method: z.enum(['cash', 'card', 'upi', 'bank_transfer', 'other']).optional(),
+  reference_no: z.string().max(100).optional().nullable().or(z.literal('')),
+  notes: z.string().max(200, 'Notes cannot exceed 200 characters').optional().nullable().or(z.literal('')),
+  receipt_url: z.string().max(500).optional().nullable().or(z.literal('')),
+  expense_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid date is required (YYYY-MM-DD)'),
   vendor_name: z.string().max(255).optional().or(z.literal('')),
 });
 
@@ -111,7 +131,8 @@ export const appointmentSchema = z.object({
   end_time: z.string().regex(/^\d{2}:\d{2}:\d{2}$|^\d{2}:\d{2}$/, 'Time format: HH:mm:ss or HH:mm'),
   status: z.enum(['planned', 'pending', 'confirmed', 'in-progress', 'completed', 'cancelled', 'no-show']).optional(),
   notes: z.string().max(2000).optional().or(z.literal('')),
-  service_id: z.string().min(1, 'Service is required').or(z.number()),
+  service_id: z.string().or(z.number()).optional(),
+  service_ids: z.array(z.string().or(z.number())).optional(),
 });
 
 export const membershipSchema = z.object({
@@ -157,4 +178,5 @@ export const formatZodErrors = (zodError) => {
   });
   return errors;
 };
+
 

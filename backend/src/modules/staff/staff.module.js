@@ -23,6 +23,9 @@ const createStaffSchema = {
     commission_profile_id: z.coerce.number().int().positive().optional(),
     bio: z.string().max(2000).optional(),
     is_active: z.coerce.boolean().optional(),
+    avatar_url: z.string().max(500).optional().nullable(),
+    color_code: z.string().max(50).optional().nullable(),
+    shift_schedule: z.string().max(50).optional().nullable(),
   }),
 };
 const updateStaffSchema = { body: createStaffSchema.body.partial(), params: idParam };
@@ -99,11 +102,26 @@ class StaffService {
     if (existing) throw ApiError.conflict('Staff profile already exists for this user');
 
     const specs = parseSpecializations(data.specializations);
+    const staffData = { ...data };
+    delete staffData.is_active;
+    delete staffData.first_name;
+    delete staffData.last_name;
+    delete staffData.email;
+    delete staffData.phone;
+    delete staffData.role;
+    delete staffData.password;
+    delete staffData.image;
+
     const [id] = await db('staff_members').insert({
-      ...data,
+      ...cleanObject(staffData),
       specializations: specs.length > 0 ? JSON.stringify(specs) : null,
       business_id: businessId,
     });
+
+    if (data.avatar_url) {
+      await db('users').where({ id: data.user_id }).update({ avatar_url: data.avatar_url, updated_at: db.fn.now() });
+    }
+
     return this.getById(id, businessId);
   }
 
@@ -113,11 +131,30 @@ class StaffService {
       const specs = parseSpecializations(data.specializations);
       data.specializations = specs.length > 0 ? JSON.stringify(specs) : null;
     }
-    if (data.is_active !== undefined) {
-      await db('users').where({ id: staff.user_id }).update({ is_active: !!data.is_active, updated_at: db.fn.now() });
+
+    // Sync user fields if provided
+    const userUpdates = {};
+    if (data.is_active !== undefined) userUpdates.is_active = !!data.is_active;
+    if (data.avatar_url !== undefined) userUpdates.avatar_url = data.avatar_url;
+    if (data.first_name !== undefined) userUpdates.first_name = data.first_name;
+    if (data.last_name !== undefined) userUpdates.last_name = data.last_name;
+    if (data.phone !== undefined) userUpdates.phone = data.phone;
+    if (data.email !== undefined) userUpdates.email = data.email;
+    if (Object.keys(userUpdates).length > 0) {
+      userUpdates.updated_at = db.fn.now();
+      await db('users').where({ id: staff.user_id }).update(userUpdates);
     }
+
     const staffData = { ...data };
     delete staffData.is_active;
+    delete staffData.first_name;
+    delete staffData.last_name;
+    delete staffData.email;
+    delete staffData.phone;
+    delete staffData.role;
+    delete staffData.password;
+    delete staffData.image;
+
     await db('staff_members').where({ id, business_id: businessId }).update({ ...cleanObject(staffData), updated_at: db.fn.now() });
     return this.getById(id, businessId);
   }
@@ -205,13 +242,20 @@ class StaffService {
 
   // Profile - Services
   async getServices(staffId, businessId) {
+    const staff = await db('staff_members').where({ id: staffId, business_id: businessId }).first();
+    const userId = staff ? staff.user_id : staffId;
+
     // Return all salon services and annotate if assigned to this staff
     const allServices = await db('salon_services as ss')
       .leftJoin('service_categories as sc', 'ss.category_id', 'sc.id')
       .where('ss.business_id', businessId)
       .select('ss.*', 'sc.name as category_name');
     
-    const assigned = await db('staff_services').where({ staff_id: staffId, is_assigned: true });
+    const assigned = await db('staff_services')
+      .where(function() {
+        this.where('staff_id', staffId).orWhere('staff_id', userId);
+      })
+      .where('is_assigned', true);
     
     return allServices.map(s => {
       const match = assigned.find(a => a.service_id === s.id);
@@ -291,18 +335,24 @@ const getStaffMember = asyncHandler(async (req, res) => {
   ApiResponse.ok('Staff member fetched', staff).send(res);
 });
 const createStaffMember = asyncHandler(async (req, res) => {
-  if (req.file) {
-    await db('users').where({ id: req.body.user_id }).update({ avatar_url: `/uploads/${req.file.filename}` });
+  const avatarUrl = req.file ? `/uploads/${req.file.filename}` : req.body.avatar_url;
+  if (avatarUrl && req.body.user_id) {
+    await db('users').where({ id: req.body.user_id }).update({ avatar_url: avatarUrl });
   }
-  const staff = await staffService.create(req.user.business_id, req.body);
+  const payload = { ...req.body };
+  if (avatarUrl) payload.avatar_url = avatarUrl;
+  const staff = await staffService.create(req.user.business_id, payload);
   ApiResponse.created('Staff member created', staff).send(res);
 });
 const updateStaffMember = asyncHandler(async (req, res) => {
-  if (req.file) {
+  const avatarUrl = req.file ? `/uploads/${req.file.filename}` : req.body.avatar_url;
+  if (avatarUrl !== undefined && avatarUrl !== null) {
     const staffRec = await staffService.getById(req.params.id, req.user.business_id);
-    await db('users').where({ id: staffRec.user_id }).update({ avatar_url: `/uploads/${req.file.filename}` });
+    await db('users').where({ id: staffRec.user_id }).update({ avatar_url: avatarUrl });
   }
-  const staff = await staffService.update(req.params.id, req.user.business_id, req.body);
+  const payload = { ...req.body };
+  if (avatarUrl !== undefined) payload.avatar_url = avatarUrl;
+  const staff = await staffService.update(req.params.id, req.user.business_id, payload);
   ApiResponse.ok('Staff member updated', staff).send(res);
 });
 const deleteStaffMember = asyncHandler(async (req, res) => {

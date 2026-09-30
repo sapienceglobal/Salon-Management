@@ -27,8 +27,8 @@ export default function AdminPanelLayout({ children }) {
   const mainRef = useRef(null);
 
   useEffect(() => {
-    // Auto-collapse sidebar on tablets/iPads on initial load
-    if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+    // Auto-collapse sidebar on tablets/mobile on initial load
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setSidebarCollapsed(true);
     }
   }, []);
@@ -42,6 +42,10 @@ export default function AdminPanelLayout({ children }) {
     return () => clearTimeout(timer);
   }, [pathname]);
 
+  const isFullBleed = Boolean(
+    pathname?.startsWith('/customers') || pathname?.startsWith('/appointments') || pathname?.startsWith('/billing') || pathname?.startsWith('/expenses') || pathname?.startsWith('/attendance') || pathname?.startsWith('/leads') || pathname?.startsWith('/enquiry')
+  );
+
   return (
     <AdminGuard>
       <div className={`flex min-h-screen bg-admin-bg text-admin-text ${isDark ? '[color-scheme:dark]' : '[color-scheme:light]'}`}>
@@ -49,13 +53,9 @@ export default function AdminPanelLayout({ children }) {
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
-        <div
-          className={`flex-1 min-w-0 flex flex-col min-h-screen transition-all duration-250 ${
-            sidebarCollapsed ? 'ml-[80px]' : 'ml-[260px]'
-          }`}
-        >
+        <div className="flex-1 min-w-0 flex flex-col min-h-screen transition-all duration-200">
           <Header onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
-          <main ref={mainRef} id="main-scroll-container" className="flex-1 min-w-0 min-h-0 p-6 overflow-x-hidden overflow-y-scroll custom-scrollbar">
+          <main ref={mainRef} id="main-scroll-container" className={`flex-1 min-w-0 min-h-0 ${isFullBleed ? 'p-0' : 'p-6'} overflow-x-hidden overflow-y-scroll custom-scrollbar`}>
             {children}
           </main>
         </div>

@@ -10,10 +10,22 @@ class ServiceService {
     if (!cat) throw ApiError.notFound('Service category not found');
     return cat;
   }
-  async createCategory(businessId, data) { return serviceRepository.createCategory({ ...data, business_id: businessId }); }
+  async createCategory(businessId, data) {
+    const payload = { ...data };
+    if (payload.display_order !== undefined && payload.sort_order === undefined) {
+      payload.sort_order = payload.display_order;
+    }
+    delete payload.display_order;
+    return serviceRepository.createCategory({ ...payload, business_id: businessId });
+  }
   async updateCategory(id, businessId, data) {
     await this.getCategoryById(id, businessId);
-    return serviceRepository.updateCategory(id, businessId, cleanObject(data));
+    const payload = { ...data };
+    if (payload.display_order !== undefined && payload.sort_order === undefined) {
+      payload.sort_order = payload.display_order;
+    }
+    delete payload.display_order;
+    return serviceRepository.updateCategory(id, businessId, cleanObject(payload));
   }
   async deleteCategory(id, businessId) { await this.getCategoryById(id, businessId); await serviceRepository.deleteCategory(id, businessId); }
 

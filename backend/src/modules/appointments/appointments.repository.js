@@ -53,28 +53,30 @@ class AppointmentRepository {
     const { page, limit, offset } = parsePagination(query);
     const base = db('appointments as a')
       .join('customers as c', 'a.customer_id', 'c.id')
-      .leftJoin('appointment_services as aps', 'a.id', 'aps.appointment_id')
-      .leftJoin('salon_services as s', 'aps.service_id', 's.id')
       .leftJoin('staff_members as sm', 'a.staff_member_id', 'sm.id')
       .leftJoin('users as u', 'sm.user_id', 'u.id')
       .leftJoin('invoices as i', 'a.invoice_id', 'i.id')
       .where('a.business_id', businessId)
       .select(
         'a.*',
-        'aps.service_id',
         db.raw("COALESCE(i.status, 'unpaid') as payment_status"),
         'c.first_name as customer_first_name', 'c.last_name as customer_last_name', 'c.phone as customer_phone',
-        'u.first_name as staff_first_name', 'u.last_name as staff_last_name',
-        's.name as service_name', 's.price as service_price'
+        'u.first_name as staff_first_name', 'u.last_name as staff_last_name'
       );
 
     if (query.date) base.where('a.appointment_date', query.date);
     if (query.from_date) base.where('a.appointment_date', '>=', query.from_date);
     if (query.start_date && query.end_date) base.whereBetween('a.appointment_date', [query.start_date, query.end_date]);
     if (query.staff_id) base.where('a.staff_member_id', query.staff_id);
-    if (query.service_id) base.where('aps.service_id', query.service_id);
     if (query.customer_id) base.where('a.customer_id', query.customer_id);
     if (query.status) base.whereIn('a.status', query.status.split(','));
+    if (query.service_id) {
+      base.whereExists(function () {
+        this.select('*').from('appointment_services as aps_filter')
+          .whereRaw('aps_filter.appointment_id = a.id')
+          .where('aps_filter.service_id', query.service_id);
+      });
+    }
 
     const countQuery = db('appointments as a').where('a.business_id', businessId);
     if (query.date) countQuery.where('a.appointment_date', query.date);
@@ -84,11 +86,49 @@ class AppointmentRepository {
     if (query.customer_id) countQuery.where('a.customer_id', query.customer_id);
     if (query.status) countQuery.whereIn('a.status', query.status.split(','));
     if (query.service_id) {
-       countQuery.join('appointment_services as aps2', 'a.id', 'aps2.appointment_id')
-                 .where('aps2.service_id', query.service_id);
+      countQuery.whereExists(function () {
+        this.select('*').from('appointment_services as aps_filter2')
+          .whereRaw('aps_filter2.appointment_id = a.id')
+          .where('aps_filter2.service_id', query.service_id);
+      });
     }
+
     const [{ count }] = await countQuery.count('* as count');
     const appointments = await base.clone().orderBy('a.appointment_date', 'asc').orderBy('a.start_time', 'asc').limit(limit).offset(offset);
+
+    // Batch-load services for all returned appointments
+    if (appointments.length > 0) {
+      const apptIds = appointments.map(a => a.id);
+      const allServices = await db('appointment_services as aps')
+        .join('salon_services as s', 'aps.service_id', 's.id')
+        .whereIn('aps.appointment_id', apptIds)
+        .select(
+          'aps.appointment_id',
+          'aps.id as appointment_service_id',
+          's.id as service_id',
+          's.name as service_name',
+          'aps.price',
+          'aps.duration_minutes',
+          'aps.room_number',
+          'aps.status'
+        );
+
+      const servicesByAppt = {};
+      for (const s of allServices) {
+        if (!servicesByAppt[s.appointment_id]) servicesByAppt[s.appointment_id] = [];
+        servicesByAppt[s.appointment_id].push(s);
+      }
+
+      for (const appt of appointments) {
+        const sList = servicesByAppt[appt.id] || [];
+        appt.services = sList;
+        appt.service_name = sList.map(s => s.service_name).join(', ') || 'Custom Service';
+        appt.service_price = sList.reduce((sum, s) => sum + parseFloat(s.price || 0), 0);
+        appt.service_id = sList[0]?.service_id || null;
+        appt.service_ids = sList.map(s => s.service_id);
+        appt.customer_name = `${appt.customer_first_name} ${appt.customer_last_name || ''}`.trim();
+      }
+    }
 
     return { appointments, meta: buildPaginationMeta(parseInt(count, 10), page, limit) };
   }
@@ -96,38 +136,59 @@ class AppointmentRepository {
   async findById(id, businessId) {
     const appointment = await db('appointments as a')
       .join('customers as c', 'a.customer_id', 'c.id')
-      .leftJoin('appointment_services as aps', 'a.id', 'aps.appointment_id')
-      .leftJoin('salon_services as s', 'aps.service_id', 's.id')
       .leftJoin('staff_members as sm', 'a.staff_member_id', 'sm.id')
       .leftJoin('users as u', 'sm.user_id', 'u.id')
       .leftJoin('invoices as i', 'a.invoice_id', 'i.id')
       .where({ 'a.id': id, 'a.business_id': businessId })
       .select(
         'a.*',
-        'aps.service_id',
         db.raw("COALESCE(i.status, 'unpaid') as payment_status"),
         'c.first_name as customer_first_name', 'c.last_name as customer_last_name', 'c.phone as customer_phone',
-        'u.first_name as staff_first_name', 'u.last_name as staff_last_name',
-        's.name as service_name', 's.price as service_price'
+        'u.first_name as staff_first_name', 'u.last_name as staff_last_name'
       )
       .first();
+
+    if (!appointment) return null;
+
+    // Fetch all services for this appointment
+    const services = await db('appointment_services as aps')
+      .join('salon_services as s', 'aps.service_id', 's.id')
+      .where('aps.appointment_id', id)
+      .select(
+        'aps.id as appointment_service_id',
+        's.id as service_id',
+        's.name as service_name',
+        'aps.price',
+        'aps.duration_minutes',
+        'aps.room_number',
+        'aps.status'
+      );
+
+    appointment.services = services;
+    appointment.service_name = services.map(s => s.service_name).join(', ') || 'Custom Service';
+    appointment.service_price = services.reduce((sum, s) => sum + parseFloat(s.price || 0), 0);
+    appointment.service_id = services[0]?.service_id || null;
+    appointment.service_ids = services.map(s => s.service_id);
+    appointment.customer_name = `${appointment.customer_first_name} ${appointment.customer_last_name || ''}`.trim();
 
     return appointment;
   }
 
-  async create(appointmentData, serviceId, servicePrice, serviceDuration, roomName = null) {
+  async create(appointmentData, servicesList, roomName = null) {
     return db.transaction(async (trx) => {
       const [appointmentId] = await trx('appointments').insert(appointmentData);
       
-      // Insert into junction table
-      await trx('appointment_services').insert({
+      const services = Array.isArray(servicesList) ? servicesList : [servicesList];
+      const rows = services.map(s => ({
         appointment_id: appointmentId,
-        service_id: serviceId,
+        service_id: s.id || s.service_id,
         staff_member_id: appointmentData.staff_member_id || null,
-        price: servicePrice || 0,
-        duration_minutes: serviceDuration || 30,
+        price: s.price || 0,
+        duration_minutes: s.duration || s.duration_minutes || 30,
         room_number: roomName
-      });
+      }));
+
+      await trx('appointment_services').insert(rows);
 
       return appointmentId;
     });

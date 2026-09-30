@@ -4,7 +4,8 @@ const idParam = z.object({ id: z.string().regex(/^\d+$/).transform(Number) });
 export const createAppointmentSchema = {
   body: z.object({
     customer_id: z.number().int().positive(),
-    service_id: z.number().int().positive(),
+    service_id: z.number().int().positive().optional(),
+    service_ids: z.array(z.number().int().positive()).min(1).optional(),
     staff_id: z.number().int().positive().optional().nullable(),
     room_id: z.number().int().positive().optional().nullable(),
     appointment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date format: YYYY-MM-DD'),
@@ -13,6 +14,9 @@ export const createAppointmentSchema = {
     status: z.enum(['pending', 'planned', 'ongoing', 'completed', 'cancelled', 'no_show']).optional(),
     source: z.enum(['walk_in', 'phone', 'online', 'app']).optional(),
     notes: z.string().max(2000).optional().nullable(),
+  }).refine(data => data.service_id !== undefined || (Array.isArray(data.service_ids) && data.service_ids.length > 0), {
+    message: 'At least one service is required',
+    path: ['service_ids'],
   }),
 };
 
@@ -20,6 +24,7 @@ export const updateAppointmentSchema = {
   body: z.object({
     customer_id: z.number().int().positive().optional(),
     service_id: z.number().int().positive().optional(),
+    service_ids: z.array(z.number().int().positive()).min(1).optional(),
     staff_id: z.number().int().positive().optional().nullable(),
     room_id: z.number().int().positive().optional().nullable(),
     appointment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date format: YYYY-MM-DD').optional(),

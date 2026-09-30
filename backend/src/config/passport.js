@@ -20,8 +20,18 @@ passport.use(
   new JwtStrategy(jwtOptions, async (payload, done) => {
     try {
       const user = await db('users')
-        .select('id', 'business_id', 'email', 'first_name', 'last_name', 'role', 'is_active')
-        .where({ id: payload.sub, is_active: true })
+        .leftJoin('businesses', 'users.business_id', 'businesses.id')
+        .select(
+          'users.id',
+          'users.business_id',
+          'users.email',
+          'users.first_name',
+          'users.last_name',
+          'users.role',
+          'users.is_active',
+          'businesses.name as business_name'
+        )
+        .where({ 'users.id': payload.sub, 'users.is_active': true })
         .first();
 
       if (!user) {

@@ -16,7 +16,8 @@ export function AuthProvider({ children }) {
       const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
       if (!token) { setLoading(false); return; }
       const res = await api.get('/auth/me');
-      setUser(res.data.user);
+      const userData = res?.data?.user || res?.user || res?.data;
+      setUser(userData || null);
     } catch {
       setUser(null);
       localStorage.removeItem('accessToken');
@@ -30,13 +31,16 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password, rememberMe = false) => {
     const res = await api.post('/auth/login', { email, password, rememberMe });
+    const payload = res?.data || res;
+    const token = payload?.accessToken || res?.accessToken;
     if (rememberMe) {
-      localStorage.setItem('accessToken', res.data.accessToken);
+      localStorage.setItem('accessToken', token);
     } else {
-      sessionStorage.setItem('accessToken', res.data.accessToken);
+      sessionStorage.setItem('accessToken', token);
     }
-    setUser(res.data.user);
-    return res.data;
+    const userData = payload?.user || res?.user;
+    setUser(userData || null);
+    return res;
   };
 
   const register = async (data) => {

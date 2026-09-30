@@ -270,13 +270,26 @@ export default function StaffPage() {
                 </div>
 
                 {/* Avatar */}
-                <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold mb-4 border transition-colors ${
-                  staff.is_active 
-                    ? 'bg-brand/10 text-brand border-brand/20' 
-                    : 'bg-admin-surface-light text-admin-text-muted border-admin-border'
-                }`}>
-                  {staff.first_name.charAt(0)}{staff.last_name.charAt(0)}
-                </div>
+                {staff.avatar_url ? (
+                  <div className="relative mb-4">
+                    <img
+                      src={staff.avatar_url}
+                      alt={`${staff.first_name} ${staff.last_name}`}
+                      className="w-20 h-20 rounded-full object-cover shadow-sm border-2 border-white dark:border-white/10 ring-2 ring-[#E91E63]/30"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold mb-4 border transition-colors ${
+                      staff.is_active
+                        ? 'bg-brand/10 text-brand border-brand/20'
+                        : 'bg-admin-surface-light text-admin-text-muted border-admin-border'
+                    }`}
+                  >
+                    {staff.first_name ? staff.first_name.charAt(0) : ''}
+                    {staff.last_name ? staff.last_name.charAt(0) : ''}
+                  </div>
+                )}
 
                 {/* Info */}
                 <h3 className={`font-bold text-lg ${!staff.is_active ? 'text-admin-text-secondary line-through decoration-admin-text-muted/40' : 'text-admin-text'}`}>

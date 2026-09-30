@@ -43,8 +43,8 @@ export async function seed(knex) {
   await knex('businesses').del();
 
   // 1. Create default business
-  const businessName = process.env.BUSINESS_NAME || 'Luxe Salon & Spa';
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@luxesalon.com';
+  const businessName = process.env.BUSINESS_NAME || 'Kaira Makeover';
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@kairamakeover.salontime.co.in';
   const adminPassword = process.env.ADMIN_PASSWORD || 'LuxeAdmin@2026!';
 
   const [businessId] = await knex('businesses').insert({

@@ -12,7 +12,7 @@ export const attendanceService = {
         .join('users as u', 'sm.user_id', 'u.id')
         .where('sm.business_id', businessId)
         .where('u.is_active', true)
-        .select('sm.id', 'u.first_name', 'u.last_name', 'u.role');
+        .select('sm.id', 'u.first_name', 'u.last_name', 'u.role', 'sm.designation', 'u.avatar_url');
 
       // Fetch attendance records in the date range
       const attendanceRecords = await knex('staff_attendance')
@@ -44,6 +44,8 @@ export const attendanceService = {
           first_name: staff.first_name,
           last_name: staff.last_name,
           role: staff.role,
+          designation: staff.designation,
+          avatar_url: staff.avatar_url,
           attendance: attendanceDict
         };
       });

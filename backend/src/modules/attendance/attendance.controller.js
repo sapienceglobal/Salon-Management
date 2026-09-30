@@ -32,3 +32,14 @@ export const importAttendance = asyncHandler(async (req, res) => {
   const result = await attendanceService.importAttendance(req.user.business_id, req.user.id, attendance_data);
   res.status(200).json(new ApiResponse(200, `Successfully imported ${result.count} attendance records`, result));
 });
+
+export const bulkMarkAttendance = asyncHandler(async (req, res) => {
+  const { records } = req.body;
+  if (!records || !Array.isArray(records)) {
+    throw new ApiError(400, 'records array is required');
+  }
+
+  const result = await attendanceService.importAttendance(req.user.business_id, req.user.id, records);
+  res.status(200).json(new ApiResponse(200, `Successfully marked attendance for ${result.count} staff members`, result));
+});
+

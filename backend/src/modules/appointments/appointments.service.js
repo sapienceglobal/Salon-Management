@@ -33,9 +33,23 @@ class AppointmentService {
       if (conflict) throw ApiError.conflict('Staff member has a conflicting appointment at this time');
     }
 
-    // Verify service exists and is active
-    const service = await db('salon_services').where({ id: data.service_id, business_id: businessId, is_active: true }).first();
-    if (!service) throw ApiError.badRequest('Selected service is inactive or not found');
+    // Resolve service IDs (supports array of service_ids or single service_id)
+    const serviceIds = data.service_ids && Array.isArray(data.service_ids) && data.service_ids.length > 0
+      ? [...new Set(data.service_ids.map(Number))]
+      : data.service_id ? [Number(data.service_id)] : [];
+
+    if (serviceIds.length === 0) {
+      throw ApiError.badRequest('At least one service must be selected');
+    }
+
+    // Verify services exist and are active
+    const services = await db('salon_services')
+      .whereIn('id', serviceIds)
+      .where({ business_id: businessId, is_active: true });
+
+    if (services.length !== serviceIds.length) {
+      throw ApiError.badRequest('One or more selected services are inactive or not found');
+    }
 
     const appointmentData = {
       business_id: businessId,
@@ -45,6 +59,7 @@ class AppointmentService {
       start_time: data.start_time,
       end_time: data.end_time,
       status: data.status || 'planned',
+      source: data.source || 'walk_in',
       notes: data.notes || null,
       created_by: userId
     };
@@ -58,9 +73,7 @@ class AppointmentService {
 
     const appointmentId = await appointmentRepository.create(
       appointmentData,
-      data.service_id,
-      service.price,
-      service.duration,
+      services,
       roomName
     );
     return appointmentRepository.findById(appointmentId, businessId);
