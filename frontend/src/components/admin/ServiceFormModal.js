@@ -222,11 +222,15 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
           ? Math.max(1, Number(formData.duration_val) * 60)
           : Math.max(1, Number(formData.duration_val));
 
+      const categoryIdVal = formData.category_id
+        ? Number(formData.category_id)
+        : (categories.length > 0 ? Number(categories[0].id) : null);
+
       const payload = {
         name: formData.name.trim(),
-        category_id: formData.category_id ? Number(formData.category_id) : null,
-        description: formData.description.trim() || null,
-        price: Number(formData.price),
+        category_id: categoryIdVal,
+        description: formData.description?.trim() || null,
+        price: Number(formData.price) || 0,
         discounted_price: formData.discounted_price ? Number(formData.discounted_price) : null,
         duration_minutes: durationInMinutes,
         tax_percentage: formData.tax_applicable === 'yes' ? 18 : 0,
@@ -234,7 +238,7 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
         online_booking: formData.online_booking,
         is_featured: formData.is_featured,
         requires_consultation: formData.requires_consultation,
-        tags: formData.tags.trim() || null,
+        tags: formData.tags?.trim() || null,
         sort_order: Number(formData.sort_order) || 0,
         service_color: formData.service_color || '#EC4899',
         service_staff: formData.service_staff || null,
@@ -244,7 +248,11 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
 
       const result = serviceSchema.safeParse(payload);
       if (!result.success) {
-        setFieldErrors(formatZodErrors(result.error));
+        const errors = formatZodErrors(result.error);
+        setFieldErrors(errors);
+        const firstError = Object.values(errors)[0] || 'Please check the required fields.';
+        setError(firstError);
+        toast.error(firstError);
         setLoading(false);
         return;
       }
@@ -282,8 +290,9 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
       onClose();
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Failed to save service.');
-      toast.error(err.response?.data?.message || 'Failed to save service.');
+      const errMsg = err.response?.data?.message || err.message || 'Failed to save service.';
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }

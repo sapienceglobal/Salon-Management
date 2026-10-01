@@ -31,9 +31,14 @@ import {
   RiScissorsCutLine,
   RiPaintBrushLine,
   RiPlantLine,
+  RiShieldCheckLine,
+  RiCloseLine,
+  RiDownload2Line,
 } from 'react-icons/ri';
 import CategoryFormModal, { CATEGORY_ICONS_MAP } from '@/components/admin/CategoryFormModal';
+import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import ServiceFormModal from '@/components/admin/ServiceFormModal';
+import BulkActionBar from '@/components/admin/common/BulkActionBar';
 import { useConfirm } from '@/context/ConfirmContext';
 import toast from 'react-hot-toast';
 
@@ -48,6 +53,7 @@ export default function ServicesPage() {
   const [sortBy, setSortBy] = useState('name_asc');
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
   const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   const [loadingCats, setLoadingCats] = useState(true);
@@ -213,6 +219,90 @@ export default function ServicesPage() {
 
   const handleToggleSelect = (id) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
+
+  const handleBulkActivate = async () => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+      await api.post('/services/bulk-status', { ids: selectedIds, is_active: true });
+      toast.success(`${selectedIds.length} service${selectedIds.length > 1 ? 's' : ''} activated`);
+      if (activeCategoryId) fetchServices(activeCategoryId);
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to activate selected services');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+      await api.post('/services/bulk-status', { ids: selectedIds, is_active: false });
+      toast.success(`${selectedIds.length} service${selectedIds.length > 1 ? 's' : ''} deactivated`);
+      if (activeCategoryId) fetchServices(activeCategoryId);
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to deactivate selected services');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleExportSelected = () => {
+    if (selectedIds.length === 0) return;
+    const selectedSvcs = services.filter((s) => selectedIds.includes(s.id));
+    const headers = ['Service Name', 'Price', 'Discounted Price', 'Duration (Mins)', 'Tax (%)', 'Status'];
+    const csvRows = [headers.join(',')];
+
+    for (const row of selectedSvcs) {
+      const values = [
+        `"${row.name || ''}"`,
+        `"${row.price || 0}"`,
+        `"${row.discounted_price || row.price || 0}"`,
+        `"${row.duration_minutes || 0}"`,
+        `"${row.tax_percentage || 0}"`,
+        `"${row.is_active !== false ? 'Active' : 'Inactive'}"`,
+      ];
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `selected_services_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${selectedSvcs.length} selected services`);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const ok = await confirm({
+      title: 'Delete Selected Services',
+      message: `Are you sure you want to permanently delete ${selectedIds.length} service${selectedIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: 'Delete Permanently',
+      type: 'danger',
+    });
+    if (!ok) return;
+
+    setBulkLoading(true);
+    try {
+      await api.post('/services/bulk-delete', { ids: selectedIds });
+      toast.success(`${selectedIds.length} service${selectedIds.length > 1 ? 's' : ''} deleted`);
+      if (activeCategoryId) fetchServices(activeCategoryId);
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete selected services');
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   const getCategoryIcon = (cat) => {
@@ -645,14 +735,19 @@ export default function ServicesPage() {
           ) : viewMode === 'list' ? (
             /* LIST VIEW: Exact Table */
             <div className="bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+              <TableScrollContainer>
+                <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
                     <tr className="bg-gray-50/70 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                       <th className="py-3.5 pl-5 pr-2 w-10">
                         <input
                           type="checkbox"
                           checked={selectedIds.length === displayedServices.length && displayedServices.length > 0}
+                          ref={(el) => {
+                            if (el) {
+                              el.indeterminate = selectedIds.length > 0 && selectedIds.length < displayedServices.length;
+                            }
+                          }}
                           onChange={handleSelectAll}
                           className="w-4 h-4 rounded text-[#e91e63] border-gray-300 focus:ring-[#e91e63] cursor-pointer"
                         />
@@ -838,7 +933,7 @@ export default function ServicesPage() {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </TableScrollContainer>
 
               {/* Table Footer / Pagination */}
               <div className="p-4 px-6 border-t border-gray-100 dark:border-white/5 flex flex-wrap items-center justify-between gap-4">
@@ -868,41 +963,55 @@ export default function ServicesPage() {
           ) : (
             /* GRID VIEW */
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {displayedServices.map((svc) => (
-                <div
-                  key={svc.id}
-                  className="bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/5 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      {svc.icon && !svc.image_url ? (
-                        <div
-                          style={{
-                            backgroundColor: `${svc.service_color || '#EC4899'}18`,
-                            color: svc.service_color || '#EC4899',
-                            borderColor: `${svc.service_color || '#EC4899'}35`,
-                          }}
-                          className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 border shadow-xs"
-                        >
-                          {getServiceIcon(svc.icon)}
+              {displayedServices.map((svc) => {
+                const isSelected = selectedIds.includes(svc.id);
+                return (
+                  <div
+                    key={svc.id}
+                    className={`bg-white dark:bg-[#1a1a2e] border ${
+                      isSelected
+                        ? 'border-[#e91e63] ring-2 ring-[#e91e63]/30 bg-pink-50/20 dark:bg-pink-950/20'
+                        : 'border-gray-100 dark:border-white/5'
+                    } rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between`}
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelect(svc.id)}
+                            className="w-4 h-4 rounded text-[#e91e63] border-gray-300 focus:ring-[#e91e63] cursor-pointer shrink-0"
+                          />
+                          {svc.icon && !svc.image_url ? (
+                            <div
+                              style={{
+                                backgroundColor: `${svc.service_color || '#EC4899'}18`,
+                                color: svc.service_color || '#EC4899',
+                                borderColor: `${svc.service_color || '#EC4899'}35`,
+                              }}
+                              className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 border shadow-xs"
+                            >
+                              {getServiceIcon(svc.icon)}
+                            </div>
+                          ) : (
+                            <img
+                              src={getServiceAvatar(svc)}
+                              alt={svc.name}
+                              className="w-14 h-14 rounded-2xl object-cover shadow-xs border border-gray-100 dark:border-white/10"
+                            />
+                          )}
                         </div>
-                      ) : (
-                        <img
-                          src={getServiceAvatar(svc)}
-                          alt={svc.name}
-                          className="w-14 h-14 rounded-2xl object-cover shadow-xs border border-gray-100 dark:border-white/10"
-                        />
-                      )}
-                      <span
-                        className={`text-xs font-bold px-2.5 py-1 rounded-md ${
-                          svc.is_active !== false
-                            ? 'bg-[#E8F8EE] text-[#12B76A]'
-                            : 'bg-[#FEF6EE] text-[#F79009]'
-                        }`}
-                      >
-                        {svc.is_active !== false ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
+                        <span
+                          className={`text-xs font-bold px-2.5 py-1 rounded-md ${
+                            svc.is_active !== false
+                              ? 'bg-[#E8F8EE] text-[#12B76A]'
+                              : 'bg-[#FEF6EE] text-[#F79009]'
+                          }`}
+                        >
+                          {svc.is_active !== false ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
 
                     <h4 className="font-bold text-base text-gray-900 dark:text-white">{svc.name}</h4>
                     {svc.description && (
@@ -943,7 +1052,8 @@ export default function ServicesPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
           )}
         </div>
@@ -971,6 +1081,43 @@ export default function ServicesPage() {
           setIsSvcModalOpen(false);
           if (activeCategoryId) fetchServices(activeCategoryId);
         }}
+      />
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={displayedServices.length}
+        onClear={() => setSelectedIds([])}
+        resourceName="service"
+        actions={[
+          {
+            label: 'Activate',
+            icon: RiShieldCheckLine,
+            onClick: handleBulkActivate,
+            variant: 'success',
+            loading: bulkLoading,
+          },
+          {
+            label: 'Deactivate',
+            icon: RiCloseLine,
+            onClick: handleBulkDeactivate,
+            variant: 'default',
+            loading: bulkLoading,
+          },
+          {
+            label: 'Export CSV',
+            icon: RiDownload2Line,
+            onClick: handleExportSelected,
+            variant: 'default',
+          },
+          {
+            label: 'Delete',
+            icon: RiDeleteBin6Line,
+            onClick: handleBulkDelete,
+            variant: 'danger',
+            loading: bulkLoading,
+          },
+        ]}
       />
     </div>
   );

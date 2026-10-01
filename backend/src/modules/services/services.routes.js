@@ -3,7 +3,12 @@ import { authenticate } from '../../middlewares/authenticate.js';
 import { authorize, businessScope } from '../../middlewares/authorize.js';
 import { validate } from '../../middlewares/validate.js';
 import { createCategorySchema, updateCategorySchema, createServiceSchema, updateServiceSchema, serviceIdParamSchema, categoryIdParamSchema } from './services.validation.js';
-import { getCategories, createCategory, updateCategory, deleteCategory, getServices, getService, getServicesByCategory, createService, updateService, deleteService, toggleServiceActive } from './services.controller.js';
+import {
+  getCategories, createCategory, updateCategory, deleteCategory,
+  getServices, getService, getServicesByCategory, createService,
+  updateService, deleteService, toggleServiceActive,
+  bulkDeleteServices, bulkStatusServices
+} from './services.controller.js';
 import { multipleImages } from '../../utils/fileUpload.js';
 
 const router = Router();
@@ -17,6 +22,8 @@ router.delete('/categories/:id', authorize('super_admin', 'admin'), validate(cat
 
 // Services
 router.get('/', getServices);
+router.post('/bulk-delete', authorize('super_admin', 'admin', 'manager'), bulkDeleteServices);
+router.post('/bulk-status', authorize('super_admin', 'admin', 'manager'), bulkStatusServices);
 router.get('/:id', validate(serviceIdParamSchema), getService);
 router.get('/category/:id', validate(categoryIdParamSchema), getServicesByCategory);
 router.post('/', authorize('super_admin', 'admin', 'manager'), multipleImages('images', 5), validate(createServiceSchema), createService);

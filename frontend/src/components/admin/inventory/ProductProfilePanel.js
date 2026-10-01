@@ -1,8 +1,19 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { RiCloseLine, RiEdit2Line, RiDeleteBinLine, RiPriceTag3Line, RiStockLine, RiAlarmWarningLine, RiAddLine, RiSubtractLine, RiArchiveLine } from 'react-icons/ri';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { 
+  RiCloseLine, 
+  RiEdit2Line, 
+  RiPriceTag3Line, 
+  RiStockLine, 
+  RiAlarmWarningLine, 
+  RiAddLine, 
+  RiSubtractLine, 
+  RiArchiveLine, 
+  RiShoppingBag3Line 
+} from 'react-icons/ri';
+import { formatCurrency } from '@/lib/utils';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { useConfirm } from '@/context/ConfirmContext';
 import toast from 'react-hot-toast';
@@ -11,7 +22,6 @@ import api from '@/lib/api';
 export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, onUpdateSuccess }) {
   const { confirm } = useConfirm();
   const [mounted, setMounted] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   
   // Stock Adjustment State
   const [isAdjustingStock, setIsAdjustingStock] = useState(false);
@@ -28,7 +38,6 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
 
   useEffect(() => {
     if (isOpen) {
-      setIsClosing(false);
       setIsAdjustingStock(false);
       setAdjustQty('');
       setStockError(null);
@@ -36,14 +45,6 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
   }, [isOpen, product]);
 
   if (!isOpen || !mounted || !product) return null;
-
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 200);
-  };
 
   const submitStockAdjustment = async () => {
     if (!adjustQty || isNaN(adjustQty) || parseInt(adjustQty) <= 0) {
@@ -58,6 +59,7 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
       await api.patch(`/products/${product.id}/stock`, { quantity: diff });
       setIsAdjustingStock(false);
       setAdjustQty('');
+      toast.success('Stock adjusted successfully');
       if (onUpdateSuccess) onUpdateSuccess();
     } catch (err) {
       setStockError(err.response?.data?.message || 'Failed to update stock');
@@ -77,188 +79,245 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
     try {
       if (product.is_active) {
         await api.delete(`/products/${product.id}`);
+        toast.success('Product marked as inactive');
       } else {
         await api.put(`/products/${product.id}`, { is_active: true });
+        toast.success('Product restored');
       }
       if (onUpdateSuccess) {
         onUpdateSuccess();
-        handleClose();
+        onClose();
       }
     } catch (err) {
       toast.error(err.response?.data?.message || `Failed to ${actionStr} product`);
     }
   };
 
-  const isLowStock = product.stock_quantity <= product.min_stock_alert;
+  const isLowStock = product.stock_quantity <= product.min_stock_alert && product.stock_quantity > 0;
   const isOutOfStock = product.stock_quantity === 0;
 
   return createPortal(
-    <div className={`fixed inset-0 z-[100] flex justify-end ${isClosing ? 'animate-[fadeOut_0.3s_ease_forwards]' : 'animate-[fadeIn_0.3s_ease_forwards]'}`}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleClose} />
-      
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+      onMouseDown={onClose}
+    >
       <div 
-        className={`bg-admin-card text-admin-text w-full max-w-md h-full border-l border-admin-border shadow-2xl flex flex-col ${isClosing ? 'animate-[slideOutRight_0.2s_ease_forwards]' : 'animate-[slideInRight_0.3s_ease_forwards]'}`}
+        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
         onMouseDown={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-admin-border bg-admin-surface/50 shrink-0">
-          <div>
-            <h2 className="text-xl font-bold truncate max-w-[250px]" title={product.name}>{product.name}</h2>
-            <p className="text-sm text-admin-text-secondary mt-1 flex items-center gap-2">
-              <span className="font-medium">{product.brand || 'No Brand'}</span>
-              <span>•</span>
-              <span>{product.category || 'Uncategorized'}</span>
-            </p>
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
+              <RiShoppingBag3Line />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate max-w-[280px] sm:max-w-md" title={product.name}>
+                {product.name}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2">
+                <span>{product.brand || 'No Brand'}</span>
+                <span>•</span>
+                <span>{product.category || 'General'}</span>
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => onEdit(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-admin-surface-light text-admin-text-secondary hover:text-brand transition-colors" title="Edit Product">
-              <RiEdit2Line className="text-lg" />
+
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => {
+                onClose();
+                setTimeout(() => onEdit(product), 150);
+              }} 
+              className="text-gray-400 hover:text-[#E91E63] dark:hover:text-[#E91E63] p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer" 
+              title="Edit Product"
+            >
+              <RiEdit2Line className="text-xl" />
             </button>
-            <button onClick={handleClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-admin-surface-light text-admin-text-secondary hover:text-admin-text transition-colors">
-              <RiCloseLine className="text-xl" />
+            <button 
+              onClick={onClose} 
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <RiCloseLine className="text-2xl" />
             </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="overflow-y-auto custom-scrollbar flex-1 p-6 space-y-6">
+        {/* Modal Body */}
+        <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6 space-y-5 custom-scrollbar">
           
           {/* Status Alert */}
           {isOutOfStock ? (
-            <div className="bg-accent-red/10 border border-accent-red/20 rounded-xl p-4 flex items-start gap-3 text-accent-red">
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl p-4 flex items-start gap-3 text-red-600 dark:text-red-400">
               <RiAlarmWarningLine className="text-xl shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-sm">Out of Stock</p>
-                <p className="text-xs mt-0.5 opacity-80">This product is completely out of stock and cannot be sold.</p>
+                <p className="text-xs mt-0.5 opacity-90">This product is completely out of stock and cannot be sold.</p>
               </div>
             </div>
           ) : isLowStock ? (
-            <div className="bg-accent-yellow/10 border border-accent-yellow/20 rounded-xl p-4 flex items-start gap-3 text-accent-yellow">
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-4 flex items-start gap-3 text-amber-600 dark:text-amber-400">
               <RiAlarmWarningLine className="text-xl shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-sm">Low Stock Alert</p>
-                <p className="text-xs mt-0.5 opacity-80">Only {product.stock_quantity} left (Min alert: {product.min_stock_alert})</p>
+                <p className="text-xs mt-0.5 opacity-90">Only {product.stock_quantity} left in stock (Alert threshold: {product.min_stock_alert}).</p>
               </div>
             </div>
           ) : null}
 
           {/* Pricing Info */}
-          <div className="bg-admin-surface rounded-xl p-5 border border-admin-border shadow-sm">
-            <h3 className="text-xs font-bold text-admin-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <RiPriceTag3Line /> Pricing Details
+          <div className="bg-gray-50 dark:bg-white/[0.03] rounded-2xl p-5 border border-gray-100 dark:border-white/5">
+            <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <RiPriceTag3Line className="text-[#E91E63]" /> Pricing Details
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-admin-text-muted mb-1">Selling Price</p>
-                <p className="text-xl font-bold text-brand">{formatCurrency(product.selling_price)}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Selling Price</p>
+                <p className="text-2xl font-bold text-[#E91E63]">{formatCurrency(product.selling_price)}</p>
               </div>
               <div>
-                <p className="text-sm text-admin-text-muted mb-1">Purchase Price</p>
-                <p className="text-lg font-semibold">{formatCurrency(product.purchase_price || 0)}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Purchase Price</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(product.purchase_price || 0)}</p>
               </div>
             </div>
             
             {product.purchase_price > 0 && (
-              <div className="mt-4 pt-4 border-t border-admin-border flex justify-between items-center text-sm">
-                <span className="text-admin-text-muted">Est. Margin</span>
-                <span className="font-medium text-accent-green">
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10 flex justify-between items-center text-xs sm:text-sm">
+                <span className="text-gray-500 dark:text-gray-400">Est. Profit Margin</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">
                   {formatCurrency(product.selling_price - product.purchase_price)} 
-                  <span className="ml-1 opacity-70">({Math.round(((product.selling_price - product.purchase_price) / product.selling_price) * 100)}%)</span>
+                  <span className="ml-1 opacity-80 font-normal">({Math.round(((product.selling_price - product.purchase_price) / product.selling_price) * 100)}%)</span>
                 </span>
               </div>
             )}
           </div>
 
           {/* Stock Info */}
-          <div className="bg-admin-surface rounded-xl p-5 border border-admin-border shadow-sm">
+          <div className="bg-gray-50 dark:bg-white/[0.03] rounded-2xl p-5 border border-gray-100 dark:border-white/5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-admin-text-secondary uppercase tracking-wider flex items-center gap-2">
-                <RiStockLine /> Inventory Status
+              <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                <RiStockLine className="text-[#E91E63]" /> Inventory Status
               </h3>
               {!isAdjustingStock && (
-                <button onClick={() => setIsAdjustingStock(true)} className="text-xs font-bold text-brand hover:text-brand-hover transition-colors">
+                <button 
+                  onClick={() => setIsAdjustingStock(true)} 
+                  className="text-xs font-bold text-[#E91E63] hover:text-[#d81557] transition-colors cursor-pointer"
+                >
                   Adjust Stock
                 </button>
               )}
             </div>
             
             {isAdjustingStock ? (
-              <div className="animate-[fadeIn_0.2s_ease_forwards] border border-admin-border rounded-lg p-3 bg-admin-card mt-2">
+              <div className="border border-gray-200 dark:border-white/10 rounded-2xl p-4 bg-white dark:bg-[#1a1a2e] shadow-sm">
                 <div className="flex gap-2 mb-3">
-                  <button onClick={() => setAdjustType('add')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${adjustType === 'add' ? 'bg-accent-green/15 text-accent-green' : 'bg-admin-surface-light text-admin-text-secondary'}`}>+ Add</button>
-                  <button onClick={() => setAdjustType('remove')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${adjustType === 'remove' ? 'bg-accent-red/15 text-accent-red' : 'bg-admin-surface-light text-admin-text-secondary'}`}>- Remove</button>
+                  <button 
+                    onClick={() => setAdjustType('add')} 
+                    className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${adjustType === 'add' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400'}`}
+                  >
+                    + Add Stock
+                  </button>
+                  <button 
+                    onClick={() => setAdjustType('remove')} 
+                    className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${adjustType === 'remove' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20' : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400'}`}
+                  >
+                    - Deduct Stock
+                  </button>
                 </div>
                 <div className="flex gap-2">
-                  <input type="number" min="1" value={adjustQty} onChange={e => setAdjustQty(e.target.value)} placeholder="Qty" className="flex-1 bg-admin-surface border border-admin-border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-brand" />
-                  <button onClick={submitStockAdjustment} disabled={isUpdatingStock} className="bg-brand text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-brand-hover transition-colors disabled:opacity-50">
-                    {isUpdatingStock ? '...' : 'Save'}
+                  <input 
+                    type="number" 
+                    min="1" 
+                    value={adjustQty} 
+                    onChange={e => setAdjustQty(e.target.value)} 
+                    placeholder="Enter quantity" 
+                    className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-gray-900 dark:text-white outline-none focus:border-[#E91E63]" 
+                  />
+                  <button 
+                    onClick={submitStockAdjustment} 
+                    disabled={isUpdatingStock} 
+                    className="bg-[#E91E63] text-white px-5 py-2 rounded-xl text-xs font-semibold hover:bg-[#d81557] transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-[#E91E63]/20"
+                  >
+                    {isUpdatingStock ? 'Saving...' : 'Apply'}
                   </button>
-                  <button onClick={() => setIsAdjustingStock(false)} className="text-admin-text-secondary hover:bg-admin-surface-light px-2 rounded-md transition-colors">
-                    <RiCloseLine className="text-lg" />
+                  <button 
+                    onClick={() => setIsAdjustingStock(false)} 
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 px-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <RiCloseLine className="text-xl" />
                   </button>
                 </div>
-                {stockError && <p className="text-xs text-accent-red mt-2">{stockError}</p>}
+                {stockError && <p className="text-xs text-rose-500 mt-2">{stockError}</p>}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-admin-text-muted mb-1">Current Stock</p>
-                  <p className={`text-2xl font-bold ${isOutOfStock ? 'text-accent-red' : isLowStock ? 'text-accent-yellow' : 'text-accent-green'}`}>
-                    {product.stock_quantity} <span className="text-sm font-medium opacity-60 ml-1">{product.unit}</span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Current Stock Level</p>
+                  <p className={`text-2xl font-bold ${isOutOfStock ? 'text-rose-500' : isLowStock ? 'text-amber-500' : 'text-emerald-500'}`}>
+                    {product.stock_quantity} <span className="text-sm font-medium opacity-70 ml-1">{product.unit}</span>
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-admin-text-muted mb-1">Total Value</p>
-                  <p className="text-lg font-semibold">{formatCurrency(product.selling_price * product.stock_quantity)}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Retail Value</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(product.selling_price * product.stock_quantity)}</p>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Specs */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-admin-text-secondary uppercase tracking-wider flex items-center gap-2">
-              Specifications
+          {/* Specifications */}
+          <div className="bg-gray-50 dark:bg-white/[0.03] rounded-2xl p-5 border border-gray-100 dark:border-white/5 space-y-4">
+            <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Product Specifications
             </h3>
-            <div className="grid grid-cols-2 gap-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-xs sm:text-sm">
               <div>
-                <span className="block text-admin-text-muted mb-0.5">SKU</span>
-                <span className="font-medium">{product.sku || 'N/A'}</span>
+                <span className="block text-gray-400 mb-0.5">SKU</span>
+                <span className="font-semibold text-gray-900 dark:text-white font-mono">{product.sku || 'N/A'}</span>
               </div>
               <div>
-                <span className="block text-admin-text-muted mb-0.5">Barcode</span>
-                <span className="font-medium">{product.barcode || 'N/A'}</span>
+                <span className="block text-gray-400 mb-0.5">Barcode / UPC</span>
+                <span className="font-semibold text-gray-900 dark:text-white font-mono">{product.barcode || 'N/A'}</span>
               </div>
               <div>
-                <span className="block text-admin-text-muted mb-0.5">Min Alert</span>
-                <span className="font-medium">{product.min_stock_alert} {product.unit}</span>
+                <span className="block text-gray-400 mb-0.5">Alert Threshold</span>
+                <span className="font-semibold text-gray-900 dark:text-white">{product.min_stock_alert} {product.unit}</span>
               </div>
               <div>
-                <span className="block text-admin-text-muted mb-0.5">Added On</span>
-                <span className="font-medium">{new Date(product.created_at).toLocaleDateString()}</span>
+                <span className="block text-gray-400 mb-0.5">Created Date</span>
+                <span className="font-semibold text-gray-900 dark:text-white">{new Date(product.created_at).toLocaleDateString()}</span>
               </div>
             </div>
             {product.description && (
-              <div className="mt-4 pt-4 border-t border-admin-border">
-                <span className="block text-admin-text-muted mb-1 text-sm">Description</span>
-                <p className="text-sm leading-relaxed">{product.description}</p>
+              <div className="pt-3 border-t border-gray-200 dark:border-white/10">
+                <span className="block text-gray-400 mb-1 text-xs">Description / Notes</span>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{product.description}</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-6 border-t border-admin-border bg-admin-surface/50 shrink-0">
+        {/* Modal Footer Actions */}
+        <div className="flex items-center justify-between gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
           <button 
+            type="button"
             onClick={handleToggleActive}
-            className={`w-full py-2.5 rounded-xl text-sm font-semibold border transition-colors flex items-center justify-center gap-2 ${
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-colors flex items-center gap-2 cursor-pointer ${
               product.is_active 
-                ? 'text-accent-red border-accent-red/20 bg-accent-red/5 hover:bg-accent-red/10'
-                : 'text-brand border-brand/20 bg-brand/5 hover:bg-brand/10'
+                ? 'text-rose-600 border-rose-200 bg-rose-50 dark:bg-rose-500/10 dark:border-rose-500/20 hover:bg-rose-100'
+                : 'text-[#E91E63] border-[#E91E63]/20 bg-[#E91E63]/10 hover:bg-[#E91E63]/20'
             }`}
           >
-            <RiArchiveLine className="text-lg" />
+            <RiArchiveLine className="text-base" />
             {product.is_active ? 'Mark Inactive' : 'Restore Product'}
+          </button>
+
+          <button 
+            type="button" 
+            onClick={onClose}
+            className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+          >
+            Close
           </button>
         </div>
       </div>

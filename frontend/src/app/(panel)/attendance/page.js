@@ -24,6 +24,8 @@ import {
   RiCheckDoubleLine,
   RiUser3Line,
 } from 'react-icons/ri';
+import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
+import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -512,9 +514,9 @@ export default function AttendancePage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#FAFAFC] dark:bg-[#0f0f1a] text-gray-800 dark:text-gray-200 p-4 sm:p-6 lg:p-8 flex flex-col font-sans">
-      {/* Soft Pink Ambient Glow in Top Right corner matching UI screenshot */}
-      <div className="absolute top-0 right-0 w-[480px] h-64 bg-gradient-to-l from-pink-200/40 via-pink-100/10 to-transparent pointer-events-none rounded-bl-full blur-2xl -z-0" />
+    <div className="relative min-h-screen bg-[#FAFAFC] dark:bg-[#0f0f1a] text-gray-800 dark:text-gray-200 p-4 sm:p-6 lg:p-8 flex flex-col font-sans overflow-hidden">
+      {/* Ambient Pink-White Top Gradient */}
+      <PageHeaderGradient height="h-[300px]" />
 
       {/* 1. Header Section */}
       <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -753,7 +755,7 @@ export default function AttendancePage() {
         </div>
 
         {/* Table Content */}
-        <div className="overflow-x-auto custom-scrollbar flex-1 -mx-4 sm:-mx-6 px-4 sm:px-6">
+        <TableScrollContainer className="flex-1 -mx-4 sm:-mx-6 px-4 sm:px-6">
           <table className="w-full border-collapse min-w-[950px] text-left">
             <thead>
               <tr className="border-b border-gray-100 dark:border-white/5">
@@ -965,7 +967,7 @@ export default function AttendancePage() {
               )}
             </tbody>
           </table>
-        </div>
+        </TableScrollContainer>
 
         {/* 4. Table Footer: Showing 1 to 6 of 6 staff + Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-5 mt-auto border-t border-gray-100 dark:border-white/5">

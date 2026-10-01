@@ -22,9 +22,14 @@ import {
   RiArrowUpLine,
   RiArrowDownLine,
   RiDeleteBinLine,
+  RiShieldCheckLine,
+  RiDownload2Line,
 } from 'react-icons/ri';
 import AddAppointmentModal from '@/components/admin/appointments/AddAppointmentModal';
 import AppointmentDetailsDrawer from '@/components/admin/appointments/AppointmentDetailsDrawer';
+import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
+import BulkActionBar from '@/components/admin/common/BulkActionBar';
+import { useConfirm } from '@/context/ConfirmContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import toast from 'react-hot-toast';
 
@@ -73,6 +78,7 @@ const PAYMENT_STYLES = {
 
 export default function AppointmentsPage() {
   const { user } = useAuth();
+  const { confirm } = useConfirm();
 
   // State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -85,6 +91,8 @@ export default function AppointmentsPage() {
   const [customersList, setCustomersList] = useState([]);
   const [servicesList, setServicesList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState('');
   const [selectedService, setSelectedService] = useState('');
@@ -310,6 +318,89 @@ export default function AppointmentsPage() {
 
   const visibleAppointments = tabAppointments[activeTab] || [];
 
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(visibleAppointments.map(a => a.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleBulkStatus = async (status) => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+      await api.post('/appointments/bulk-status', { ids: selectedIds, status });
+      toast.success(`${selectedIds.length} appointment${selectedIds.length > 1 ? 's' : ''} updated to ${status}`);
+      fetchData();
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update appointments');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleExportSelected = () => {
+    if (selectedIds.length === 0) return;
+    const selectedAppts = appointments.filter(a => selectedIds.includes(a.id));
+    const headers = ['Customer', 'Phone', 'Service', 'Staff', 'Date', 'Time', 'Status'];
+    const csvRows = [headers.join(',')];
+
+    for (const row of selectedAppts) {
+      const custName = `${row.customer_first_name || ''} ${row.customer_last_name || ''}`.trim();
+      const staffName = `${row.staff_first_name || ''} ${row.staff_last_name || ''}`.trim() || 'Any Staff';
+      const values = [
+        `"${custName}"`,
+        `"${row.customer_phone || ''}"`,
+        `"${row.service_name || ''}"`,
+        `"${staffName}"`,
+        `"${row.appointment_date || ''}"`,
+        `"${row.start_time?.substring(0, 5) || ''} - ${row.end_time?.substring(0, 5) || ''}"`,
+        `"${row.status || ''}"`,
+      ];
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `selected_appointments_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${selectedAppts.length} selected appointments`);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const ok = await confirm({
+      title: 'Delete Selected Appointments',
+      message: `Are you sure you want to permanently delete ${selectedIds.length} appointment${selectedIds.length > 1 ? 's' : ''}?`,
+      confirmText: 'Delete Permanently',
+      type: 'danger',
+    });
+    if (!ok) return;
+
+    setBulkLoading(true);
+    try {
+      await api.post('/appointments/bulk-delete', { ids: selectedIds });
+      toast.success(`${selectedIds.length} appointment${selectedIds.length > 1 ? 's' : ''} deleted`);
+      fetchData();
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete selected appointments');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-full pb-8">
       {/* ========================================================
@@ -317,41 +408,73 @@ export default function AppointmentsPage() {
              (Full-bleed from root header down behind stat cards)
          ======================================================== */}
       <div className="relative w-full mb-6">
-        {/* Full-bleed ambient backdrop extending down through the stat cards */}
         <div
-          className="absolute inset-0 pointer-events-none z-0"
+          className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
           style={{
-            background:
-              'linear-gradient(180deg, #FDE2EC 0%, #FDEBF2 45%, rgba(253, 235, 242, 0.4) 75%, transparent 100%)',
+            maskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
           }}
-        />
+        >
+          {/* ========================================================
+              LIGHT MODE GRADIENTS (Hidden completely in dark mode)
+             ======================================================== */}
+          {/* Full-bleed ambient backdrop extending down through the stat cards */}
+          <div
+            className="dark:hidden absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'linear-gradient(180deg, #FDE2EC 0%, #FDEBF2 45%, rgba(253, 235, 242, 0.4) 75%, transparent 100%)',
+            }}
+          />
 
-        {/* Ambient radial pink aura centered behind model & quote */}
-        <div
-          className="absolute top-0 right-0 w-3/4 h-[380px] pointer-events-none z-0"
-          style={{
-            background:
-              'radial-gradient(ellipse 70% 65% at 75% 25%, rgba(255, 202, 225, 0.85) 0%, rgba(255, 226, 239, 0.45) 50%, transparent 85%)',
-          }}
-        />
+          {/* Ambient radial pink aura centered behind model & quote */}
+          <div
+            className="dark:hidden absolute top-0 right-0 w-3/4 h-[380px] pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse 70% 65% at 75% 25%, rgba(255, 202, 225, 0.85) 0%, rgba(255, 226, 239, 0.45) 50%, transparent 85%)',
+            }}
+          />
 
-        {/* Dark mode gradient for seamless blend */}
-        <div
-          className="hidden dark:block absolute inset-0 pointer-events-none z-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(46, 25, 42, 0.6) 0%, rgba(32, 22, 38, 0.35) 50%, transparent 100%)',
-          }}
-        />
+          {/* ========================================================
+              DARK MODE GRADIENTS (Luxury seamless dark aura matching #0f0f1a)
+             ======================================================== */}
+          {/* Primary vertical dark wash: delicate rose-wine diffusing into dark background */}
+          <div
+            className="hidden dark:block absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'linear-gradient(180deg, rgba(233, 30, 99, 0.16) 0%, rgba(194, 24, 91, 0.08) 35%, rgba(15, 15, 26, 0.3) 70%, transparent 100%)',
+            }}
+          />
 
-        {/* Exact Model & Calligraphy Graphic — anchors to top-right edge with zero gap, cascades behind stat cards */}
-        <div className="hidden lg:block absolute right-0 xl:right-4 2xl:right-8 top-0 pointer-events-none z-0">
+          {/* Dark mode radial pink aura centered behind header & stat cards */}
+          <div
+            className="hidden dark:block absolute top-0 right-0 w-3/4 h-[380px] pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse 75% 65% at 75% 20%, rgba(233, 30, 99, 0.18) 0%, rgba(194, 24, 91, 0.06) 50%, transparent 85%)',
+            }}
+          />
+
+          {/* Dark mode secondary violet aura on left for rich depth */}
+          <div
+            className="hidden dark:block absolute top-0 left-0 w-1/2 h-[300px] pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse 60% 50% at 20% 0%, rgba(168, 85, 247, 0.09) 0%, transparent 75%)',
+            }}
+          />
+        </div>
+
+        {/* Exact Model & Calligraphy Graphic (commented out for now) */}
+        {/* <div className="hidden lg:block absolute right-0 xl:right-4 2xl:right-8 top-0 pointer-events-none z-0">
           <img
             src="/appointment_hero_full.png"
             alt="More Bookings Happier Clients"
             className="h-[215px] xl:h-[235px] 2xl:h-[250px] w-auto object-contain object-right select-none"
           />
-        </div>
+        </div> */}
 
         {/* Top Bar: Title on left */}
         <div className="relative z-10 flex items-start justify-between min-h-[105px] xl:min-h-[118px] 2xl:min-h-[128px] px-6 pt-5 sm:pt-6 mb-1">
@@ -737,6 +860,9 @@ export default function AppointmentsPage() {
 
           <AppointmentsTable
             appointments={visibleAppointments}
+            selectedIds={selectedIds}
+            onSelectAll={handleSelectAll}
+            onToggleSelect={handleToggleSelect}
             onEdit={handleEdit}
             onDelete={handleDeleteClick}
             onViewDetails={setSelectedViewAppointment}
@@ -809,6 +935,50 @@ export default function AppointmentsPage() {
           </div>
         </div>
       )}
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={visibleAppointments.length}
+        onClear={() => setSelectedIds([])}
+        resourceName="appointment"
+        actions={[
+          {
+            label: 'Confirm',
+            icon: RiShieldCheckLine,
+            onClick: () => handleBulkStatus('confirmed'),
+            variant: 'success',
+            loading: bulkLoading,
+          },
+          {
+            label: 'Complete',
+            icon: RiCheckLine,
+            onClick: () => handleBulkStatus('completed'),
+            variant: 'success',
+            loading: bulkLoading,
+          },
+          {
+            label: 'Cancel',
+            icon: RiCloseLine,
+            onClick: () => handleBulkStatus('cancelled'),
+            variant: 'default',
+            loading: bulkLoading,
+          },
+          {
+            label: 'Export CSV',
+            icon: RiDownload2Line,
+            onClick: handleExportSelected,
+            variant: 'default',
+          },
+          {
+            label: 'Delete',
+            icon: RiDeleteBinLine,
+            onClick: handleBulkDelete,
+            variant: 'danger',
+            loading: bulkLoading,
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -816,7 +986,7 @@ export default function AppointmentsPage() {
 /* =============================================
    APPOINTMENTS TABLE — tabbed table
    ============================================= */
-function AppointmentsTable({ appointments, onEdit, onDelete, onViewDetails }) {
+function AppointmentsTable({ appointments, selectedIds = [], onSelectAll, onToggleSelect, onEdit, onDelete, onViewDetails }) {
   if (appointments.length === 0) {
     return (
       <div className="p-12 text-center text-xs text-gray-400 font-medium">
@@ -826,11 +996,24 @@ function AppointmentsTable({ appointments, onEdit, onDelete, onViewDetails }) {
   }
 
   return (
-    <div className="overflow-x-auto overflow-y-hidden no-scrollbar">
+    <TableScrollContainer>
       <table className="w-full border-collapse min-w-[800px] text-xs">
         <thead>
           <tr className="border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02] text-gray-400 font-bold uppercase tracking-wider text-[11px]">
-            <th className="py-3 px-6 text-left">Customer</th>
+            <th className="py-3 pl-6 pr-2 w-10 text-center">
+              <input
+                type="checkbox"
+                checked={appointments.length > 0 && selectedIds.length === appointments.length}
+                ref={(el) => {
+                  if (el) {
+                    el.indeterminate = selectedIds.length > 0 && selectedIds.length < appointments.length;
+                  }
+                }}
+                onChange={onSelectAll}
+                className="w-4 h-4 rounded border-gray-300 dark:border-white/20 text-[#e91e63] focus:ring-[#e91e63] cursor-pointer"
+              />
+            </th>
+            <th className="py-3 px-4 text-left">Customer</th>
             <th className="py-3 px-4 text-left">Service</th>
             <th className="py-3 px-4 text-left">Staff</th>
             <th className="py-3 px-4 text-left">Time</th>
@@ -839,61 +1022,74 @@ function AppointmentsTable({ appointments, onEdit, onDelete, onViewDetails }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-          {appointments.map((appt) => (
-            <tr
-              key={appt.id}
-              onClick={() => onViewDetails(appt)}
-              className="hover:bg-gray-50/50 dark:hover:bg-white/[0.01] transition-colors cursor-pointer"
-            >
-              <td className="py-3.5 px-6">
-                <div className="font-bold text-gray-900 dark:text-white">
-                  {appt.customer_first_name} {appt.customer_last_name || ''}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">{appt.customer_phone || ''}</div>
-              </td>
-              <td className="py-3.5 px-4 font-semibold text-gray-800 dark:text-gray-200">
-                {appt.service_name}
-              </td>
-              <td className="py-3.5 px-4 text-gray-600 dark:text-gray-400">
-                {appt.staff_first_name ? `${appt.staff_first_name} ${appt.staff_last_name || ''}` : 'Any Staff'}
-              </td>
-              <td className="py-3.5 px-4 text-gray-600 dark:text-gray-400 font-medium">
-                {appt.start_time?.substring(0, 5)} - {appt.end_time?.substring(0, 5)}
-              </td>
-              <td className="py-3.5 px-4">
-                <span
-                  className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border capitalize ${
-                    STATUS_STYLES[appt.status] || 'bg-gray-100 text-gray-500 border-gray-200'
-                  }`}
-                >
-                  {appt.status?.replace('_', ' ') || 'planned'}
-                </span>
-              </td>
-              <td className="py-3.5 px-6 text-right">
-                <div
-                  className="flex items-center justify-end gap-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={() => onEdit(appt)}
-                    className="p-1.5 text-gray-400 hover:text-[#E91E63] rounded-lg hover:bg-pink-50 dark:hover:bg-pink-950/30 transition-colors"
-                    title="Edit"
+          {appointments.map((appt) => {
+            const isSelected = selectedIds.includes(appt.id);
+            return (
+              <tr
+                key={appt.id}
+                onClick={() => onViewDetails(appt)}
+                className={`hover:bg-gray-50/50 dark:hover:bg-white/[0.01] transition-colors cursor-pointer ${
+                  isSelected ? 'bg-pink-50/40 dark:bg-pink-950/20' : ''
+                }`}
+              >
+                <td className="py-3.5 pl-6 pr-2 text-center" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => onToggleSelect(appt.id)}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-white/20 text-[#e91e63] focus:ring-[#e91e63] cursor-pointer"
+                  />
+                </td>
+                <td className="py-3.5 px-4">
+                  <div className="font-bold text-gray-900 dark:text-white">
+                    {appt.customer_first_name} {appt.customer_last_name || ''}
+                  </div>
+                  <div className="text-[11px] text-gray-400 mt-0.5">{appt.customer_phone || ''}</div>
+                </td>
+                <td className="py-3.5 px-4 font-semibold text-gray-800 dark:text-gray-200">
+                  {appt.service_name}
+                </td>
+                <td className="py-3.5 px-4 text-gray-600 dark:text-gray-400">
+                  {appt.staff_first_name ? `${appt.staff_first_name} ${appt.staff_last_name || ''}` : 'Any Staff'}
+                </td>
+                <td className="py-3.5 px-4 text-gray-600 dark:text-gray-400 font-medium">
+                  {appt.start_time?.substring(0, 5)} - {appt.end_time?.substring(0, 5)}
+                </td>
+                <td className="py-3.5 px-4">
+                  <span
+                    className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border capitalize ${
+                      STATUS_STYLES[appt.status] || 'bg-gray-100 text-gray-500 border-gray-200'
+                    }`}
                   >
-                    <RiMoreFill className="text-sm" />
-                  </button>
-                  <button
-                    onClick={() => onDelete(appt)}
-                    className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                    title="Delete"
+                    {appt.status?.replace('_', ' ') || 'planned'}
+                  </span>
+                </td>
+                <td className="py-3.5 px-6 text-right">
+                  <div
+                    className="flex items-center justify-end gap-2"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <RiDeleteBinLine className="text-sm" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
+                    <button
+                      onClick={() => onEdit(appt)}
+                      className="p-1.5 text-gray-400 hover:text-[#E91E63] rounded-lg hover:bg-pink-50 dark:hover:bg-pink-950/30 transition-colors"
+                      title="Edit"
+                    >
+                      <RiMoreFill className="text-sm" />
+                    </button>
+                    <button
+                      onClick={() => onDelete(appt)}
+                      className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                      title="Delete"
+                    >
+                      <RiDeleteBinLine className="text-sm" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
-    </div>
+    </TableScrollContainer>
   );
 }

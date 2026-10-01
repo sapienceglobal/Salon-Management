@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { RiUserHeartLine, RiUserStarLine, RiUserFollowLine, RiUserUnfollowLine } from 'react-icons/ri';
+import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 
 export default function CustomerView({ startDate, endDate }) {
   const [data, setData] = useState(null);
@@ -92,7 +93,10 @@ export default function CustomerView({ startDate, endDate }) {
         <div className="p-5 border-b border-admin-border bg-admin-surface/30 flex justify-between items-center">
           <h3 className="font-bold text-lg">Top 50 Customers by Spend</h3>
         </div>
-        <div className="overflow-x-auto custom-scrollbar">
+        <TableScrollContainer
+          leftGradientClass="bg-gradient-to-r from-white via-white/85 to-transparent dark:from-[#1e1e35] dark:via-[#1e1e35]/85 dark:to-transparent"
+          rightGradientClass="bg-gradient-to-l from-white via-white/85 to-transparent dark:from-[#1e1e35] dark:via-[#1e1e35]/85 dark:to-transparent"
+        >
           <table className="w-full min-w-[700px] text-left border-collapse">
             <thead>
               <tr className="bg-admin-surface/70 text-admin-text-secondary border-b border-admin-border text-xs uppercase tracking-wider">
@@ -122,7 +126,7 @@ export default function CustomerView({ startDate, endDate }) {
               )}
             </tbody>
           </table>
-        </div>
+        </TableScrollContainer>
       </div>
     </div>
   );

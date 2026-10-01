@@ -35,6 +35,9 @@ export default function AdminPanelLayout({ children }) {
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
       if (mainRef.current) {
         mainRef.current.scrollTo({ top: 0, behavior: 'instant' });
       }
@@ -43,7 +46,7 @@ export default function AdminPanelLayout({ children }) {
   }, [pathname]);
 
   const isFullBleed = Boolean(
-    pathname?.startsWith('/customers') || pathname?.startsWith('/appointments') || pathname?.startsWith('/billing') || pathname?.startsWith('/expenses') || pathname?.startsWith('/attendance') || pathname?.startsWith('/leads') || pathname?.startsWith('/enquiry')
+    pathname?.startsWith('/customers') || pathname?.startsWith('/appointments') || pathname?.startsWith('/billing') || pathname?.startsWith('/expenses') || pathname?.startsWith('/attendance') || pathname?.startsWith('/leads') || pathname?.startsWith('/enquiry') || pathname?.startsWith('/packages')
   );
 
   return (
@@ -55,7 +58,7 @@ export default function AdminPanelLayout({ children }) {
         />
         <div className="flex-1 min-w-0 flex flex-col min-h-screen transition-all duration-200">
           <Header onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
-          <main ref={mainRef} id="main-scroll-container" className={`flex-1 min-w-0 min-h-0 ${isFullBleed ? 'p-0' : 'p-6'} overflow-x-hidden overflow-y-scroll custom-scrollbar`}>
+          <main ref={mainRef} id="main-scroll-container" className={`flex-1 min-w-0 ${isFullBleed ? 'p-0' : 'p-6'}`}>
             {children}
           </main>
         </div>

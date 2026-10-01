@@ -30,3 +30,11 @@ export const deleteAppointment = asyncHandler(async (req, res) => {
   await appointmentService.delete(req.params.id, req.user.business_id);
   ApiResponse.ok('Appointment deleted').send(res);
 });
+export const bulkDeleteAppointments = asyncHandler(async (req, res) => {
+  const count = await appointmentService.bulkDelete(req.user.business_id, req.body.ids);
+  ApiResponse.ok(`${count} appointments deleted`, { count }).send(res);
+});
+export const bulkStatusAppointments = asyncHandler(async (req, res) => {
+  const count = await appointmentService.bulkUpdateStatus(req.user.business_id, req.body.ids, req.body.status);
+  ApiResponse.ok(`${count} appointments updated`, { count }).send(res);
+});

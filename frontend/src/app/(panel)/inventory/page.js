@@ -2,16 +2,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   RiAddLine, RiSearchLine, RiFilter3Line, RiMore2Fill, RiArchiveLine,
-  RiInboxLine, RiAlertLine, RiCheckDoubleLine, RiMoneyDollarCircleLine
+  RiInboxLine, RiAlertLine, RiCheckDoubleLine, RiMoneyDollarCircleLine,
+  RiShieldCheckLine, RiCloseLine, RiDownload2Line, RiDeleteBin6Line
 } from 'react-icons/ri';
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import AddProductModal from '@/components/admin/inventory/AddProductModal';
 import ProductProfilePanel from '@/components/admin/inventory/ProductProfilePanel';
+import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
+import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
+import BulkActionBar from '@/components/admin/common/BulkActionBar';
+import { useConfirm } from '@/context/ConfirmContext';
+import toast from 'react-hot-toast';
 
 export default function InventoryPage() {
+  const { confirm } = useConfirm();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
   
   // Filtering and Pagination
   const [searchTerm, setSearchTerm] = useState('');
@@ -108,70 +117,172 @@ export default function InventoryPage() {
     return { label: 'In Stock', color: 'bg-accent-green/10 text-accent-green border-accent-green/20' };
   };
 
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(displayedProducts.map(p => p.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleBulkActivate = async () => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+      await api.post('/products/bulk-status', { ids: selectedIds, is_active: true });
+      toast.success(`${selectedIds.length} product${selectedIds.length > 1 ? 's' : ''} activated`);
+      fetchProducts();
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to activate selected products');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+      await api.post('/products/bulk-status', { ids: selectedIds, is_active: false });
+      toast.success(`${selectedIds.length} product${selectedIds.length > 1 ? 's' : ''} deactivated`);
+      fetchProducts();
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to deactivate selected products');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleExportSelected = () => {
+    if (selectedIds.length === 0) return;
+    const selectedProds = products.filter(p => selectedIds.includes(p.id));
+    const headers = ['Product Name', 'SKU', 'Brand', 'Category', 'Selling Price', 'Stock Quantity', 'Status'];
+    const csvRows = [headers.join(',')];
+
+    for (const row of selectedProds) {
+      const values = [
+        `"${row.name || ''}"`,
+        `"${row.sku || ''}"`,
+        `"${row.brand || ''}"`,
+        `"${row.category || ''}"`,
+        `"${row.selling_price || 0}"`,
+        `"${row.stock_quantity || 0}"`,
+        `"${row.is_active ? 'Active' : 'Inactive'}"`,
+      ];
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `selected_inventory_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${selectedProds.length} selected products`);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const ok = await confirm({
+      title: 'Delete Selected Products',
+      message: `Are you sure you want to permanently delete ${selectedIds.length} product${selectedIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: 'Delete Permanently',
+      type: 'danger',
+    });
+    if (!ok) return;
+
+    setBulkLoading(true);
+    try {
+      await api.post('/products/bulk-delete', { ids: selectedIds });
+      toast.success(`${selectedIds.length} product${selectedIds.length > 1 ? 's' : ''} deleted`);
+      fetchProducts();
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete selected products');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-admin-text font-heading">Inventory Management</h1>
-          <p className="text-admin-text-secondary text-sm mt-1">Manage retail products, backbar supplies, and track stock levels.</p>
-        </div>
-        <button 
-          onClick={handleAdd}
-          className="bg-brand hover:bg-brand-hover text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 shadow-sm shadow-brand/20"
-        >
-          <RiAddLine className="text-lg" />
-          Add Product
-        </button>
-      </div>
+      {/* Top Hero & Metrics Section with Ambient Pink-White Gradient */}
+      <div className="relative -mx-6 -mt-6 px-6 pt-6 pb-2 mb-6 overflow-hidden">
+        <PageHeaderGradient height="h-[300px]" />
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-admin-card border border-admin-border rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-accent-blue/10 flex items-center justify-center text-accent-blue">
-              <RiInboxLine className="text-2xl" />
-            </div>
-            <div>
-              <p className="text-admin-text-muted text-sm font-medium mb-0.5">Total Products</p>
-              <h3 className="text-2xl font-bold text-admin-text">{metrics.totalProducts}</h3>
+        {/* Page Header */}
+        <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white font-heading tracking-tight">Inventory Management</h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Manage retail products, backbar supplies, and track stock levels.</p>
+          </div>
+          <button 
+            onClick={handleAdd}
+            className="bg-[#E91E63] hover:bg-[#D81B60] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md shadow-[#E91E63]/25 flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] shrink-0"
+          >
+            <RiAddLine className="text-lg" />
+            Add Product
+          </button>
+        </div>
+
+        {/* Metrics Cards */}
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white/80 dark:bg-admin-card/80 backdrop-blur-sm border border-pink-100/80 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-accent-blue/10 flex items-center justify-center text-accent-blue">
+                <RiInboxLine className="text-2xl" />
+              </div>
+              <div>
+                <p className="text-admin-text-muted text-sm font-medium mb-0.5">Total Products</p>
+                <h3 className="text-2xl font-bold text-admin-text">{metrics.totalProducts}</h3>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-admin-card border border-admin-border rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-accent-yellow/10 flex items-center justify-center text-accent-yellow">
-              <RiAlertLine className="text-2xl" />
-            </div>
-            <div>
-              <p className="text-admin-text-muted text-sm font-medium mb-0.5">Low Stock</p>
-              <h3 className="text-2xl font-bold text-admin-text">{metrics.lowStockAlerts}</h3>
+          <div className="bg-white/80 dark:bg-admin-card/80 backdrop-blur-sm border border-pink-100/80 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-accent-yellow/10 flex items-center justify-center text-accent-yellow">
+                <RiAlertLine className="text-2xl" />
+              </div>
+              <div>
+                <p className="text-admin-text-muted text-sm font-medium mb-0.5">Low Stock</p>
+                <h3 className="text-2xl font-bold text-admin-text">{metrics.lowStockAlerts}</h3>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-admin-card border border-admin-border rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-accent-red/10 flex items-center justify-center text-accent-red">
-              <RiArchiveLine className="text-2xl" />
-            </div>
-            <div>
-              <p className="text-admin-text-muted text-sm font-medium mb-0.5">Out of Stock</p>
-              <h3 className="text-2xl font-bold text-admin-text">{metrics.outOfStock}</h3>
+          <div className="bg-white/80 dark:bg-admin-card/80 backdrop-blur-sm border border-pink-100/80 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-accent-red/10 flex items-center justify-center text-accent-red">
+                <RiArchiveLine className="text-2xl" />
+              </div>
+              <div>
+                <p className="text-admin-text-muted text-sm font-medium mb-0.5">Out of Stock</p>
+                <h3 className="text-2xl font-bold text-admin-text">{metrics.outOfStock}</h3>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-admin-card border border-admin-border rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-accent-green/10 flex items-center justify-center text-accent-green">
-              <RiMoneyDollarCircleLine className="text-2xl" />
-            </div>
-            <div>
-              <p className="text-admin-text-muted text-sm font-medium mb-0.5">Total Value</p>
-              <h3 className="text-xl font-bold text-admin-text">{formatCurrency(metrics.totalValue)}</h3>
+          <div className="bg-white/80 dark:bg-admin-card/80 backdrop-blur-sm border border-pink-100/80 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-accent-green/10 flex items-center justify-center text-accent-green">
+                <RiMoneyDollarCircleLine className="text-2xl" />
+              </div>
+              <div>
+                <p className="text-admin-text-muted text-sm font-medium mb-0.5">Total Value</p>
+                <h3 className="text-xl font-bold text-admin-text">{formatCurrency(metrics.totalValue)}</h3>
+              </div>
             </div>
           </div>
         </div>
@@ -232,10 +343,27 @@ export default function InventoryPage() {
 
       {/* Inventory Table */}
       <div className="bg-admin-card border border-admin-border rounded-2xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto custom-scrollbar min-h-[400px]">
+        <TableScrollContainer
+          innerClassName="min-h-[400px]"
+          leftGradientClass="bg-gradient-to-r from-white via-white/85 to-transparent dark:from-[#1e1e35] dark:via-[#1e1e35]/85 dark:to-transparent"
+          rightGradientClass="bg-gradient-to-l from-white via-white/85 to-transparent dark:from-[#1e1e35] dark:via-[#1e1e35]/85 dark:to-transparent"
+        >
           <table className="w-full min-w-[800px] text-left border-collapse">
             <thead>
               <tr className="bg-admin-surface/50">
+                <th className="py-4 pl-5 pr-2 w-10 text-center border-b border-admin-border">
+                  <input
+                    type="checkbox"
+                    checked={displayedProducts.length > 0 && selectedIds.length === displayedProducts.length}
+                    ref={(el) => {
+                      if (el) {
+                        el.indeterminate = selectedIds.length > 0 && selectedIds.length < displayedProducts.length;
+                      }
+                    }}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-white/20 text-[#e91e63] focus:ring-[#e91e63] cursor-pointer"
+                  />
+                </th>
                 <th className="px-6 py-4 text-xs font-semibold text-admin-text-muted uppercase tracking-wider border-b border-admin-border">Product Details</th>
                 <th className="px-6 py-4 text-xs font-semibold text-admin-text-muted uppercase tracking-wider border-b border-admin-border">SKU</th>
                 <th className="px-6 py-4 text-xs font-semibold text-admin-text-muted uppercase tracking-wider border-b border-admin-border">Price</th>
@@ -246,25 +374,36 @@ export default function InventoryPage() {
             <tbody className="divide-y divide-admin-border">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-12">
+                  <td colSpan="6" className="text-center py-12">
                     <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin mx-auto"></div>
                   </td>
                 </tr>
               ) : displayedProducts.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-12 text-admin-text-muted">
+                  <td colSpan="6" className="text-center py-12 text-admin-text-muted">
                     No products found.
                   </td>
                 </tr>
               ) : (
                 displayedProducts.map(product => {
                   const status = getStockStatus(product.stock_quantity, product.min_stock_alert, product.is_active);
+                  const isSelected = selectedIds.includes(product.id);
                   return (
                     <tr 
                       key={product.id} 
-                      className="hover:bg-admin-surface-light/50 transition-colors cursor-pointer group"
+                      className={`hover:bg-admin-surface-light/50 transition-colors cursor-pointer group ${
+                        isSelected ? 'bg-pink-50/40 dark:bg-pink-950/20' : ''
+                      }`}
                       onClick={() => setSelectedProduct(product)}
                     >
+                      <td className="py-4 pl-5 pr-2 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleSelectOne(product.id)}
+                          className="w-4 h-4 rounded border-gray-300 dark:border-white/20 text-[#e91e63] focus:ring-[#e91e63] cursor-pointer"
+                        />
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-admin-surface flex items-center justify-center border border-admin-border shrink-0">
@@ -301,7 +440,7 @@ export default function InventoryPage() {
               )}
             </tbody>
           </table>
-        </div>
+        </TableScrollContainer>
       </div>
 
       <AddProductModal 
@@ -323,6 +462,43 @@ export default function InventoryPage() {
           setIsAddModalOpen(true);
         }}
         onUpdateSuccess={fetchProducts}
+      />
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={displayedProducts.length}
+        onClear={() => setSelectedIds([])}
+        resourceName="product"
+        actions={[
+          {
+            label: 'Activate',
+            icon: RiShieldCheckLine,
+            onClick: handleBulkActivate,
+            variant: 'success',
+            loading: bulkLoading,
+          },
+          {
+            label: 'Deactivate',
+            icon: RiCloseLine,
+            onClick: handleBulkDeactivate,
+            variant: 'default',
+            loading: bulkLoading,
+          },
+          {
+            label: 'Export CSV',
+            icon: RiDownload2Line,
+            onClick: handleExportSelected,
+            variant: 'default',
+          },
+          {
+            label: 'Delete',
+            icon: RiDeleteBin6Line,
+            onClick: handleBulkDelete,
+            variant: 'danger',
+            loading: bulkLoading,
+          },
+        ]}
       />
     </div>
   );

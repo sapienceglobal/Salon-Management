@@ -152,6 +152,11 @@ class ExpenseService {
     await db('expenses').where({ id }).del();
   }
 
+  async bulkDelete(ids, businessId) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    return db('expenses').where({ business_id: businessId }).whereIn('id', ids).del();
+  }
+
   // Categories
   async getCategories(businessId) {
     return db('expense_categories')
@@ -197,6 +202,11 @@ const deleteExpense = asyncHandler(async (req, res) => {
   ApiResponse.ok('Expense deleted successfully').send(res);
 });
 
+const bulkDeleteExpenses = asyncHandler(async (req, res) => {
+  const count = await expenseService.bulkDelete(req.body.ids, req.user.business_id);
+  ApiResponse.ok(`${count} expenses deleted`, { count }).send(res);
+});
+
 const getCategories = asyncHandler(async (req, res) => {
   ApiResponse.ok('Categories', await expenseService.getCategories(req.user.business_id)).send(res);
 });
@@ -238,6 +248,7 @@ router.get('/categories', getCategories);
 router.post('/categories', authorize('super_admin', 'admin', 'manager'), validate({ body: z.object({ name: z.string().min(1).max(255), description: z.string().max(500).optional() }) }), createCategory);
 
 router.get('/', getExpenses);
+router.post('/bulk-delete', authorize('super_admin', 'admin'), bulkDeleteExpenses);
 router.get('/:id', validate({ params: idParam }), getExpenseById);
 router.post('/', authorize('super_admin', 'admin', 'manager'), validate({ body: expensePayloadSchema }), createExpense);
 router.put('/:id', authorize('super_admin', 'admin', 'manager'), validate({ params: idParam, body: expenseUpdateSchema }), updateExpense);

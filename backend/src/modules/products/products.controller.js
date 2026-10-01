@@ -34,6 +34,14 @@ export const deleteProduct = asyncHandler(async (req, res) => {
   await productService.delete(req.params.id, req.user.business_id);
   ApiResponse.ok('Product deactivated').send(res);
 });
+export const bulkDeleteProducts = asyncHandler(async (req, res) => {
+  const count = await productService.bulkDelete(req.user.business_id, req.body.ids);
+  ApiResponse.ok(`${count} products deleted`, { count }).send(res);
+});
+export const bulkStatusProducts = asyncHandler(async (req, res) => {
+  const count = await productService.bulkUpdateStatus(req.user.business_id, req.body.ids, req.body.is_active);
+  ApiResponse.ok(`${count} products updated`, { count }).send(res);
+});
 export const getLowStock = asyncHandler(async (req, res) => {
   const products = await productService.getLowStock(req.user.business_id);
   ApiResponse.ok('Low stock products', products).send(res);

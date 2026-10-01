@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
@@ -15,6 +15,10 @@ import ConvertLeadModal from '@/components/admin/leads/ConvertLeadModal';
 import AddFollowUpModal from '@/components/admin/leads/AddFollowUpModal';
 import LeadPipelineView from '@/components/admin/leads/LeadPipelineView';
 import LeadDashboardView from '@/components/admin/leads/LeadDashboardView';
+import LeadDetailsDrawer from '@/components/admin/leads/LeadDetailsDrawer';
+import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
+import BulkActionBar from '@/components/admin/common/BulkActionBar';
+import { useConfirm } from '@/context/ConfirmContext';
 
 import {
   RiArrowLeftLine,
@@ -212,17 +216,19 @@ function LeadsContent() {
 
   const { user } = useAuth();
   const { markAllAsRead } = useNotification();
+  const { confirm } = useConfirm();
 
   // State
   const [leads, setLeads] = useState([]);
   const [stats, setStats] = useState({
-    total: 128,
-    new: 46,
-    in_progress: 64,
-    converted: 28,
-    lost: 18,
+    total: 0,
+    new: 0,
+    in_progress: 0,
+    converted: 0,
+    lost: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const [staffList, setStaffList] = useState([]);
   const [servicesList, setServicesList] = useState([]);
 
@@ -239,6 +245,40 @@ function LeadsContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [activeMenuId, setActiveMenuId] = useState(null);
+
+  // Horizontal Table Scroll State & Ref
+  const tableScrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTableScroll = useCallback(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 10);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  }, []);
+
+  useEffect(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    checkTableScroll();
+    el.addEventListener('scroll', checkTableScroll, { passive: true });
+    window.addEventListener('resize', checkTableScroll);
+    return () => {
+      el.removeEventListener('scroll', checkTableScroll);
+      window.removeEventListener('resize', checkTableScroll);
+    };
+  }, [checkTableScroll, leads]);
+
+  const handleScrollTable = (direction) => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    const scrollAmount = Math.max(280, Math.floor(el.clientWidth * 0.55));
+    el.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -267,7 +307,7 @@ function LeadsContent() {
     try {
       const res = await api.get('/leads/stats');
       const data = res?.data?.data || res?.data;
-      if (data && typeof data.total === 'number' && data.total > 0) {
+      if (data && typeof data.total === 'number') {
         setStats(data);
       }
     } catch (err) {
@@ -305,7 +345,7 @@ function LeadsContent() {
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { limit: 100 };
       if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
       if (sourceFilter && sourceFilter !== 'all') params.source = sourceFilter;
       if (serviceFilter && serviceFilter !== 'all') params.service = serviceFilter;
@@ -314,15 +354,14 @@ function LeadsContent() {
 
       const res = await api.get('/leads', { params });
       const data = res?.data?.data || res?.data?.leads || res?.data || [];
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setLeads(data);
       } else {
-        // Fallback to reference leads if database is empty so UI matches Image 1
-        setLeads(REFERENCE_LEADS);
+        setLeads([]);
       }
     } catch (err) {
       console.error('Error fetching leads:', err);
-      setLeads(REFERENCE_LEADS);
+      setLeads([]);
     } finally {
       setLoading(false);
     }
@@ -437,6 +476,99 @@ function LeadsContent() {
     });
   };
 
+  const handleBulkStatus = async (status) => {
+    if (selectedLeadIds.size === 0) return;
+    setBulkLoading(true);
+    const ids = Array.from(selectedLeadIds);
+    try {
+      await api.post('/leads/bulk-status', { ids, status });
+      toast.success(`${ids.length} lead${ids.length > 1 ? 's' : ''} updated to ${status}`);
+      fetchLeads();
+      fetchStats();
+      setSelectedLeadIds(new Set());
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update status for selected leads');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkAssign = async (assignedTo) => {
+    if (selectedLeadIds.size === 0) return;
+    setBulkLoading(true);
+    const ids = Array.from(selectedLeadIds);
+    try {
+      await api.post('/leads/bulk-assign', { ids, assigned_to: assignedTo });
+      toast.success(`${ids.length} lead${ids.length > 1 ? 's' : ''} assigned successfully`);
+      fetchLeads();
+      setSelectedLeadIds(new Set());
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to assign selected leads');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleExportSelected = () => {
+    if (selectedLeadIds.size === 0) return;
+    const selectedLeads = leads.filter((l) => selectedLeadIds.has(l.id));
+    const headers = ['Name', 'Phone', 'Email', 'Source', 'Status', 'Assigned Staff', 'Created At'];
+    const csvRows = [headers.join(',')];
+
+    for (const row of selectedLeads) {
+      const assigned = row.assigned_first_name
+        ? `${row.assigned_first_name} ${row.assigned_last_name || ''}`.trim()
+        : row.assigned_to_name || '';
+      const values = [
+        `"${row.name || ''}"`,
+        `"${row.phone || ''}"`,
+        `"${row.email || ''}"`,
+        `"${row.source || ''}"`,
+        `"${row.status || ''}"`,
+        `"${assigned}"`,
+        `"${row.created_at || ''}"`,
+      ];
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `selected_leads_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${selectedLeads.length} selected leads`);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedLeadIds.size === 0) return;
+    const isOk = await confirm({
+      title: 'Delete Selected Leads',
+      message: `Are you sure you want to permanently delete ${selectedLeadIds.size} lead${selectedLeadIds.size > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: 'Delete Permanently',
+      type: 'danger',
+    });
+    if (!isOk) return;
+
+    setBulkLoading(true);
+    const ids = Array.from(selectedLeadIds);
+    try {
+      await api.post('/leads/bulk-delete', { ids });
+      toast.success(`${ids.length} lead${ids.length > 1 ? 's' : ''} deleted`);
+      fetchLeads();
+      fetchStats();
+      setSelectedLeadIds(new Set());
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete selected leads');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   // Status Badge Helper matching Image 1
   const renderStatusBadge = (status) => {
     const s = (status || 'new').toLowerCase();
@@ -537,7 +669,7 @@ function LeadsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 p-4 sm:p-6 lg:p-8">
+    <div className="relative min-h-screen bg-[#F8FAFC] dark:bg-[#0f0f1a] text-slate-800 dark:text-slate-100 p-4 sm:p-6 lg:p-8">
       {activeTab === 'pipeline' ? (
         <LeadPipelineView
           leads={leads}
@@ -552,12 +684,17 @@ function LeadsContent() {
           onConvertLead={(lead) => setConvertingLead(lead)}
           onAssignLead={(lead) => setAssigningLead(lead)}
           onDeleteLead={(id) => handleDeleteLead(id)}
+          onRefresh={() => {
+            fetchLeads();
+            fetchStats();
+          }}
         />
       ) : activeTab === 'dashboard' ? (
         <LeadDashboardView
           leads={leads}
           stats={stats}
           staffList={staffList}
+          servicesList={servicesList}
           onAddLead={() => {
             setEditingLead(null);
             setIsAddModalOpen(true);
@@ -568,6 +705,10 @@ function LeadsContent() {
           onAssignLead={(lead) => setAssigningLead(lead)}
           onDeleteLead={(id) => handleDeleteLead(id)}
           onExportCSV={handleExportCSV}
+          onRefresh={() => {
+            fetchLeads();
+            fetchStats();
+          }}
         />
       ) : (
         <>
@@ -575,23 +716,23 @@ function LeadsContent() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-1.5">
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium mb-1.5">
             <button
               onClick={() => router.push('/')}
-              className="p-1 -ml-1 text-slate-400 hover:text-slate-800 rounded-md hover:bg-slate-100 transition-colors"
+              className="p-1 -ml-1 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-md hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
               title="Back"
             >
               <RiArrowLeftLine className="text-sm" />
             </button>
-            <span className="hover:text-slate-700 cursor-pointer" onClick={() => router.push('/leads')}>
+            <span className="hover:text-slate-700 dark:hover:text-white cursor-pointer" onClick={() => router.push('/leads')}>
               Leads
             </span>
             <span>/</span>
-            <span className="hover:text-slate-700 cursor-pointer" onClick={() => router.push('/leads')}>
+            <span className="hover:text-slate-700 dark:hover:text-white cursor-pointer" onClick={() => router.push('/leads')}>
               CRM
             </span>
             <span>&gt;</span>
-            <span className="text-slate-800 font-bold">
+            <span className="text-slate-800 dark:text-white font-bold">
               {activeTab === 'dashboard'
                 ? 'Leads Dashboard'
                 : activeTab === 'sources'
@@ -605,7 +746,7 @@ function LeadsContent() {
           </div>
 
           {/* Heading */}
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             {activeTab === 'dashboard'
               ? 'Leads Dashboard'
               : activeTab === 'sources'
@@ -616,7 +757,7 @@ function LeadsContent() {
               ? 'Follow-up Pipeline'
               : 'Lead List'}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5">
             View, manage and convert your leads into loyal customers.
           </p>
         </div>
@@ -626,18 +767,18 @@ function LeadsContent() {
           <button
             type="button"
             onClick={() => setIsImportModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 font-semibold text-xs sm:text-sm shadow-sm transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 font-semibold text-xs sm:text-sm shadow-sm transition-all"
           >
-            <RiUpload2Line className="text-base text-slate-500" />
+            <RiUpload2Line className="text-base text-slate-500 dark:text-slate-400" />
             <span>Import Leads</span>
           </button>
 
           <button
             type="button"
             onClick={handleExportCSV}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 font-semibold text-xs sm:text-sm shadow-sm transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 font-semibold text-xs sm:text-sm shadow-sm transition-all"
           >
-            <RiDownload2Line className="text-base text-slate-500" />
+            <RiDownload2Line className="text-base text-slate-500 dark:text-slate-400" />
             <span>Export</span>
           </button>
 
@@ -655,23 +796,25 @@ function LeadsContent() {
         </div>
       </div>
 
-      {/* --- 5 Stat Metric Cards (Exact Pastel Palette from Image 1) --- */}
+      {/* --- 5 Stat Metric Cards (Exact Pastel Palette with Dark Mode Support) --- */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 mb-6">
         {/* Card 1: Total Leads */}
         <div
           onClick={() => setStatusFilter('all')}
-          className={`cursor-pointer rounded-2xl p-4 sm:p-5 bg-[#FFF0F5] border transition-all duration-200 hover:shadow-md flex items-center gap-3.5 sm:gap-4 ${
-            statusFilter === 'all' ? 'border-[#E91E63] ring-2 ring-[#E91E63]/20 shadow-sm' : 'border-pink-100/90'
+          className={`cursor-pointer rounded-2xl p-4 sm:p-5 bg-[#FFF0F5] dark:bg-pink-950/20 border transition-all duration-200 hover:shadow-md flex items-center gap-3.5 sm:gap-4 ${
+            statusFilter === 'all'
+              ? 'border-[#E91E63] ring-2 ring-[#E91E63]/20 shadow-sm'
+              : 'border-pink-100/90 dark:border-pink-900/30'
           }`}
         >
-          <div className="w-12 h-12 rounded-full bg-[#FCE7F3] flex items-center justify-center text-[#E91E63] text-2xl shrink-0 shadow-inner">
+          <div className="w-12 h-12 rounded-full bg-[#FCE7F3] dark:bg-pink-900/40 flex items-center justify-center text-[#E91E63] text-2xl shrink-0 shadow-inner">
             <RiGroupLine />
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
-              {stats.total || leads.length}
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight">
+              {stats.total ?? leads.length}
             </div>
-            <div className="text-xs sm:text-[13px] font-semibold text-slate-600 mt-0.5">
+            <div className="text-xs sm:text-[13px] font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
               Total Leads
             </div>
           </div>
@@ -680,18 +823,20 @@ function LeadsContent() {
         {/* Card 2: New Leads */}
         <div
           onClick={() => setStatusFilter('new')}
-          className={`cursor-pointer rounded-2xl p-4 sm:p-5 bg-[#F0FDF4] border transition-all duration-200 hover:shadow-md flex items-center gap-3.5 sm:gap-4 ${
-            statusFilter === 'new' ? 'border-[#10B981] ring-2 ring-[#10B981]/20 shadow-sm' : 'border-emerald-100/90'
+          className={`cursor-pointer rounded-2xl p-4 sm:p-5 bg-[#F0FDF4] dark:bg-emerald-950/20 border transition-all duration-200 hover:shadow-md flex items-center gap-3.5 sm:gap-4 ${
+            statusFilter === 'new'
+              ? 'border-[#10B981] ring-2 ring-[#10B981]/20 shadow-sm'
+              : 'border-emerald-100/90 dark:border-emerald-900/30'
           }`}
         >
-          <div className="w-12 h-12 rounded-full bg-[#DCFCE7] flex items-center justify-center text-[#16A34A] text-2xl shrink-0 shadow-inner">
+          <div className="w-12 h-12 rounded-full bg-[#DCFCE7] dark:bg-emerald-900/40 flex items-center justify-center text-[#16A34A] text-2xl shrink-0 shadow-inner">
             <RiPhoneLine />
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
-              {stats.new || 46}
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight">
+              {stats.new ?? 0}
             </div>
-            <div className="text-xs sm:text-[13px] font-semibold text-slate-600 mt-0.5">
+            <div className="text-xs sm:text-[13px] font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
               New Leads
             </div>
           </div>
@@ -700,18 +845,20 @@ function LeadsContent() {
         {/* Card 3: In Progress */}
         <div
           onClick={() => setStatusFilter('in_progress')}
-          className={`cursor-pointer rounded-2xl p-4 sm:p-5 bg-[#FFFBEB] border transition-all duration-200 hover:shadow-md flex items-center gap-3.5 sm:gap-4 ${
-            statusFilter === 'in_progress' ? 'border-[#F59E0B] ring-2 ring-[#F59E0B]/20 shadow-sm' : 'border-amber-100/90'
+          className={`cursor-pointer rounded-2xl p-4 sm:p-5 bg-[#FFFBEB] dark:bg-amber-950/20 border transition-all duration-200 hover:shadow-md flex items-center gap-3.5 sm:gap-4 ${
+            statusFilter === 'in_progress'
+              ? 'border-[#F59E0B] ring-2 ring-[#F59E0B]/20 shadow-sm'
+              : 'border-amber-100/90 dark:border-amber-900/30'
           }`}
         >
-          <div className="w-12 h-12 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706] text-2xl shrink-0 shadow-inner">
+          <div className="w-12 h-12 rounded-full bg-[#FEF3C7] dark:bg-amber-900/40 flex items-center justify-center text-[#D97706] text-2xl shrink-0 shadow-inner">
             <RiTimeLine />
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
-              {stats.in_progress || 64}
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight">
+              {stats.in_progress ?? 0}
             </div>
-            <div className="text-xs sm:text-[13px] font-semibold text-slate-600 mt-0.5">
+            <div className="text-xs sm:text-[13px] font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
               In Progress
             </div>
           </div>
@@ -720,18 +867,20 @@ function LeadsContent() {
         {/* Card 4: Converted */}
         <div
           onClick={() => setStatusFilter('converted')}
-          className={`cursor-pointer rounded-2xl p-4 sm:p-5 bg-[#FAF5FF] border transition-all duration-200 hover:shadow-md flex items-center gap-3.5 sm:gap-4 ${
-            statusFilter === 'converted' ? 'border-[#8B5CF6] ring-2 ring-[#8B5CF6]/20 shadow-sm' : 'border-purple-100/90'
+          className={`cursor-pointer rounded-2xl p-4 sm:p-5 bg-[#FAF5FF] dark:bg-purple-950/20 border transition-all duration-200 hover:shadow-md flex items-center gap-3.5 sm:gap-4 ${
+            statusFilter === 'converted'
+              ? 'border-[#8B5CF6] ring-2 ring-[#8B5CF6]/20 shadow-sm'
+              : 'border-purple-100/90 dark:border-purple-900/30'
           }`}
         >
-          <div className="w-12 h-12 rounded-full bg-[#F3E8FF] flex items-center justify-center text-[#9333EA] text-2xl shrink-0 shadow-inner">
+          <div className="w-12 h-12 rounded-full bg-[#F3E8FF] dark:bg-purple-900/40 flex items-center justify-center text-[#9333EA] text-2xl shrink-0 shadow-inner">
             <RiFilter3Line />
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
-              {stats.converted || 28}
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight">
+              {stats.converted ?? 0}
             </div>
-            <div className="text-xs sm:text-[13px] font-semibold text-slate-600 mt-0.5">
+            <div className="text-xs sm:text-[13px] font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
               Converted
             </div>
           </div>
@@ -740,33 +889,35 @@ function LeadsContent() {
         {/* Card 5: Lost */}
         <div
           onClick={() => setStatusFilter('lost')}
-          className={`cursor-pointer rounded-2xl p-4 sm:p-5 bg-[#FFF1F2] border transition-all duration-200 hover:shadow-md flex items-center gap-3.5 sm:gap-4 ${
-            statusFilter === 'lost' ? 'border-[#F43F5E] ring-2 ring-[#F43F5E]/20 shadow-sm' : 'border-rose-100/90'
+          className={`cursor-pointer rounded-2xl p-4 sm:p-5 bg-[#FFF1F2] dark:bg-rose-950/20 border transition-all duration-200 hover:shadow-md flex items-center gap-3.5 sm:gap-4 ${
+            statusFilter === 'lost'
+              ? 'border-[#F43F5E] ring-2 ring-[#F43F5E]/20 shadow-sm'
+              : 'border-rose-100/90 dark:border-rose-900/30'
           }`}
         >
-          <div className="w-12 h-12 rounded-full bg-[#FFE4E6] flex items-center justify-center text-[#E11D48] text-2xl shrink-0 shadow-inner">
+          <div className="w-12 h-12 rounded-full bg-[#FFE4E6] dark:bg-rose-900/40 flex items-center justify-center text-[#E11D48] text-2xl shrink-0 shadow-inner">
             <RiCloseLine />
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
-              {stats.lost || 18}
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight">
+              {stats.lost ?? 0}
             </div>
-            <div className="text-xs sm:text-[13px] font-semibold text-slate-600 mt-0.5">
+            <div className="text-xs sm:text-[13px] font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
               Lost
             </div>
           </div>
         </div>
       </div>
 
-      {/* --- Filter Toolbar (Exact 7-component Bar from Image 1) --- */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:p-3.5 shadow-sm mb-5">
+      {/* --- Filter Toolbar (Exact 7-component Bar with Dark Mode Support) --- */}
+      <div className="bg-white dark:bg-[#1a1a2e] rounded-2xl border border-slate-200/90 dark:border-white/10 p-3 sm:p-3.5 shadow-sm mb-5">
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           {/* Status Dropdown */}
           <div className="relative min-w-[130px] flex-1 sm:flex-initial">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full appearance-none pl-3.5 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#E91E63]/20 focus:border-[#E91E63] cursor-pointer"
+              className="w-full appearance-none pl-3.5 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-[#E91E63]/20 focus:border-[#E91E63] cursor-pointer"
             >
               <option value="all">All Status</option>
               <option value="new">New</option>
@@ -786,7 +937,7 @@ function LeadsContent() {
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
-              className="w-full appearance-none pl-3.5 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#E91E63]/20 focus:border-[#E91E63] cursor-pointer"
+              className="w-full appearance-none pl-3.5 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-[#E91E63]/20 focus:border-[#E91E63] cursor-pointer"
             >
               <option value="all">All Sources</option>
               <option value="Instagram">Instagram</option>
@@ -807,7 +958,7 @@ function LeadsContent() {
             <select
               value={serviceFilter}
               onChange={(e) => setServiceFilter(e.target.value)}
-              className="w-full appearance-none pl-3.5 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#E91E63]/20 focus:border-[#E91E63] cursor-pointer"
+              className="w-full appearance-none pl-3.5 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-[#E91E63]/20 focus:border-[#E91E63] cursor-pointer"
             >
               <option value="all">All Services</option>
               <option value="Hair Spa">Hair Spa</option>
@@ -829,7 +980,7 @@ function LeadsContent() {
             <select
               value={staffFilter}
               onChange={(e) => setStaffFilter(e.target.value)}
-              className="w-full appearance-none pl-3.5 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#E91E63]/20 focus:border-[#E91E63] cursor-pointer"
+              className="w-full appearance-none pl-3.5 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-[#E91E63]/20 focus:border-[#E91E63] cursor-pointer"
             >
               <option value="all">All Staff</option>
               {staffList.map((st) => (
@@ -844,7 +995,7 @@ function LeadsContent() {
           </div>
 
           {/* Date Range Selector */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-700 font-medium">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm text-slate-700 dark:text-slate-200 font-medium">
             <RiCalendarLine className="text-slate-400 text-base shrink-0" />
             <span className="whitespace-nowrap">{dateRange}</span>
           </div>
@@ -856,14 +1007,14 @@ function LeadsContent() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search leads..."
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#E91E63]/20 focus:border-[#E91E63]"
+              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#E91E63]/20 focus:border-[#E91E63]"
             />
             <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base" />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
                 <RiCloseLine className="text-sm" />
               </button>
@@ -880,21 +1031,48 @@ function LeadsContent() {
               setStaffFilter('all');
               setSearchQuery('');
             }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs sm:text-sm shadow-sm transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 font-semibold text-xs sm:text-sm shadow-sm transition-all"
             title="Reset Filters"
           >
-            <RiFilterLine className="text-base text-slate-500" />
+            <RiFilterLine className="text-base text-slate-500 dark:text-slate-400" />
             <span>Filter</span>
           </button>
+
+          {/* Horizontal Scroll Quick Buttons (Top Toolbar) */}
+          <div className="flex items-center gap-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-1 rounded-xl shadow-2xs">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 pl-2 pr-1 select-none hidden sm:inline">
+              Scroll Table
+            </span>
+            <button
+              type="button"
+              onClick={() => handleScrollTable('left')}
+              disabled={!canScrollLeft}
+              className="w-7 h-7 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a2e] flex items-center justify-center text-slate-700 dark:text-slate-200 hover:text-white hover:bg-[#E91E63] disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shadow-xs cursor-pointer"
+              title="Scroll table left (X-Axis)"
+              aria-label="Scroll table left"
+            >
+              <RiArrowLeftSLine className="text-base" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleScrollTable('right')}
+              disabled={!canScrollRight}
+              className="w-7 h-7 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a2e] flex items-center justify-center text-slate-700 dark:text-slate-200 hover:text-white hover:bg-[#E91E63] disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shadow-xs cursor-pointer"
+              title="Scroll table right (X-Axis)"
+              aria-label="Scroll table right"
+            >
+              <RiArrowRightSLine className="text-base" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* --- Leads Table Container (Exact Image 1) --- */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden mb-5">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm">
+      {/* --- Leads Table Container with Middle Floating Left & Right Scroll Buttons --- */}
+      <div className="bg-white dark:bg-[#1a1a2e] rounded-2xl border border-slate-200/90 dark:border-white/10 shadow-sm overflow-hidden mb-5">
+        <TableScrollContainer ref={tableScrollRef}>
+          <table className="w-full text-left text-xs sm:text-sm min-w-[1100px]">
             {/* Table Header */}
-            <thead className="bg-[#F8FAFC] border-b border-slate-200/80 text-[11.5px] uppercase font-bold text-slate-500 tracking-wider select-none">
+            <thead className="bg-[#F8FAFC] dark:bg-white/[0.03] border-b border-slate-200/80 dark:border-white/10 text-[11.5px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider select-none">
               <tr>
                 <th className="py-3.5 pl-4 pr-2 w-10">
                   <input
@@ -903,26 +1081,33 @@ function LeadsContent() {
                       paginatedLeads.length > 0 &&
                       paginatedLeads.every((l) => selectedLeadIds.has(l.id))
                     }
+                    ref={(el) => {
+                      if (el) {
+                        el.indeterminate =
+                          selectedLeadIds.size > 0 &&
+                          !paginatedLeads.every((l) => selectedLeadIds.has(l.id));
+                      }
+                    }}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 rounded border-slate-300 text-[#E91E63] focus:ring-[#E91E63] cursor-pointer"
+                    className="w-4 h-4 rounded border-slate-300 dark:border-white/20 text-[#E91E63] focus:ring-[#E91E63] cursor-pointer"
                   />
                 </th>
                 <th className="py-3.5 px-3 w-10 text-center">#</th>
-                <th className="py-3.5 px-3 font-extrabold text-slate-700">Name</th>
-                <th className="py-3.5 px-3 font-extrabold text-slate-700">Phone</th>
-                <th className="py-3.5 px-3 font-extrabold text-slate-700">Email</th>
-                <th className="py-3.5 px-3 font-extrabold text-slate-700">Source</th>
-                <th className="py-3.5 px-3 font-extrabold text-slate-700">Interested In</th>
-                <th className="py-3.5 px-3 font-extrabold text-slate-700">Status</th>
-                <th className="py-3.5 px-3 font-extrabold text-slate-700">Assigned To</th>
-                <th className="py-3.5 px-3 font-extrabold text-slate-700 whitespace-nowrap">Next Follow-up</th>
-                <th className="py-3.5 px-3 font-extrabold text-slate-700 whitespace-nowrap">Created On</th>
-                <th className="py-3.5 px-4 font-extrabold text-slate-700 text-center">Action</th>
+                <th className="py-3.5 px-3 font-extrabold text-slate-700 dark:text-slate-300">Name</th>
+                <th className="py-3.5 px-3 font-extrabold text-slate-700 dark:text-slate-300">Phone</th>
+                <th className="py-3.5 px-3 font-extrabold text-slate-700 dark:text-slate-300">Email</th>
+                <th className="py-3.5 px-3 font-extrabold text-slate-700 dark:text-slate-300">Source</th>
+                <th className="py-3.5 px-3 font-extrabold text-slate-700 dark:text-slate-300">Interested In</th>
+                <th className="py-3.5 px-3 font-extrabold text-slate-700 dark:text-slate-300">Status</th>
+                <th className="py-3.5 px-3 font-extrabold text-slate-700 dark:text-slate-300">Assigned To</th>
+                <th className="py-3.5 px-3 font-extrabold text-slate-700 dark:text-slate-300 whitespace-nowrap">Next Follow-up</th>
+                <th className="py-3.5 px-3 font-extrabold text-slate-700 dark:text-slate-300 whitespace-nowrap">Created On</th>
+                <th className="py-3.5 px-4 font-extrabold text-slate-700 dark:text-slate-300 text-center">Action</th>
               </tr>
             </thead>
 
             {/* Table Body */}
-            <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+            <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-slate-700 dark:text-slate-300 font-medium">
               {loading ? (
                 <tr>
                   <td colSpan={12} className="py-16 text-center text-slate-400">
@@ -936,8 +1121,8 @@ function LeadsContent() {
                 <tr>
                   <td colSpan={12} className="py-16 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <RiUserShared2Line className="text-4xl text-slate-300" />
-                      <span className="text-base font-bold text-slate-700">No leads found</span>
+                      <RiUserShared2Line className="text-4xl text-slate-300 dark:text-slate-600" />
+                      <span className="text-base font-bold text-slate-700 dark:text-slate-200">No leads found</span>
                       <p className="text-xs text-slate-400 max-w-sm">
                         No leads match your current filter criteria. Try adjusting your search or filters.
                       </p>
@@ -985,8 +1170,8 @@ function LeadsContent() {
                   return (
                     <tr
                       key={lead.id || idx}
-                      className={`hover:bg-slate-50/80 transition-colors group ${
-                        isChecked ? 'bg-[#FFF0F5]/50' : ''
+                      className={`hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors group ${
+                        isChecked ? 'bg-[#FFF0F5]/50 dark:bg-pink-950/20' : ''
                       }`}
                     >
                       {/* Checkbox */}
@@ -995,12 +1180,12 @@ function LeadsContent() {
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => handleSelectRow(lead.id)}
-                          className="w-4 h-4 rounded border-slate-300 text-[#E91E63] focus:ring-[#E91E63] cursor-pointer"
+                          className="w-4 h-4 rounded border-slate-300 dark:border-white/20 text-[#E91E63] focus:ring-[#E91E63] cursor-pointer"
                         />
                       </td>
 
                       {/* Row Index */}
-                      <td className="py-3 px-3 text-center text-slate-500 font-semibold text-xs">
+                      <td className="py-3 px-3 text-center text-slate-500 dark:text-slate-400 font-semibold text-xs">
                         {rowNumber}
                       </td>
 
@@ -1008,7 +1193,7 @@ function LeadsContent() {
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2.5">
                           {lead.avatar_url ? (
-                            <div className="w-8 h-8 rounded-full overflow-hidden relative shrink-0 ring-1 ring-slate-200">
+                            <div className="w-8 h-8 rounded-full overflow-hidden relative shrink-0 ring-1 ring-slate-200 dark:ring-white/10">
                               <Image
                                 src={lead.avatar_url}
                                 alt={lead.name}
@@ -1022,29 +1207,29 @@ function LeadsContent() {
                               {getInitials(lead.name || 'Lead', '')}
                             </div>
                           )}
-                          <span className="font-bold text-slate-900 truncate max-w-[140px]">
+                          <span className="font-bold text-slate-900 dark:text-white truncate max-w-[140px]">
                             {lead.name}
                           </span>
                         </div>
                       </td>
 
                       {/* Phone */}
-                      <td className="py-3 px-3 text-slate-600 font-medium whitespace-nowrap">
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">
                         {lead.phone || '-'}
                       </td>
 
                       {/* Email */}
-                      <td className="py-3 px-3 text-slate-600 truncate max-w-[170px]" title={lead.email}>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400 truncate max-w-[170px]" title={lead.email}>
                         {lead.email || '-'}
                       </td>
 
                       {/* Source */}
-                      <td className="py-3 px-3 text-slate-700 font-semibold whitespace-nowrap">
+                      <td className="py-3 px-3 text-slate-700 dark:text-slate-300 font-semibold whitespace-nowrap">
                         {lead.source || '-'}
                       </td>
 
                       {/* Interested Services */}
-                      <td className="py-3 px-3 text-slate-700 max-w-[180px]">
+                      <td className="py-3 px-3 text-slate-700 dark:text-slate-300 max-w-[180px]">
                         <span className="truncate block" title={services.join(', ')}>
                           {services.length > 0 ? services.join(', ') : '-'}
                         </span>
@@ -1056,17 +1241,17 @@ function LeadsContent() {
                       </td>
 
                       {/* Assigned To */}
-                      <td className="py-3 px-3 text-slate-700 font-medium whitespace-nowrap">
+                      <td className="py-3 px-3 text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
                         {assignedName}
                       </td>
 
                       {/* Next Follow-up */}
-                      <td className="py-3 px-3 text-slate-600 whitespace-nowrap text-xs">
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs">
                         {followUpFormatted}
                       </td>
 
                       {/* Created On */}
-                      <td className="py-3 px-3 text-slate-600 whitespace-nowrap text-xs">
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs">
                         {createdFormatted}
                       </td>
 
@@ -1080,7 +1265,7 @@ function LeadsContent() {
                               onClick={() => {
                                 setFollowingUpLead(lead);
                               }}
-                              className="px-3.5 py-1 rounded-full bg-white border border-[#E91E63] text-[#E91E63] hover:bg-[#E91E63] hover:text-white font-bold text-xs transition-all shadow-sm cursor-pointer"
+                              className="px-3.5 py-1 rounded-full bg-white dark:bg-[#1a1a2e] border border-[#E91E63] text-[#E91E63] hover:bg-[#E91E63] hover:text-white font-bold text-xs transition-all shadow-sm cursor-pointer"
                             >
                               Follow Up
                             </button>
@@ -1090,7 +1275,7 @@ function LeadsContent() {
                               onClick={() => {
                                 setViewingLead(lead);
                               }}
-                              className="px-3.5 py-1 rounded-full bg-white border border-slate-300 text-slate-700 hover:border-[#E91E63] hover:text-[#E91E63] font-bold text-xs transition-all shadow-sm cursor-pointer"
+                              className="px-3.5 py-1 rounded-full bg-white dark:bg-[#1a1a2e] border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-[#E91E63] hover:text-[#E91E63] font-bold text-xs transition-all shadow-sm cursor-pointer"
                             >
                               View
                             </button>
@@ -1104,7 +1289,7 @@ function LeadsContent() {
                                 e.stopPropagation();
                                 setActiveMenuId(activeMenuId === lead.id ? null : lead.id);
                               }}
-                              className="action-menu-btn p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                              className="action-menu-btn p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
                               title="More Options"
                             >
                               <RiMore2Fill className="text-lg" />
@@ -1112,14 +1297,14 @@ function LeadsContent() {
 
                             {/* Dropdown Popup */}
                             {activeMenuId === lead.id && (
-                              <div className="action-menu-dropdown absolute right-0 top-full mt-1 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-40 text-left animate-fadeIn">
+                              <div className="action-menu-dropdown absolute right-0 top-full mt-1 w-52 bg-white dark:bg-[#1a1a2e] rounded-2xl shadow-2xl dark:shadow-black/70 border border-slate-100 dark:border-white/10 py-2 z-40 text-left animate-fadeIn">
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setActiveMenuId(null);
                                     setViewingLead(lead);
                                   }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E91E63] transition-colors"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-[#E91E63] transition-colors"
                                 >
                                   <RiInformationLine className="text-base text-slate-400" />
                                   <span>View Lead Details</span>
@@ -1131,7 +1316,7 @@ function LeadsContent() {
                                     setActiveMenuId(null);
                                     setFollowingUpLead(lead);
                                   }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-[#E91E63] hover:bg-pink-50 transition-colors"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-[#E91E63] hover:bg-pink-50 dark:hover:bg-pink-950/30 transition-colors"
                                 >
                                   <RiCalendarCheckLine className="text-base" />
                                   <span>Add Follow-Up</span>
@@ -1144,7 +1329,7 @@ function LeadsContent() {
                                     setEditingLead(lead);
                                     setIsAddModalOpen(true);
                                   }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E91E63] transition-colors"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-[#E91E63] transition-colors"
                                 >
                                   <RiEditLine className="text-base text-slate-400" />
                                   <span>Edit Lead</span>
@@ -1156,7 +1341,7 @@ function LeadsContent() {
                                     setActiveMenuId(null);
                                     setAssigningLead(lead);
                                   }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#E91E63] transition-colors"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-[#E91E63] transition-colors"
                                 >
                                   <RiUserShared2Line className="text-base text-slate-400" />
                                   <span>Assign to Staff</span>
@@ -1168,13 +1353,13 @@ function LeadsContent() {
                                     setActiveMenuId(null);
                                     setConvertingLead(lead);
                                   }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
                                 >
                                   <RiCheckDoubleLine className="text-base text-emerald-500" />
                                   <span>Convert to Customer</span>
                                 </button>
 
-                                <div className="h-[1px] bg-slate-100 my-1.5" />
+                                <div className="h-[1px] bg-slate-100 dark:bg-white/5 my-1.5" />
 
                                 <button
                                   type="button"
@@ -1182,7 +1367,7 @@ function LeadsContent() {
                                     setActiveMenuId(null);
                                     handleDeleteLead(lead.id);
                                   }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
                                 >
                                   <RiDeleteBinLine className="text-base text-rose-400" />
                                   <span>Delete Lead</span>
@@ -1198,13 +1383,13 @@ function LeadsContent() {
               )}
             </tbody>
           </table>
-        </div>
+        </TableScrollContainer>
 
-        {/* --- Pagination Footer matching Image 1 --- */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3.5 border-t border-slate-100 bg-[#F8FAFC]/50 text-xs text-slate-500 font-medium">
+        {/* --- Pagination Footer matching Image 1 with Dark Mode Support --- */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3.5 border-t border-slate-100 dark:border-white/10 bg-[#F8FAFC]/50 dark:bg-white/[0.02] text-xs text-slate-500 dark:text-slate-400 font-medium">
           <div>
-            Showing <span className="font-bold text-slate-700">1–{paginatedLeads.length}</span> of{' '}
-            <span className="font-bold text-slate-700">{filteredLeads.length}</span> leads
+            Showing <span className="font-bold text-slate-700 dark:text-slate-300">1–{paginatedLeads.length}</span> of{' '}
+            <span className="font-bold text-slate-700 dark:text-slate-300">{filteredLeads.length}</span> leads
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -1212,7 +1397,7 @@ function LeadsContent() {
               type="button"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="w-8 h-8 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a2e] flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               aria-label="Previous Page"
             >
               <RiArrowLeftSLine className="text-base" />
@@ -1228,7 +1413,7 @@ function LeadsContent() {
                   className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center transition-all ${
                     isActive
                       ? 'bg-[#E91E63] text-white shadow-sm'
-                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      : 'border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a2e] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5'
                   }`}
                 >
                   {pg}
@@ -1240,7 +1425,7 @@ function LeadsContent() {
               type="button"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="w-8 h-8 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a2e] flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               aria-label="Next Page"
             >
               <RiArrowRightSLine className="text-base" />
@@ -1254,12 +1439,12 @@ function LeadsContent() {
       {/* --- Lead Details / Follow-up Slide Drawer --- */}
       {viewingLead && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 p-6 sm:p-7 relative">
+          <div className="bg-white dark:bg-[#1a1a2e] rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-white/10 p-6 sm:p-7 relative">
             {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-white/10 mb-5">
               <div className="flex items-center gap-3.5">
                 {viewingLead.avatar_url ? (
-                  <div className="w-13 h-13 rounded-full overflow-hidden relative ring-2 ring-pink-100 shrink-0">
+                  <div className="w-13 h-13 rounded-full overflow-hidden relative ring-2 ring-pink-100 dark:ring-pink-900/40 shrink-0">
                     <Image
                       src={viewingLead.avatar_url}
                       alt={viewingLead.name}
@@ -1274,11 +1459,11 @@ function LeadsContent() {
                 )}
                 <div>
                   <div className="flex items-center gap-2.5">
-                    <h3 className="text-lg sm:text-xl font-bold text-slate-900">{viewingLead.name}</h3>
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">{viewingLead.name}</h3>
                     {renderStatusBadge(viewingLead.status)}
                   </div>
-                  <div className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                    Source: <span className="font-semibold text-slate-800">{viewingLead.source || 'Website'}</span>
+                  <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                    Source: <span className="font-semibold text-slate-800 dark:text-slate-200">{viewingLead.source || 'Website'}</span>
                   </div>
                 </div>
               </div>
@@ -1286,7 +1471,7 @@ function LeadsContent() {
               <button
                 type="button"
                 onClick={() => setViewingLead(null)}
-                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors"
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
               >
                 <RiCloseLine className="text-xl" />
               </button>
@@ -1298,17 +1483,17 @@ function LeadsContent() {
                 <>
                   <a
                     href={`tel:${viewingLead.phone}`}
-                    className="flex-1 py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
+                    className="flex-1 py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
                   >
-                    <RiPhoneLine className="text-base text-blue-600" />
+                    <RiPhoneLine className="text-base text-blue-600 dark:text-blue-400" />
                     <span>Call Lead</span>
                   </a>
                   <button
                     type="button"
                     onClick={() => handleWhatsApp(viewingLead.phone, viewingLead.name)}
-                    className="flex-1 py-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors border border-emerald-200/60 shadow-sm"
+                    className="flex-1 py-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors border border-emerald-200/60 dark:border-emerald-800/40 shadow-sm"
                   >
-                    <RiWhatsappLine className="text-lg text-emerald-600" />
+                    <RiWhatsappLine className="text-lg text-emerald-600 dark:text-emerald-400" />
                     <span>WhatsApp</span>
                   </button>
                 </>
@@ -1316,41 +1501,41 @@ function LeadsContent() {
               {viewingLead.email && (
                 <a
                   href={`mailto:${viewingLead.email}`}
-                  className="py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
+                  className="py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
                 >
-                  <RiMailLine className="text-base text-slate-600" />
+                  <RiMailLine className="text-base text-slate-600 dark:text-slate-400" />
                   <span>Email</span>
                 </a>
               )}
             </div>
 
             {/* Lead Details Grid */}
-            <div className="grid grid-cols-2 gap-3.5 p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-100 mb-5">
+            <div className="grid grid-cols-2 gap-3.5 p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/10 mb-5">
               <div>
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 block">Phone Number</span>
-                <span className="text-sm font-bold text-slate-900 mt-1 block">{viewingLead.phone || '-'}</span>
+                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 block">Phone Number</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white mt-1 block">{viewingLead.phone || '-'}</span>
               </div>
               <div>
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 block">Email Address</span>
-                <span className="text-sm font-bold text-slate-900 mt-1 block truncate">{viewingLead.email || '-'}</span>
+                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 block">Email Address</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white mt-1 block truncate">{viewingLead.email || '-'}</span>
               </div>
               <div>
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 block">Preferred Branch</span>
-                <span className="text-sm font-bold text-slate-900 mt-1 block">{viewingLead.preferred_branch || 'Downtown Branch'}</span>
+                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 block">Preferred Branch</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white mt-1 block">{viewingLead.preferred_branch || 'Downtown Branch'}</span>
               </div>
               <div>
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 block">Assigned Staff</span>
-                <span className="text-sm font-bold text-slate-900 mt-1 block">{viewingLead.assigned_first_name ? `${viewingLead.assigned_first_name} ${viewingLead.assigned_last_name || ''}` : viewingLead.assigned_to_name || '-'}</span>
+                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 block">Assigned Staff</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white mt-1 block">{viewingLead.assigned_first_name ? `${viewingLead.assigned_first_name} ${viewingLead.assigned_last_name || ''}` : viewingLead.assigned_to_name || '-'}</span>
               </div>
               <div className="col-span-2">
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 block">Location</span>
-                <span className="text-sm font-bold text-slate-900 mt-1 block">{viewingLead.location || 'Noida, Uttar Pradesh'}</span>
+                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 block">Location</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white mt-1 block">{viewingLead.location || 'Noida, Uttar Pradesh'}</span>
               </div>
             </div>
 
             {/* Interested Services */}
             <div className="mb-5">
-              <span className="text-xs sm:text-[13px] font-bold text-slate-700 block mb-2">Interested Services</span>
+              <span className="text-xs sm:text-[13px] font-bold text-slate-700 dark:text-slate-300 block mb-2">Interested Services</span>
               <div className="flex flex-wrap gap-2">
                 {(Array.isArray(viewingLead.interested_services)
                   ? viewingLead.interested_services
@@ -1358,7 +1543,7 @@ function LeadsContent() {
                 ).map((serv, i) => (
                   <span
                     key={i}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#E91E63]/10 text-[#E91E63] border border-[#E91E63]/20"
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#E91E63]/10 text-[#E91E63] border border-[#E91E63]/20 dark:bg-[#E91E63]/20 dark:text-pink-300 dark:border-[#E91E63]/30"
                   >
                     {serv}
                   </span>
@@ -1368,14 +1553,14 @@ function LeadsContent() {
 
             {/* Notes / Follow-up activity */}
             {viewingLead.notes && (
-              <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/60 mb-5">
-                <span className="text-xs sm:text-[13px] font-bold text-amber-800 block mb-1.5">Follow-up Notes</span>
-                <p className="text-xs sm:text-sm font-medium text-amber-900/90 whitespace-pre-wrap leading-relaxed">{viewingLead.notes}</p>
+              <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/30 mb-5">
+                <span className="text-xs sm:text-[13px] font-bold text-amber-800 dark:text-amber-400 block mb-1.5">Follow-up Notes</span>
+                <p className="text-xs sm:text-sm font-medium text-amber-900/90 dark:text-amber-200/90 whitespace-pre-wrap leading-relaxed">{viewingLead.notes}</p>
               </div>
             )}
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => {
@@ -1383,7 +1568,7 @@ function LeadsContent() {
                   setViewingLead(null);
                   setAssigningLead(lead);
                 }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs sm:text-sm text-center transition-colors"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm text-center transition-colors"
               >
                 Assign Staff
               </button>
@@ -1407,36 +1592,36 @@ function LeadsContent() {
       {/* --- Import Leads Modal Placeholder --- */}
       {isImportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 p-6 sm:p-7 relative">
-            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
-              <div className="flex items-center gap-2.5 text-slate-900 font-bold text-lg sm:text-xl">
+          <div className="bg-white dark:bg-[#1a1a2e] rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 dark:border-white/10 p-6 sm:p-7 relative">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-white/10 mb-4">
+              <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-bold text-lg sm:text-xl">
                 <RiUpload2Line className="text-[#E91E63] text-xl" />
                 <span>Import Leads (CSV)</span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsImportModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 flex items-center justify-center text-slate-500 dark:text-slate-400"
               >
                 <RiCloseLine className="text-lg" />
               </button>
             </div>
 
-            <p className="text-xs sm:text-sm text-slate-500 mb-4 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
               Upload a CSV file containing your lead information: name, phone, email, source, interested services.
             </p>
 
-            <div className="border-2 border-dashed border-slate-200 hover:border-[#E91E63] rounded-2xl p-6 text-center cursor-pointer mb-5 transition-colors">
+            <div className="border-2 border-dashed border-slate-200 hover:border-[#E91E63] dark:border-white/15 dark:hover:border-[#E91E63] dark:bg-white/[0.02] rounded-2xl p-6 text-center cursor-pointer mb-5 transition-colors">
               <RiUpload2Line className="text-3xl text-slate-400 mx-auto mb-2" />
-              <div className="text-sm font-bold text-slate-800">Click to upload or drag & drop</div>
-              <div className="text-xs text-slate-400 mt-1">CSV or Excel format (.csv)</div>
+              <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Click to upload or drag & drop</div>
+              <div className="text-xs text-slate-400 dark:text-slate-500 mt-1">CSV or Excel format (.csv)</div>
             </div>
 
             <div className="flex items-center justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setIsImportModalOpen(false)}
-                className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5 transition-colors"
               >
                 Cancel
               </button>
@@ -1512,6 +1697,99 @@ function LeadsContent() {
           setViewingLead(lead);
         }}
       />
+
+      {/* --- View Lead Details Drawer --- */}
+      <LeadDetailsDrawer
+        isOpen={Boolean(viewingLead)}
+        onClose={() => setViewingLead(null)}
+        lead={viewingLead}
+        staffList={staffList}
+        onEditLead={(lead) => {
+          setViewingLead(null);
+          setEditingLead(lead);
+          setIsAddModalOpen(true);
+        }}
+        onFollowUp={(lead) => {
+          setViewingLead(null);
+          setFollowingUpLead(lead);
+        }}
+        onAssignLead={(lead) => {
+          setViewingLead(null);
+          setAssigningLead(lead);
+        }}
+        onConvertLead={(lead) => {
+          setViewingLead(null);
+          setConvertingLead(lead);
+        }}
+        onDeleteLead={(id) => {
+          setViewingLead(null);
+          handleDeleteLead(id);
+        }}
+      />
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedLeadIds.size}
+        totalCount={leads.length}
+        onClear={() => setSelectedLeadIds(new Set())}
+        resourceName="lead"
+        actions={[
+          {
+            label: 'Export CSV',
+            icon: RiDownload2Line,
+            onClick: handleExportSelected,
+            variant: 'default',
+          },
+          {
+            label: 'Delete',
+            icon: RiDeleteBinLine,
+            onClick: handleBulkDelete,
+            variant: 'danger',
+            loading: bulkLoading,
+          },
+        ]}
+      >
+        {/* Quick Status Changer Dropdown */}
+        <select
+          onChange={(e) => {
+            if (e.target.value) {
+              handleBulkStatus(e.target.value);
+              e.target.value = '';
+            }
+          }}
+          defaultValue=""
+          disabled={bulkLoading}
+          className="bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl px-2.5 py-1.5 text-xs font-semibold outline-none cursor-pointer"
+        >
+          <option value="" disabled className="text-slate-800">Change Status...</option>
+          <option value="new" className="text-slate-800">New</option>
+          <option value="contacted" className="text-slate-800">Contacted</option>
+          <option value="in_progress" className="text-slate-800">In Progress</option>
+          <option value="interested" className="text-slate-800">Interested</option>
+          <option value="converted" className="text-slate-800">Converted</option>
+          <option value="lost" className="text-slate-800">Lost</option>
+        </select>
+
+        {/* Quick Assign Staff Dropdown */}
+        <select
+          onChange={(e) => {
+            if (e.target.value) {
+              handleBulkAssign(e.target.value);
+              e.target.value = '';
+            }
+          }}
+          defaultValue=""
+          disabled={bulkLoading}
+          className="bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl px-2.5 py-1.5 text-xs font-semibold outline-none cursor-pointer"
+        >
+          <option value="" disabled className="text-slate-800">Assign Staff...</option>
+          {staffList.map((st) => (
+            <option key={st.id} value={st.id} className="text-slate-800">
+              {st.first_name} {st.last_name || ''}
+            </option>
+          ))}
+        </select>
+      </BulkActionBar>
     </div>
   );
 }

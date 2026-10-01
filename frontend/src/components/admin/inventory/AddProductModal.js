@@ -1,14 +1,15 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { RiCloseLine, RiImageAddLine } from 'react-icons/ri';
+import { RiCloseLine, RiArchiveLine, RiInformationLine, RiShoppingBag3Line } from 'react-icons/ri';
 import api from '@/lib/api';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { inventorySchema, formatZodErrors } from '@/lib/validations';
+import toast from 'react-hot-toast';
 
 export default function AddProductModal({ isOpen, onClose, onSuccess, productToEdit = null }) {
   const [mounted, setMounted] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -30,7 +31,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, productToE
   });
 
   useEffect(() => {
-    setMounted(true);
+    setMounted(true), [];
   }, []);
 
   useEffect(() => {
@@ -56,21 +57,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, productToE
           min_stock_alert: '5', unit: 'piece', description: ''
         });
       }
-      setIsClosing(false);
       setError(null);
       setFieldErrors({});
     }
   }, [isOpen, productToEdit]);
 
   if (!isOpen || !mounted) return null;
-
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 200);
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -91,13 +83,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, productToE
       min_stock_alert: parseInt(formData.min_stock_alert, 10)
     };
 
-    // Prepare formData string representation for validation
     const validationPayload = {
       ...formData,
-      purchase_price: formData.purchase_price.toString(),
-      selling_price: formData.selling_price.toString(),
-      stock_quantity: formData.stock_quantity.toString(),
-      min_stock_alert: formData.min_stock_alert.toString(),
+      purchase_price: (formData.purchase_price ?? '').toString().trim(),
+      selling_price: (formData.selling_price ?? '').toString().trim(),
+      stock_quantity: (formData.stock_quantity ?? '').toString().trim(),
+      min_stock_alert: (formData.min_stock_alert ?? '').toString().trim(),
     };
 
     const result = inventorySchema.safeParse(validationPayload);
@@ -108,13 +99,15 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, productToE
     }
 
     try {
-
       if (productToEdit) {
         await api.put(`/products/${productToEdit.id}`, payload);
+        toast.success('Product updated successfully!');
       } else {
         await api.post('/products', payload);
+        toast.success('Product created successfully!');
       }
       if (onSuccess) onSuccess();
+      onClose();
     } catch (err) {
       console.error('Failed to save product:', err);
       setError(err.response?.data?.message || 'Failed to save product. Please try again.');
@@ -123,118 +116,228 @@ export default function AddProductModal({ isOpen, onClose, onSuccess, productToE
     }
   };
 
+  const inputClass = (fieldName) =>
+    `w-full bg-gray-50 dark:bg-white/5 border ${fieldErrors[fieldName] ? 'border-red-400 dark:border-red-400/60 focus:border-red-500' : 'border-gray-200 dark:border-white/10 focus:border-[#E91E63]'} rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none transition-colors`;
+
+  const labelClass = 'block text-[13px] font-semibold text-gray-600 dark:text-gray-400 mb-1.5';
+
   return createPortal(
-    <div className={`fixed inset-0 z-[110] flex justify-end ${isClosing ? 'animate-[fadeOut_0.2s_ease_forwards]' : 'animate-[fadeIn_0.2s_ease_forwards]'}`}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+      onMouseDown={onClose}
+    >
       <div 
-        className={`bg-admin-card text-admin-text w-full max-w-lg h-full border-l border-admin-border shadow-2xl flex flex-col ${isClosing ? 'animate-[slideOutRight_0.2s_ease_forwards]' : 'animate-[slideInRight_0.3s_ease_forwards]'}`}
+        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
         onMouseDown={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-6 border-b border-admin-border bg-admin-surface/50 shrink-0">
-          <h2 className="text-xl font-bold">{productToEdit ? 'Edit Product' : 'Add New Product'}</h2>
-          <button onClick={handleClose} className="p-2 hover:bg-admin-surface rounded-full transition-colors text-admin-text-secondary hover:text-admin-text">
-            <RiCloseLine className="text-xl" />
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
+              <RiShoppingBag3Line />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+                {productToEdit ? 'Edit Product' : 'Add New Product'}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {productToEdit ? 'Update product details, pricing and stock thresholds.' : 'Add a retail or salon consumable product to inventory.'}
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            <RiCloseLine className="text-2xl" />
           </button>
         </div>
 
-        <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
-          {error && <div className="p-3 mb-4 rounded-xl bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm">{error}</div>}
-          
-          <form id="productForm" onSubmit={handleSubmit} noValidate className="space-y-5">
+        {/* Modal Body */}
+        <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6 custom-scrollbar">
+          {error && (
+            <div className="flex items-center gap-2 p-3.5 mb-5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[13px] font-medium">
+              <RiInformationLine className="shrink-0 text-base" />
+              {error}
+            </div>
+          )}
+
+          <form id="productForm" onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-admin-text-secondary mb-1">Product Name *</label>
-              <input type="text" name="name" value={formData.name} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors ${fieldErrors.name ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="L\'Oréal Professionnel Shampoo" />
-              {fieldErrors.name && <p className="text-accent-red text-xs mt-1">{fieldErrors.name}</p>}
+              <label className={labelClass}>Product Name <span className="text-[#E91E63]">*</span></label>
+              <input 
+                type="text" 
+                name="name" 
+                value={formData.name} 
+                onChange={handleChange} 
+                className={inputClass('name')} 
+                placeholder="e.g. L'Oréal Professionnel Shampoo" 
+              />
+              {fieldErrors.name && <p className="text-red-500 text-xs mt-1">{fieldErrors.name}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-admin-text-secondary mb-1">Category</label>
-                <input type="text" name="category" value={formData.category} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.category ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="e.g. Hair Care" />
-                {fieldErrors.category && <p className="text-accent-red text-xs mt-1">{fieldErrors.category}</p>}
+                <label className={labelClass}>Category</label>
+                <input 
+                  type="text" 
+                  name="category" 
+                  value={formData.category} 
+                  onChange={handleChange} 
+                  className={inputClass('category')} 
+                  placeholder="e.g. Hair Care, Skin Care" 
+                />
+                {fieldErrors.category && <p className="text-red-500 text-xs mt-1">{fieldErrors.category}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-admin-text-secondary mb-1">Brand</label>
-                <input type="text" name="brand" value={formData.brand} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.brand ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="e.g. L\'Oréal" />
-                {fieldErrors.brand && <p className="text-accent-red text-xs mt-1">{fieldErrors.brand}</p>}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-admin-text-secondary mb-1">SKU *</label>
-                <input type="text" name="sku" value={formData.sku} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.sku ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="Stock Keeping Unit" />
-                {fieldErrors.sku && <p className="text-accent-red text-xs mt-1">{fieldErrors.sku}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-admin-text-secondary mb-1">Barcode</label>
-                <input type="text" name="barcode" value={formData.barcode} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.barcode ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="Barcode number" />
-                {fieldErrors.barcode && <p className="text-accent-red text-xs mt-1">{fieldErrors.barcode}</p>}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-admin-border">
-              <div>
-                <label className="block text-sm font-medium text-admin-text-secondary mb-1">Purchase Price</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-admin-text-muted">₹</span>
-                  <input type="number" step="0.01" min="0" name="purchase_price" value={formData.purchase_price} onChange={handleChange} className={`w-full pl-8 pr-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.purchase_price ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="0.00" />
-                </div>
-                {fieldErrors.purchase_price && <p className="text-accent-red text-xs mt-1">{fieldErrors.purchase_price}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-admin-text-secondary mb-1">Selling Price *</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-admin-text-muted">₹</span>
-                  <input type="number" step="0.01" min="0" name="selling_price" value={formData.selling_price} onChange={handleChange} className={`w-full pl-8 pr-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.selling_price ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} placeholder="0.00" />
-                </div>
-                {fieldErrors.selling_price && <p className="text-accent-red text-xs mt-1">{fieldErrors.selling_price}</p>}
+                <label className={labelClass}>Brand</label>
+                <input 
+                  type="text" 
+                  name="brand" 
+                  value={formData.brand} 
+                  onChange={handleChange} 
+                  className={inputClass('brand')} 
+                  placeholder="e.g. L'Oréal, Moroccanoil" 
+                />
+                {fieldErrors.brand && <p className="text-red-500 text-xs mt-1">{fieldErrors.brand}</p>}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 pt-2 border-t border-admin-border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>SKU (Stock Keeping Unit) <span className="text-[#E91E63]">*</span></label>
+                <input 
+                  type="text" 
+                  name="sku" 
+                  value={formData.sku} 
+                  onChange={handleChange} 
+                  className={inputClass('sku')} 
+                  placeholder="e.g. LOR-SHP-250" 
+                />
+                {fieldErrors.sku && <p className="text-red-500 text-xs mt-1">{fieldErrors.sku}</p>}
+              </div>
+              <div>
+                <label className={labelClass}>Barcode / UPC</label>
+                <input 
+                  type="text" 
+                  name="barcode" 
+                  value={formData.barcode} 
+                  onChange={handleChange} 
+                  className={inputClass('barcode')} 
+                  placeholder="Barcode number" 
+                />
+                {fieldErrors.barcode && <p className="text-red-500 text-xs mt-1">{fieldErrors.barcode}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-white/5">
+              <div>
+                <label className={labelClass}>Purchase Price (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  min="0" 
+                  name="purchase_price" 
+                  value={formData.purchase_price} 
+                  onChange={handleChange} 
+                  className={inputClass('purchase_price')} 
+                  placeholder="0.00" 
+                />
+                {fieldErrors.purchase_price && <p className="text-red-500 text-xs mt-1">{fieldErrors.purchase_price}</p>}
+              </div>
+              <div>
+                <label className={labelClass}>Selling Price (₹) <span className="text-[#E91E63]">*</span></label>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  min="0" 
+                  name="selling_price" 
+                  value={formData.selling_price} 
+                  onChange={handleChange} 
+                  className={inputClass('selling_price')} 
+                  placeholder="0.00" 
+                />
+                {fieldErrors.selling_price && <p className="text-red-500 text-xs mt-1">{fieldErrors.selling_price}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-gray-100 dark:border-white/5">
               {!productToEdit && (
                 <div>
-                  <label className="block text-sm font-medium text-admin-text-secondary mb-1">Initial Stock</label>
-                  <input type="number" min="0" name="stock_quantity" value={formData.stock_quantity} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.stock_quantity ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} />
-                  {fieldErrors.stock_quantity && <p className="text-accent-red text-xs mt-1">{fieldErrors.stock_quantity}</p>}
+                  <label className={labelClass}>Initial Stock</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    name="stock_quantity" 
+                    value={formData.stock_quantity} 
+                    onChange={handleChange} 
+                    className={inputClass('stock_quantity')} 
+                  />
+                  {fieldErrors.stock_quantity && <p className="text-red-500 text-xs mt-1">{fieldErrors.stock_quantity}</p>}
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-admin-text-secondary mb-1">Min Alert</label>
-                <input type="number" min="0" name="min_stock_alert" value={formData.min_stock_alert} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors ${fieldErrors.min_stock_alert ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} />
-                {fieldErrors.min_stock_alert && <p className="text-accent-red text-xs mt-1">{fieldErrors.min_stock_alert}</p>}
+                <label className={labelClass}>Min Alert Threshold</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  name="min_stock_alert" 
+                  value={formData.min_stock_alert} 
+                  onChange={handleChange} 
+                  className={inputClass('min_stock_alert')} 
+                />
+                {fieldErrors.min_stock_alert && <p className="text-red-500 text-xs mt-1">{fieldErrors.min_stock_alert}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-admin-text-secondary mb-1">Unit</label>
-                <select name="unit" value={formData.unit} onChange={handleChange} className={`w-full px-4 py-2 bg-admin-surface border rounded-xl focus:outline-none focus:border-brand transition-colors appearance-none ${fieldErrors.unit ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}>
+                <label className={labelClass}>Unit</label>
+                <select 
+                  name="unit" 
+                  value={formData.unit} 
+                  onChange={handleChange} 
+                  className={inputClass('unit')}
+                >
                   <option value="piece">Piece</option>
                   <option value="ml">ml</option>
                   <option value="gm">gm</option>
                   <option value="liter">Liter</option>
                   <option value="box">Box</option>
                 </select>
-                {fieldErrors.unit && <p className="text-accent-red text-xs mt-1">{fieldErrors.unit}</p>}
+                {fieldErrors.unit && <p className="text-red-500 text-xs mt-1">{fieldErrors.unit}</p>}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-admin-text-secondary mb-1">Description</label>
-              <textarea name="description" value={formData.description} onChange={handleChange} rows={3} className="w-full px-4 py-2 bg-admin-surface border border-admin-border rounded-xl focus:outline-none focus:border-brand transition-colors resize-none" placeholder="Add some notes about this product..."></textarea>
+              <label className={labelClass}>Description / Notes</label>
+              <textarea 
+                name="description" 
+                value={formData.description} 
+                onChange={handleChange} 
+                rows={3} 
+                className={`${inputClass('description')} resize-none`} 
+                placeholder="Product instructions, ingredients, or supplier notes..."
+              />
             </div>
-
           </form>
         </div>
 
-        <div className="p-6 border-t border-admin-border bg-admin-surface/50 shrink-0">
-          <div className="flex gap-3">
-            <button type="button" onClick={handleClose} disabled={loading} className="flex-1 px-4 py-2.5 border border-admin-border text-admin-text font-medium rounded-xl hover:bg-admin-surface transition-colors disabled:opacity-50">
-              Cancel
-            </button>
-            <button type="submit" form="productForm" disabled={loading} className="flex-1 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center">
-              {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : productToEdit ? 'Save Changes' : 'Create Product'}
-            </button>
-          </div>
+        {/* Modal Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
+          <button 
+            type="button" 
+            onClick={onClose} 
+            disabled={loading} 
+            className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            form="productForm" 
+            disabled={loading} 
+            className="px-6 py-2.5 text-sm font-semibold bg-[#E91E63] text-white rounded-xl hover:bg-[#d81557] transition-all disabled:opacity-50 shadow-md shadow-[#E91E63]/25 cursor-pointer flex items-center justify-center min-w-[120px]"
+          >
+            {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : productToEdit ? 'Save Changes' : 'Create Product'}
+          </button>
         </div>
       </div>
     </div>,

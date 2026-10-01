@@ -5,9 +5,35 @@ import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
 import api from '@/lib/api';
 import { customerSchema, formatZodErrors } from '@/lib/validations';
-import { RiCloseLine, RiUserLine, RiPhoneLine, RiMailLine, RiMapPinLine, RiCalendarEventLine } from 'react-icons/ri';
+import toast from 'react-hot-toast';
+import {
+  RiCloseLine,
+  RiUserLine,
+  RiPhoneLine,
+  RiMailLine,
+  RiMapPinLine,
+  RiCalendarEventLine,
+  RiSaveLine,
+  RiUserAddLine,
+  RiInformationLine,
+  RiUserSmileLine,
+  RiTeamLine,
+  RiShieldCheckLine,
+  RiMessage3Line,
+  RiWhatsappLine,
+  RiGlobalLine,
+  RiHome4Line,
+  RiFileTextLine,
+  RiVipCrownLine,
+  RiUserHeartLine,
+  RiCalendarLine,
+  RiHeart3Line,
+  RiGiftLine,
+} from 'react-icons/ri';
 
 export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialData }) {
+  const isEditing = !!initialData;
+
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -25,6 +51,17 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
     email_opt_in: false,
     whatsapp_opt_in: false,
   });
+
+  const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  useScrollLock(isOpen);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -54,32 +91,16 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
         });
       }
       setError('');
+      setFieldErrors({});
     }
   }, [isOpen, initialData]);
-  const [loading, setLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-  useScrollLock(isOpen);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  const [error, setError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({});
-
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 200);
-  };
 
   if (!isOpen || !mounted) return null;
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    if (fieldErrors[name]) setFieldErrors(prev => ({ ...prev, [name]: null }));
   };
 
   const handleSubmit = async (e) => {
@@ -89,256 +110,407 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
     setFieldErrors({});
 
     try {
-      const payload = { ...formData };
-      Object.keys(payload).forEach(key => {
-        if (payload[key] === '') {
-          delete payload[key];
-        }
+      // 1. Prepare trimmed validation payload
+      const validationPayload = {};
+      Object.keys(formData).forEach(key => {
+        const val = formData[key];
+        validationPayload[key] = typeof val === 'string' ? val.trim() : val;
       });
 
-      // Zod Validation
-      const result = customerSchema.safeParse(payload);
+      // 2. Zod Validation with clean human-readable error messages
+      const result = customerSchema.safeParse(validationPayload);
       if (!result.success) {
         setFieldErrors(formatZodErrors(result.error));
         setLoading(false);
         return;
       }
 
-      if (initialData) {
+      // 3. Prepare API payload (remove empty optional fields so backend doesn't receive blank strings)
+      const payload = { ...validationPayload };
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === '' || payload[key] === null) {
+          delete payload[key];
+        }
+      });
+
+      if (isEditing) {
         const res = await api.put(`/customers/${initialData.id}`, payload);
-        onSuccess(res.data);
+        onSuccess(res.data || res);
       } else {
         const res = await api.post('/customers', payload);
-        onSuccess(res.data);
+        onSuccess(res.data || res);
       }
+      toast.success(isEditing ? 'Customer updated successfully!' : 'Customer added successfully!');
       onClose();
     } catch (err) {
       console.error(err);
-      setError(err?.message || err?.response?.data?.message || 'Failed to add customer');
+      setError(err?.message || err?.response?.data?.message || 'Failed to save customer');
     } finally {
       setLoading(false);
     }
   };
 
+  // Field helper
+  const inputClass = (fieldName) =>
+    `w-full bg-gray-50 dark:bg-white/5 border ${fieldErrors[fieldName] ? 'border-red-400 dark:border-red-400/60 focus:border-red-500' : 'border-gray-200 dark:border-white/10 focus:border-[#E91E63]'} rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none transition-colors`;
+
+  const labelClass = 'block text-[13px] font-semibold text-gray-600 dark:text-gray-400 mb-1.5';
+
   return createPortal(
-    <div className={`fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm ${isClosing ? 'animate-[fadeOut_0.2s_ease_forwards]' : 'animate-[fadeIn_0.2s_ease_forwards]'}`} onMouseDown={handleClose}>
-      <div 
-        className={`bg-admin-card text-admin-text w-full max-w-4xl h-full border-l border-admin-border shadow-2xl flex flex-col ${isClosing ? 'animate-[slideOutRight_0.2s_ease_forwards]' : 'animate-[slideInRight_0.3s_ease_forwards]'}`}
-        onMouseDown={e => e.stopPropagation()}
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+      onMouseDown={onClose}
+    >
+      <div
+        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-4xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
+        onMouseDown={(e) => e.stopPropagation()}
       >
-        
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-admin-border bg-admin-surface/50 shrink-0">
-          <h2 className="text-xl font-bold">{initialData ? 'Edit Customer' : 'Add Customer'}</h2>
-          <button onClick={handleClose} className="p-2 hover:bg-admin-surface rounded-full transition-colors text-admin-text-secondary hover:text-admin-text">
-            <RiCloseLine className="text-xl" />
+        {/* ══════════════════════════════════════════════════════════
+            MODAL HEADER
+           ══════════════════════════════════════════════════════════ */}
+        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
+              {isEditing ? <RiUserSmileLine /> : <RiUserAddLine />}
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+                {isEditing ? 'Edit Customer' : 'Add New Customer'}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {isEditing
+                  ? 'Update customer profile details, contact info, and preferences.'
+                  : 'Create a new customer record with contact details and preferences.'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            <RiCloseLine className="text-2xl" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
-          {error && <div className="p-3 mb-4 rounded-xl bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm">{error}</div>}
-          
-          <form id="customerForm" onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-            
-            <div className="grid grid-cols-2 gap-4">
-              {/* Phone Code & Number */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Mobile number*</label>
-                <div className="flex gap-2">
-                  <select className="bg-admin-surface border border-admin-border rounded-xl px-3 py-2.5 text-sm text-admin-text outline-none focus:border-brand w-20 shrink-0">
-                    <option value="+91">+91</option>
+        {/* ══════════════════════════════════════════════════════════
+            MODAL BODY
+           ══════════════════════════════════════════════════════════ */}
+        <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6">
+          {error && (
+            <div className="flex items-center gap-2 p-3.5 mb-5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[13px] font-medium">
+              <RiInformationLine className="shrink-0 text-base" />
+              {error}
+            </div>
+          )}
+
+          <form id="customerForm" onSubmit={handleSubmit} noValidate>
+            {/* ─── Section: Basic Information ─── */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <RiUserLine className="text-[#E91E63] text-base" />
+                <h3 className="text-[14px] font-bold text-gray-800 dark:text-white">Basic Information</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* First Name */}
+                <div>
+                  <label className={labelClass}>First Name <span className="text-[#E91E63]">*</span></label>
+                  <div className="relative">
+                    <RiUserLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base" />
+                    <input
+                      name="first_name" value={formData.first_name} onChange={handleChange}
+                      className={`${inputClass('first_name')} pl-10`}
+                      placeholder="Enter first name"
+                    />
+                  </div>
+                  {fieldErrors.first_name && <p className="text-red-500 text-xs mt-1">{fieldErrors.first_name}</p>}
+                </div>
+
+                {/* Last Name */}
+                <div>
+                  <label className={labelClass}>Last Name</label>
+                  <input
+                    name="last_name" value={formData.last_name} onChange={handleChange}
+                    className={inputClass('last_name')}
+                    placeholder="Enter last name"
+                  />
+                  {fieldErrors.last_name && <p className="text-red-500 text-xs mt-1">{fieldErrors.last_name}</p>}
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className={labelClass}>Mobile Number <span className="text-[#E91E63]">*</span></label>
+                  <div className="flex gap-2">
+                    <div className="flex items-center px-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-[13px] text-gray-600 dark:text-gray-400 font-semibold shrink-0">
+                      +91
+                    </div>
+                    <div className="relative flex-1">
+                      <RiPhoneLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base" />
+                      <input
+                        name="phone" value={formData.phone} onChange={handleChange}
+                        className={`${inputClass('phone')} pl-10`}
+                        placeholder="9876543210"
+                      />
+                    </div>
+                  </div>
+                  {fieldErrors.phone && <p className="text-red-500 text-xs mt-1">{fieldErrors.phone}</p>}
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className={labelClass}>Email</label>
+                  <div className="relative">
+                    <RiMailLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base" />
+                    <input
+                      type="email" name="email" value={formData.email} onChange={handleChange}
+                      className={`${inputClass('email')} pl-10`}
+                      placeholder="customer@example.com"
+                    />
+                  </div>
+                  {fieldErrors.email && <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>}
+                </div>
+              </div>
+
+              {/* Gender */}
+              <div className="mt-4">
+                <label className={labelClass}>Gender</label>
+                <div className="flex items-center gap-3 mt-1">
+                  {['female', 'male', 'other'].map((g) => (
+                    <label
+                      key={g}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl border cursor-pointer transition-all text-[13px] font-semibold ${
+                        formData.gender === g
+                          ? 'border-[#E91E63] bg-[#E91E63]/5 text-[#E91E63] dark:bg-[#E91E63]/10'
+                          : 'border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-white/20'
+                      }`}
+                    >
+                      <input
+                        type="radio" name="gender" value={g}
+                        checked={formData.gender === g} onChange={handleChange}
+                        className="hidden"
+                      />
+                      {g === 'female' ? '👩 Female' : g === 'male' ? '👨 Male' : '🧑 Other'}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ─── Section: Important Dates & Location ─── */}
+            <div className="mb-6 pt-5 border-t border-gray-100 dark:border-white/5">
+              <div className="flex items-center gap-2 mb-4">
+                <RiCalendarLine className="text-[#E91E63] text-base" />
+                <h3 className="text-[14px] font-bold text-gray-800 dark:text-white">Dates & Location</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* DOB */}
+                <div>
+                  <label className={labelClass}>Date of Birth</label>
+                  <div className="relative">
+                    <RiCalendarEventLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base pointer-events-none" />
+                    <input
+                      type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange}
+                      className={`${inputClass('date_of_birth')} pl-10 dark:[color-scheme:dark]`}
+                    />
+                  </div>
+                  {fieldErrors.date_of_birth && <p className="text-red-500 text-xs mt-1">{fieldErrors.date_of_birth}</p>}
+                </div>
+
+                {/* Anniversary */}
+                <div>
+                  <label className={labelClass}>Anniversary</label>
+                  <div className="relative">
+                    <RiHeart3Line className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base pointer-events-none" />
+                    <input
+                      type="date" name="anniversary" value={formData.anniversary} onChange={handleChange}
+                      className={`${inputClass('anniversary')} pl-10 dark:[color-scheme:dark]`}
+                    />
+                  </div>
+                  {fieldErrors.anniversary && <p className="text-red-500 text-xs mt-1">{fieldErrors.anniversary}</p>}
+                </div>
+
+                {/* Location */}
+                <div>
+                  <label className={labelClass}>Location / City</label>
+                  <div className="relative">
+                    <RiMapPinLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base" />
+                    <input
+                      name="location" value={formData.location} onChange={handleChange}
+                      className={`${inputClass('location')} pl-10`}
+                      placeholder="e.g. New Delhi"
+                    />
+                  </div>
+                  {fieldErrors.location && <p className="text-red-500 text-xs mt-1">{fieldErrors.location}</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* ─── Section: Additional Details ─── */}
+            <div className="mb-6 pt-5 border-t border-gray-100 dark:border-white/5">
+              <div className="flex items-center gap-2 mb-4">
+                <RiFileTextLine className="text-[#E91E63] text-base" />
+                <h3 className="text-[14px] font-bold text-gray-800 dark:text-white">Additional Details</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Source */}
+                <div>
+                  <label className={labelClass}>Source</label>
+                  <select
+                    name="source" value={formData.source} onChange={handleChange}
+                    className={inputClass('source')}
+                  >
+                    <option value="">Select source</option>
+                    <option value="walk_in">Walk-in</option>
+                    <option value="referral">Referral</option>
+                    <option value="online">Online</option>
+                    <option value="campaign">Campaign</option>
+                    <option value="social_media">Social Media</option>
+                    <option value="google">Google</option>
                   </select>
-                  <div className="w-full">
-                    <input name="phone" value={formData.phone} onChange={handleChange}
-                      className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.phone ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
-                      placeholder="9301386917" />
-                    {fieldErrors.phone && <p className="text-accent-red text-xs mt-1">{fieldErrors.phone}</p>}
+                </div>
+
+                {/* GST Number */}
+                <div>
+                  <label className={labelClass}>GST Number</label>
+                  <input
+                    name="gst_number" value={formData.gst_number} onChange={handleChange}
+                    className={inputClass('gst_number')}
+                    placeholder="e.g. 22AAAAA0000A1Z5"
+                  />
+                  {fieldErrors.gst_number && <p className="text-red-500 text-xs mt-1">{fieldErrors.gst_number}</p>}
+                </div>
+
+                {/* Referred By */}
+                <div>
+                  <label className={labelClass}>Referred By</label>
+                  <div className="relative">
+                    <RiUserHeartLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base" />
+                    <input
+                      className={`${inputClass('referred_by')} pl-10`}
+                      placeholder="Customer name / mobile"
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* First Name */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">First name*</label>
-                <input name="first_name" value={formData.first_name} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.first_name ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
-                  placeholder="First name" />
-                {fieldErrors.first_name && <p className="text-accent-red text-xs mt-1">{fieldErrors.first_name}</p>}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Email */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Email ID</label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.email ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
-                  placeholder="Email ID" />
-                {fieldErrors.email && <p className="text-accent-red text-xs mt-1">{fieldErrors.email}</p>}
-              </div>
-
-              {/* Last Name */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Last name</label>
-                <input name="last_name" value={formData.last_name} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.last_name ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
-                  placeholder="Last name" />
-                {fieldErrors.last_name && <p className="text-accent-red text-xs mt-1">{fieldErrors.last_name}</p>}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 items-center">
-              {/* Gender */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-3">Gender</label>
-                <div className="flex items-center gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="gender" value="female" checked={formData.gender === 'female'} onChange={handleChange} className="accent-brand w-4 h-4" />
-                    <span className="text-sm font-semibold">Female</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="gender" value="male" checked={formData.gender === 'male'} onChange={handleChange} className="accent-brand w-4 h-4" />
-                    <span className="text-sm font-semibold">Male</span>
-                  </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                {/* Address */}
+                <div>
+                  <label className={labelClass}>Address</label>
+                  <div className="relative">
+                    <RiHome4Line className="absolute left-3.5 top-3 text-gray-400 dark:text-gray-500 text-base" />
+                    <textarea
+                      name="address" value={formData.address} onChange={handleChange}
+                      rows={2}
+                      className={`${inputClass('address')} pl-10 resize-none`}
+                      placeholder="Full address"
+                    />
+                  </div>
+                  {fieldErrors.address && <p className="text-red-500 text-xs mt-1">{fieldErrors.address}</p>}
                 </div>
-              </div>
 
-              {/* GST Number */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">GST Number</label>
-                <input name="gst_number" value={formData.gst_number} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.gst_number ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
-                  placeholder="GST Number" />
-                {fieldErrors.gst_number && <p className="text-accent-red text-xs mt-1">{fieldErrors.gst_number}</p>}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              {/* DOB */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Date of birth</label>
-                <div className="relative">
-                  <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange}
-                    className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand dark:[color-scheme:dark] ${fieldErrors.date_of_birth ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`} />
-                  {fieldErrors.date_of_birth && <p className="text-accent-red text-xs mt-1">{fieldErrors.date_of_birth}</p>}
-                </div>
-              </div>
-
-              {/* Anniversary */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Anniversary</label>
-                <div className="relative">
-                  <input type="date" name="anniversary" value={formData.anniversary} onChange={handleChange}
-                    className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand dark:[color-scheme:dark]" />
-                </div>
-              </div>
-
-              {/* Location */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Location</label>
-                <input name="location" value={formData.location} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand ${fieldErrors.location ? 'border-accent-red focus:border-accent-red' : 'border-admin-border'}`}
-                  placeholder="Location" />
-                {fieldErrors.location && <p className="text-accent-red text-xs mt-1">{fieldErrors.location}</p>}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              {/* Source */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Select source</label>
-                <select name="source" value={formData.source} onChange={handleChange}
-                  className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand">
-                  <option value="">Select source</option>
-                  <option value="walk_in">Walk-in</option>
-                  <option value="referral">Referral</option>
-                  <option value="online">Online</option>
-                  <option value="campaign">Campaign</option>
-                </select>
-              </div>
-
-              {/* Address */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Address</label>
-                <input name="address" value={formData.address} onChange={handleChange}
-                  className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand"
-                  placeholder="Address" />
-              </div>
-
-              {/* Note */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Customer Note</label>
-                <input name="notes" value={formData.notes} onChange={handleChange}
-                  className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand"
-                  placeholder="Customer Note" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Membership Card */}
-              <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Membership Card Number</label>
-                <input className="w-full bg-admin-surface border border-admin-border rounded-xl px-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand"
-                  placeholder="Membership Card Number" />
-              </div>
-
-              {/* Referred By */}
-              <div>
-                <label className="block text-xs font-semibold text-brand mb-1">Referred By</label>
-                <div className="relative">
-                  <input className="w-full bg-admin-surface border border-admin-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-admin-text outline-none focus:border-brand"
-                    placeholder="Customer Name/mobile" />
-                  <RiUserLine className="absolute left-3 top-1/2 -translate-y-1/2 text-brand" />
+                {/* Notes */}
+                <div>
+                  <label className={labelClass}>Customer Note</label>
+                  <div className="relative">
+                    <RiFileTextLine className="absolute left-3.5 top-3 text-gray-400 dark:text-gray-500 text-base" />
+                    <textarea
+                      name="notes" value={formData.notes} onChange={handleChange}
+                      rows={2}
+                      className={`${inputClass('notes')} pl-10 resize-none`}
+                      placeholder="Any special notes about this customer"
+                    />
+                  </div>
+                  {fieldErrors.notes && <p className="text-red-500 text-xs mt-1">{fieldErrors.notes}</p>}
                 </div>
               </div>
             </div>
 
-            {/* Promotion Checkboxes */}
-            <div className="flex items-center gap-6 mt-4 pt-4 border-t border-admin-border">
-              <span className="text-brand font-semibold text-sm">Promotion</span>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" name="sms_opt_in" checked={formData.sms_opt_in} onChange={handleChange} className="accent-brand w-4 h-4 bg-admin-surface" />
-                <span className="text-sm font-semibold">SMS</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" name="email_opt_in" checked={formData.email_opt_in} onChange={handleChange} className="accent-brand w-4 h-4 bg-admin-surface" />
-                <span className="text-sm font-semibold">Email</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" name="whatsapp_opt_in" checked={formData.whatsapp_opt_in} onChange={handleChange} className="accent-brand w-4 h-4 bg-admin-surface" />
-                <span className="text-sm font-semibold">WhatsApp</span>
-              </label>
+            {/* ─── Section: Communication Preferences ─── */}
+            <div className="pt-5 border-t border-gray-100 dark:border-white/5">
+              <div className="flex items-center gap-2 mb-4">
+                <RiShieldCheckLine className="text-[#E91E63] text-base" />
+                <h3 className="text-[14px] font-bold text-gray-800 dark:text-white">Communication Preferences</h3>
+              </div>
 
-              <span className="text-brand font-semibold text-sm ml-4">Transaction</span>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="accent-brand w-4 h-4 bg-admin-surface" defaultChecked />
-                <span className="text-sm font-semibold">SMS</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="accent-brand w-4 h-4 bg-admin-surface" defaultChecked />
-                <span className="text-sm font-semibold">Email</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="accent-brand w-4 h-4 bg-admin-surface" defaultChecked />
-                <span className="text-sm font-semibold">WhatsApp</span>
-              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Promotional */}
+                <div className="bg-gray-50/60 dark:bg-white/[0.02] rounded-2xl border border-gray-100 dark:border-white/5 p-4">
+                  <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Promotions</p>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { name: 'sms_opt_in', label: 'SMS', icon: RiMessage3Line },
+                      { name: 'email_opt_in', label: 'Email', icon: RiMailLine },
+                      { name: 'whatsapp_opt_in', label: 'WhatsApp', icon: RiWhatsappLine },
+                    ].map(({ name, label, icon: Icon }) => (
+                      <label
+                        key={name}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border cursor-pointer transition-all text-[13px] font-semibold ${
+                          formData[name]
+                            ? 'border-[#E91E63] bg-[#E91E63]/5 text-[#E91E63] dark:bg-[#E91E63]/10'
+                            : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-white/20'
+                        }`}
+                      >
+                        <input
+                          type="checkbox" name={name} checked={formData[name]} onChange={handleChange}
+                          className="hidden"
+                        />
+                        <Icon className="text-sm" />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Transactional */}
+                <div className="bg-gray-50/60 dark:bg-white/[0.02] rounded-2xl border border-gray-100 dark:border-white/5 p-4">
+                  <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Transactional</p>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { label: 'SMS', icon: RiMessage3Line },
+                      { label: 'Email', icon: RiMailLine },
+                      { label: 'WhatsApp', icon: RiWhatsappLine },
+                    ].map(({ label, icon: Icon }) => (
+                      <label
+                        key={`txn_${label}`}
+                        className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#E91E63] bg-[#E91E63]/5 text-[#E91E63] dark:bg-[#E91E63]/10 text-[13px] font-semibold cursor-pointer"
+                      >
+                        <input type="checkbox" defaultChecked className="hidden" />
+                        <Icon className="text-sm" />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </form>
         </div>
 
-        {/* Fixed Footer */}
-        <div className="p-6 border-t border-admin-border bg-admin-surface/50 shrink-0">
-          <div className="flex gap-3">
-            <button type="button" onClick={handleClose} disabled={loading}
-              className="flex-1 py-3 px-4 rounded-xl border border-admin-border text-admin-text-secondary hover:text-admin-text hover:bg-admin-surface-light text-sm font-bold transition-colors">
-              Cancel
-            </button>
-            <button onClick={handleSubmit} disabled={loading}
-              className="flex-1 py-3 px-4 rounded-xl bg-brand hover:bg-brand-light text-white text-sm font-bold transition-colors shadow-lg shadow-brand/20 disabled:opacity-50 flex items-center justify-center">
-              {loading ? 'Saving...' : 'Save Customer'}
-            </button>
-          </div>
+        {/* ══════════════════════════════════════════════════════════
+            MODAL FOOTER
+           ══════════════════════════════════════════════════════════ */}
+        <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="px-5 py-2.5 rounded-xl text-[14px] font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="customerForm"
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#E91E63] hover:bg-[#D81B60] text-white text-[14px] font-bold shadow-lg shadow-[#E91E63]/25 hover:shadow-[#E91E63]/35 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <RiSaveLine className="text-base" />
+            {loading ? 'Saving...' : isEditing ? 'Update Customer' : 'Save Customer'}
+          </button>
         </div>
       </div>
     </div>,

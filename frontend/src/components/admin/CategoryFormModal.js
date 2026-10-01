@@ -126,7 +126,11 @@ export default function CategoryFormModal({ isOpen, onClose, onSuccess, initialD
 
     const result = categorySchema.safeParse(formData);
     if (!result.success) {
-      setFieldErrors(formatZodErrors(result.error));
+      const errors = formatZodErrors(result.error);
+      setFieldErrors(errors);
+      const firstError = Object.values(errors)[0] || 'Please check the required fields.';
+      setError(firstError);
+      toast.error(firstError);
       setLoading(false);
       return;
     }

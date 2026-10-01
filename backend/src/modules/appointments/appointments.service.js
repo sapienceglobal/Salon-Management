@@ -165,6 +165,14 @@ class AppointmentService {
     }
     await appointmentRepository.delete(id, businessId);
   }
+
+  async bulkDelete(businessId, ids) {
+    return appointmentRepository.bulkDelete(ids, businessId);
+  }
+
+  async bulkUpdateStatus(businessId, ids, status) {
+    return appointmentRepository.bulkUpdateStatus(ids, businessId, status);
+  }
 }
 
 export const appointmentService = new AppointmentService();

@@ -3,13 +3,15 @@ import { authenticate } from '../../middlewares/authenticate.js';
 import { businessScope } from '../../middlewares/authorize.js';
 import { validate } from '../../middlewares/validate.js';
 import { createAppointmentSchema, updateAppointmentSchema, updateAppointmentStatusSchema, listAppointmentsSchema, appointmentIdParamSchema } from './appointments.validation.js';
-import { getAppointments, getAppointmentStats, getAppointment, createAppointment, updateAppointment, updateAppointmentStatus, deleteAppointment } from './appointments.controller.js';
+import { getAppointments, getAppointmentStats, getAppointment, createAppointment, updateAppointment, updateAppointmentStatus, deleteAppointment, bulkDeleteAppointments, bulkStatusAppointments } from './appointments.controller.js';
 
 const router = Router();
 router.use(authenticate, businessScope());
 
 router.get('/', validate(listAppointmentsSchema), getAppointments);
 router.get('/stats', getAppointmentStats);
+router.post('/bulk-delete', bulkDeleteAppointments);
+router.post('/bulk-status', bulkStatusAppointments);
 router.get('/:id', validate(appointmentIdParamSchema), getAppointment);
 router.post('/', validate(createAppointmentSchema), createAppointment);
 router.patch('/:id', validate(updateAppointmentSchema), updateAppointment);

@@ -11,24 +11,19 @@ export default function CommissionsTab() {
   
   // Add Profile Form State
   const [isAdding, setIsAdding] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [formData, setFormData] = useState({ 
     name: '', 
     type: 'percentage', 
     value: 0,
-    rules: {} // For tiered or advanced logic
+    rules: {}
   });
   const [submitting, setSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
-  const closeDrawer = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsAdding(false);
-      setIsClosing(false);
-    }, 200);
+  const closeModal = () => {
+    setIsAdding(false);
   };
 
   const fetchProfiles = useCallback(async () => {
@@ -55,7 +50,7 @@ export default function CommissionsTab() {
       await api.post('/settings/commission-profiles', formData);
       toast.success('Commission profile created');
       setFormData({ name: '', type: 'percentage', value: 0, rules: {} });
-      closeDrawer();
+      closeModal();
       fetchProfiles();
     } catch (err) {
       console.error(err);
@@ -74,6 +69,9 @@ export default function CommissionsTab() {
     }
   };
 
+  const inputClass = "w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-[#E91E63] rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none transition-colors";
+  const labelClass = "block text-[13px] font-semibold text-gray-600 dark:text-gray-400 mb-1.5";
+
   if (loading) {
     return <div className="py-8 text-center text-gray-500">Loading commissions...</div>;
   }
@@ -83,69 +81,111 @@ export default function CommissionsTab() {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Commission Profiles</h3>
-          <p className="text-sm text-gray-500">Manage how staff members earn commissions on services and products.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Manage how staff members earn commissions on services and products.</p>
         </div>
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#E91E63] text-white rounded-xl hover:bg-[#d81557] transition-all text-sm font-medium shadow-md shadow-[#E91E63]/25 cursor-pointer"
           >
-            <RiAddLine /> Create Profile
+            <RiAddLine className="text-lg" /> Create Profile
           </button>
         )}
       </div>
 
-      {/* Add Profile Drawer */}
+      {/* Add Profile Modal Popup */}
       {isAdding && mounted && createPortal(
-        <div className={`fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm ${isClosing ? 'animate-[fadeOut_0.2s_ease_forwards]' : 'animate-[fadeIn_0.2s_ease_forwards]'}`} onMouseDown={closeDrawer}>
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+          onMouseDown={closeModal}
+        >
           <div 
-            className={`bg-white dark:bg-gray-900 w-full max-w-md h-full border-l border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col ${isClosing ? 'animate-[slideOutRight_0.2s_ease_forwards]' : 'animate-[slideInRight_0.3s_ease_forwards]'}`}
+            className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-lg rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
             onMouseDown={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 shrink-0">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">New Commission Profile</h2>
-                <p className="text-xs text-gray-500 mt-1">Define how staff members earn commissions.</p>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
+                  <RiPercentLine />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+                    New Commission Profile
+                  </h2>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Define how staff members earn commissions.
+                  </p>
+                </div>
               </div>
-              <button onClick={closeDrawer} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+              <button 
+                onClick={closeModal} 
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              >
                 <RiCloseLine className="text-2xl" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-              <form id="commissions-form" onSubmit={handleSubmit} className="space-y-5">
+            {/* Modal Body */}
+            <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6 custom-scrollbar">
+              <form id="commissions-form" onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Profile Name *</label>
-                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                  <label className={labelClass}>Profile Name <span className="text-[#E91E63]">*</span></label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={formData.name} 
+                    onChange={e => setFormData({...formData, name: e.target.value})}
                     placeholder="e.g., Senior Stylist 20%"
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
+                    className={inputClass} 
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Commission Type *</label>
-                  <select required value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" >
+                  <label className={labelClass}>Commission Type <span className="text-[#E91E63]">*</span></label>
+                  <select 
+                    required 
+                    value={formData.type} 
+                    onChange={e => setFormData({...formData, type: e.target.value})}
+                    className={inputClass} 
+                  >
                     <option value="percentage">Percentage (%)</option>
                     <option value="flat">Flat Amount (₹)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className={labelClass}>
                     {formData.type === 'percentage' ? 'Percentage Value (%) *' : 'Flat Amount (₹) *'}
                   </label>
-                  <input type="number" required value={formData.value} onChange={e => setFormData({...formData, value: Number(e.target.value)})}
-                    min="0" step={formData.type === 'percentage' ? "1" : "0.01"}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
+                  <input 
+                    type="number" 
+                    required 
+                    value={formData.value} 
+                    onChange={e => setFormData({...formData, value: Number(e.target.value)})}
+                    min="0" 
+                    step={formData.type === 'percentage' ? "1" : "0.01"}
+                    className={inputClass} 
+                  />
                 </div>
               </form>
             </div>
 
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 shrink-0 flex justify-end gap-3">
-              <button type="button" onClick={closeDrawer} className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
+              <button 
+                type="button" 
+                onClick={closeModal} 
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+              >
                 Cancel
               </button>
-              <button type="submit" form="commissions-form" disabled={submitting} className="px-5 py-2.5 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-70 shadow-sm">
+              <button 
+                type="submit" 
+                form="commissions-form" 
+                disabled={submitting} 
+                className="px-6 py-2.5 text-sm font-semibold bg-[#E91E63] text-white rounded-xl hover:bg-[#d81557] transition-all disabled:opacity-50 shadow-md shadow-[#E91E63]/25 cursor-pointer"
+              >
                 {submitting ? 'Saving...' : 'Save Profile'}
               </button>
             </div>
@@ -157,15 +197,15 @@ export default function CommissionsTab() {
       {/* Profiles Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {profiles.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-gray-500 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/30">
+          <div className="col-span-full py-12 text-center text-gray-500 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-2xl bg-gray-50/50 dark:bg-white/[0.02]">
             No commission profiles created yet.
           </div>
         ) : (
           profiles.map(profile => (
-            <div key={profile.id} className="relative group p-5 border border-gray-100 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all hover:border-brand/30">
+            <div key={profile.id} className="relative group p-5 border border-gray-100 dark:border-white/10 rounded-2xl bg-white dark:bg-[#1a1a2e] shadow-sm hover:shadow-md transition-all hover:border-[#E91E63]/30">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-lg">
                     {getProfileIcon(profile.type)}
                   </div>
                   <div>
@@ -179,14 +219,14 @@ export default function CommissionsTab() {
                 </div>
               </div>
               
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-end">
+              <div className="pt-4 border-t border-gray-100 dark:border-white/5 flex justify-between items-end">
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Commission Rate</p>
                   <p className="text-xl font-bold text-gray-900 dark:text-white">
                     {profile.type === 'percentage' ? `${profile.value}%` : formatCurrency(profile.value)}
                   </p>
                 </div>
-                <div className="text-xs text-gray-400 bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded">
+                <div className="text-xs text-gray-400 bg-gray-50 dark:bg-white/5 px-2.5 py-1 rounded-lg">
                   {profile.type === 'percentage' ? 'of service price' : 'per service'}
                 </div>
               </div>

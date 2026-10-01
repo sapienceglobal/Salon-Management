@@ -46,6 +46,19 @@ class ProductRepository {
     return db(TABLE).where({ id, business_id: businessId }).del();
   }
 
+  async bulkDelete(ids, businessId) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    return db(TABLE).where({ business_id: businessId }).whereIn('id', ids).del();
+  }
+
+  async bulkUpdateStatus(ids, businessId, isActive) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    return db(TABLE).where({ business_id: businessId }).whereIn('id', ids).update({
+      is_active: Boolean(isActive),
+      updated_at: db.fn.now(),
+    });
+  }
+
   async getLowStock(businessId) {
     return db(TABLE).where({ business_id: businessId, is_active: true }).whereRaw('stock_quantity <= min_stock_alert').orderBy('stock_quantity', 'asc');
   }

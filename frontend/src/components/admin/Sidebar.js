@@ -64,7 +64,7 @@ const NAV_GROUPS = [
       },
       { label: 'Services', href: '/services', icon: RiScissorsCutLine },
       {
-        label: 'Packages & Memberships',
+        label: 'Packages',
         href: '/packages',
         icon: RiBox3Line,
       },
@@ -91,12 +91,7 @@ const NAV_GROUPS = [
         subItems: [
           { label: 'Leads Dashboard', href: '/leads?tab=dashboard', tabKey: 'dashboard' },
           { label: 'Lead List', href: '/leads', tabKey: 'list' },
-          { label: 'Add Lead', href: '/leads?action=add', tabKey: 'add' },
-          { label: 'Import Leads', href: '/leads?tab=import', tabKey: 'import' },
-          { label: 'Follow-ups', href: '/leads?tab=follow_ups', tabKey: 'follow_ups' },
-          { label: 'Lead Sources', href: '/leads?tab=sources', tabKey: 'sources' },
           { label: 'Lead Status / Pipeline', href: '/leads?tab=pipeline', tabKey: 'pipeline' },
-          { label: 'Reports', href: '/leads?tab=reports', tabKey: 'reports' },
         ],
       },
       { label: 'Campaigns', href: '/marketing', icon: RiMegaphoneLine },
@@ -120,8 +115,16 @@ function SidebarInner({ collapsed, onToggle }) {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotification();
 
-  const [leadsExpanded, setLeadsExpanded] = useState(true);
-  const [showUpgrade, setShowUpgrade] = useState(true);
+  const [expandedMenus, setExpandedMenus] = useState({
+    'Leads / CRM': true,
+  });
+
+  const toggleMenu = (label) => {
+    setExpandedMenus((prev) => ({
+      ...prev,
+      [label]: !prev[label],
+    }));
+  };
 
   const [realCounts, setRealCounts] = useState({
     appointments: 0,
@@ -229,6 +232,8 @@ function SidebarInner({ collapsed, onToggle }) {
       }
       return currentTab === sub.tabKey;
     }
+    if (pathname === '/leads/dashboard' && sub.tabKey === 'dashboard') return true;
+    if (pathname === '/leads/pipeline' && sub.tabKey === 'pipeline') return true;
     return false;
   };
 
@@ -376,6 +381,42 @@ function SidebarInner({ collapsed, onToggle }) {
                 const badgeText = count > 99 ? '99+' : count.toString();
 
                 if (collapsed) {
+                  if (hasSubItems) {
+                    return (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => {
+                          if (onToggle) onToggle();
+                          setExpandedMenus((prev) => ({ ...prev, [item.label]: true }));
+                        }}
+                        className={`relative flex items-center justify-center p-2 rounded-xl transition-all duration-150 group cursor-pointer ${
+                          active
+                            ? 'bg-gradient-to-r from-[#E91E63]/25 to-transparent'
+                            : 'hover:bg-white/[0.04]'
+                        }`}
+                        title={`${item.label} (Click to open sub-menu)`}
+                        aria-label={`Open ${item.label} sub-menu`}
+                      >
+                        {active && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-[#E91E63] rounded-r-md shadow-[0_0_10px_#E91E63]" />
+                        )}
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-all ${
+                            active
+                              ? 'bg-[#E91E63]/20 border border-[#E91E63]/50 text-[#E91E63] shadow-[0_0_12px_rgba(233,30,99,0.3)]'
+                              : 'bg-[#131926]/90 border border-slate-800/80 text-slate-400 group-hover:text-white group-hover:border-slate-700'
+                          }`}
+                        >
+                          <Icon />
+                        </div>
+                        {hasBadge && (
+                          <span className="absolute top-1.5 right-2.5 w-2 h-2 rounded-full bg-[#E91E63] ring-2 ring-[#090D16]" />
+                        )}
+                      </button>
+                    );
+                  }
+
                   return (
                     <Link
                       key={item.label}
@@ -407,23 +448,76 @@ function SidebarInner({ collapsed, onToggle }) {
                 }
 
                 const hasSubItems = Boolean(item.subItems && item.subItems.length > 0);
-                const isExpanded = hasSubItems && (active || leadsExpanded);
+                const isExpanded = hasSubItems && Boolean(expandedMenus[item.label]);
 
                 return (
                   <div key={item.label} className="flex flex-col">
-                    <div className="flex items-center">
+                    {hasSubItems ? (
+                      /* When item has sub-items (Leads), clicking only opens/closes subtabs without navigating */
+                      <button
+                        type="button"
+                        onClick={() => toggleMenu(item.label)}
+                        className={`w-full relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[13px] transition-all duration-150 group cursor-pointer ${
+                          active
+                            ? 'bg-white/[0.08] text-white font-semibold border border-white/10'
+                            : 'text-slate-300 hover:text-white hover:bg-white/[0.04] font-medium'
+                        }`}
+                        aria-expanded={isExpanded}
+                        aria-label={`Toggle ${item.label} subtabs`}
+                      >
+                        {/* Glowing left bar when active */}
+                        {active && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[#E91E63] rounded-r-md shadow-[0_0_8px_#E91E63]" />
+                        )}
+
+                        {/* Icon Box */}
+                        <div
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center text-[18px] shrink-0 transition-all ${
+                            active
+                              ? 'bg-[#E91E63]/20 border border-[#E91E63]/40 text-[#E91E63]'
+                              : 'bg-[#141A28]/80 border border-slate-800/80 text-slate-400 group-hover:text-white group-hover:border-slate-700'
+                          }`}
+                        >
+                          <Icon />
+                        </div>
+
+                        {/* Label */}
+                        <span className="flex-1 text-left truncate tracking-[-0.01em]">
+                          {item.label}
+                        </span>
+
+                        {/* Badge */}
+                        {hasBadge && (
+                          <span
+                            className={`shrink-0 px-2 py-0.5 rounded-full text-[10.5px] font-bold leading-tight ${
+                              active
+                                ? 'bg-[#E91E63] text-white shadow-[0_2px_8px_rgba(233,30,99,0.45)]'
+                                : 'bg-white/10 text-slate-300'
+                            }`}
+                          >
+                            {badgeText}
+                          </span>
+                        )}
+
+                        {/* Arrow Chevron with smooth 180deg rotation */}
+                        <span
+                          className={`text-slate-400 group-hover:text-white transition-transform duration-300 ease-in-out pl-1 shrink-0 inline-flex items-center justify-center ${
+                            isExpanded ? 'rotate-180 text-white' : 'rotate-0'
+                          }`}
+                        >
+                          <RiArrowDownSLine className="text-base" />
+                        </span>
+                      </button>
+                    ) : (
+                      /* Regular Menu Item that navigates directly */
                       <Link
                         href={item.href}
-                        className={`flex-1 relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[13px] transition-all duration-150 group ${
+                        className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[13px] transition-all duration-150 group ${
                           active
                             ? 'bg-gradient-to-r from-[#E91E63] to-[#F43F5E] text-white font-bold shadow-[0_4px_14px_rgba(233,30,99,0.35)]'
                             : 'text-slate-300 hover:text-white hover:bg-white/[0.04] font-medium'
                         }`}
-                        onClick={() => {
-                          if (hasSubItems) setLeadsExpanded(true);
-                        }}
                       >
-                        {/* Left glowing bar only when not full magenta button */}
                         {active && (
                           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-white/80 rounded-r-md" />
                         )}
@@ -446,61 +540,56 @@ function SidebarInner({ collapsed, onToggle }) {
 
                         {/* Badge */}
                         {hasBadge && (
-                          <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10.5px] font-bold leading-tight ${
-                            active ? 'bg-white text-[#E91E63]' : 'bg-[#E91E63] text-white shadow-[0_2px_8px_rgba(233,30,99,0.45)]'
-                          }`}>
+                          <span
+                            className={`shrink-0 px-2 py-0.5 rounded-full text-[10.5px] font-bold leading-tight ${
+                              active
+                                ? 'bg-white text-[#E91E63]'
+                                : 'bg-[#E91E63] text-white shadow-[0_2px_8px_rgba(233,30,99,0.45)]'
+                            }`}
+                          >
                             {badgeText}
                           </span>
                         )}
                       </Link>
+                    )}
 
-                      {hasSubItems && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setLeadsExpanded(!leadsExpanded);
-                          }}
-                          className="px-1.5 py-2 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                          aria-label="Toggle subtabs"
-                        >
-                          {isExpanded ? (
-                            <RiArrowUpSLine className="text-sm" />
-                          ) : (
-                            <RiArrowDownSLine className="text-sm" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Subtabs Accordion matching Image 1 */}
-                    {hasSubItems && isExpanded && (
-                      <div className="flex flex-col gap-0.5 ml-4 pl-3.5 border-l border-white/10 my-1 py-0.5">
-                        {item.subItems.map((sub) => {
-                          const isSubActive = isSubItemActive(sub);
-                          return (
-                            <Link
-                              key={sub.label}
-                              href={sub.href}
-                              className={`flex items-center gap-2.5 py-1 px-2 rounded-lg text-[12px] transition-all group ${
-                                isSubActive
-                                  ? 'text-[#E91E63] font-bold bg-[#E91E63]/10'
-                                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04] font-medium'
-                              }`}
-                            >
-                              {/* Bullet dot matching Image 1: pink dot if active, gray if inactive */}
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full transition-all shrink-0 ${
-                                  isSubActive
-                                    ? 'bg-[#E91E63] shadow-[0_0_8px_#E91E63] scale-125'
-                                    : 'bg-slate-600 group-hover:bg-slate-400'
-                                }`}
-                              />
-                              <span className="truncate">{sub.label}</span>
-                            </Link>
-                          );
-                        })}
+                    {/* Subtabs Accordion with smooth grid-rows height & opacity transition */}
+                    {hasSubItems && (
+                      <div
+                        className={`grid transition-all duration-300 ease-in-out overflow-hidden ${
+                          isExpanded
+                            ? 'grid-rows-[1fr] opacity-100 mt-1 mb-0.5'
+                            : 'grid-rows-[0fr] opacity-0 mt-0 mb-0 pointer-events-none'
+                        }`}
+                      >
+                        <div className="overflow-hidden min-h-0">
+                          <div className="flex flex-col gap-0.5 ml-4 pl-3.5 border-l border-white/10 py-0.5">
+                            {item.subItems.map((sub) => {
+                              const isSubActive = isSubItemActive(sub);
+                              return (
+                                <Link
+                                  key={sub.label}
+                                  href={sub.href}
+                                  className={`flex items-center gap-2.5 py-1 px-2 rounded-lg text-[12px] transition-all group ${
+                                    isSubActive
+                                      ? 'text-[#E91E63] font-bold bg-[#E91E63]/10'
+                                      : 'text-slate-400 hover:text-white hover:bg-white/[0.04] font-medium'
+                                  }`}
+                                >
+                                  {/* Bullet dot matching Image 1: pink dot if active, gray if inactive */}
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full transition-all shrink-0 ${
+                                      isSubActive
+                                        ? 'bg-[#E91E63] shadow-[0_0_8px_#E91E63] scale-125'
+                                        : 'bg-slate-600 group-hover:bg-slate-400'
+                                    }`}
+                                  />
+                                  <span className="truncate">{sub.label}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -511,58 +600,14 @@ function SidebarInner({ collapsed, onToggle }) {
         ))}
       </nav>
 
-      {/* --- Upgrade to Pro Plan Banner Card (Matching Image 1) --- */}
-      {!collapsed && showUpgrade && (
-        <div className="mx-2.5 mb-2.5 p-3 rounded-2xl bg-gradient-to-b from-[#1C1220] via-[#140F1D] to-[#0A0D17] border border-[#E91E63]/30 shadow-[0_8px_20px_rgba(0,0,0,0.5)] relative overflow-hidden shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowUpgrade(false)}
-            className="absolute top-2.5 right-2.5 text-slate-500 hover:text-white transition-colors cursor-pointer p-0.5"
-            aria-label="Dismiss Pro Plan"
-            title="Dismiss"
-          >
-            <RiCloseLine className="text-sm" />
-          </button>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 rounded-lg bg-amber-400/15 flex items-center justify-center text-amber-400 shrink-0">
-              <RiVipCrownLine className="text-sm" />
-            </div>
-            <div>
-              <div className="text-[10px] text-slate-400 leading-tight">Upgrade to</div>
-              <div className="text-[13px] font-bold text-white leading-tight">Pro Plan</div>
-            </div>
-          </div>
-          <ul className="space-y-1 mb-2.5 text-[11px]">
-            <li className="flex items-center gap-1.5">
-              <RiCheckLine className="text-[#E91E63] text-xs shrink-0 font-bold" />
-              <span className="text-slate-300">More branches</span>
-            </li>
-            <li className="flex items-center gap-1.5">
-              <RiCheckLine className="text-[#E91E63] text-xs shrink-0 font-bold" />
-              <span className="text-slate-300">Advanced reports</span>
-            </li>
-            <li className="flex items-center gap-1.5">
-              <RiCheckLine className="text-[#E91E63] text-xs shrink-0 font-bold" />
-              <span className="text-slate-300">Priority support</span>
-            </li>
-          </ul>
-          <button
-            type="button"
-            className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#E91E63] to-[#F43F5E] hover:from-[#D81B60] hover:to-[#E11D48] text-white text-[12px] font-bold shadow-[0_4px_12px_rgba(233,30,99,0.35)] transition-all cursor-pointer text-center"
-          >
-            Upgrade Now
-          </button>
-        </div>
-      )}
-
       {/* --- Bottom Footer (Settings & Logout Only) --- */}
-      <div className="border-t border-white/[0.08] p-2.5 shrink-0 bg-[#090D16]/95 backdrop-blur-sm">
+      <div className="border-t border-white/[0.08] p-3 shrink-0 bg-[#090D16]/95 backdrop-blur-sm">
         {!collapsed ? (
           <div className="grid grid-cols-2 gap-2">
             {/* Settings */}
             <Link
               href="/settings"
-              className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 hover:text-white hover:bg-white/[0.08] transition-all text-xs font-semibold group"
+              className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 hover:text-white hover:bg-white/[0.08] transition-all text-xs font-semibold group"
             >
               <RiSettings4Line className="text-base text-slate-400 group-hover:text-white shrink-0" />
               <span className="truncate">Settings</span>
@@ -572,7 +617,7 @@ function SidebarInner({ collapsed, onToggle }) {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-[#E91E63]/10 border border-[#E91E63]/25 text-[#E91E63] hover:bg-[#E91E63]/20 hover:border-[#E91E63]/40 transition-all text-xs font-semibold group cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl bg-[#E91E63]/10 border border-[#E91E63]/25 text-[#E91E63] hover:bg-[#E91E63]/20 hover:border-[#E91E63]/40 transition-all text-xs font-semibold group cursor-pointer"
             >
               <RiLogoutBoxRLine className="text-base text-[#E91E63] group-hover:scale-110 transition-transform shrink-0" />
               <span className="truncate">Logout</span>

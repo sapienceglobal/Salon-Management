@@ -11,6 +11,7 @@ import PackageFormModal from '@/components/admin/packages/PackageFormModal';
 import MembershipFormModal from '@/components/admin/packages/MembershipFormModal';
 import { useConfirm } from '@/context/ConfirmContext';
 import toast from 'react-hot-toast';
+import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 
 export default function PackagesMembershipsPage() {
   const { confirm } = useConfirm();
@@ -105,67 +106,34 @@ export default function PackagesMembershipsPage() {
   };
 
   return (
-    <div className="animate-[fadeIn_0.5s_ease_forwards] flex flex-col h-[calc(100vh-var(--spacing-header)-48px)]">
-      
+    <div className="relative min-h-[calc(100vh-70px)] p-6 md:p-8 space-y-6 animate-[fadeIn_0.5s_ease_forwards]">
+      {/* Signature ambient pink-white top gradient smoothly diffusing into page */}
+      <PageHeaderGradient height="h-[340px]" />
+
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 mb-6 shrink-0">
+      <div className="relative z-10 flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-[1.75rem] font-bold">Packages & Memberships</h1>
-          <p className="text-sm text-admin-text-secondary mt-1">Manage bundled services and VIP membership tiers.</p>
+          <h1 className="font-heading text-2xl sm:text-[1.75rem] font-bold text-gray-900 dark:text-white tracking-tight">Packages</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage bundled salon services and package offers.</p>
         </div>
         <div className="flex gap-3">
-          {activeTab === 'packages' ? (
-            <button 
-              onClick={() => { setPkgToEdit(null); setIsPkgModalOpen(true); }}
-              className="bg-brand text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-brand-light transition-colors shadow-lg shadow-brand/20 flex items-center gap-2"
-            >
-              <RiAddLine className="text-lg" /> New Package
-            </button>
-          ) : (
-            <button 
-              onClick={() => { setMemToEdit(null); setIsMemModalOpen(true); }}
-              className="bg-gradient-to-r from-[#D4AF37] to-[#B38B22] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:from-[#E8C245] hover:to-[#CC9F27] transition-all shadow-lg shadow-[#D4AF37]/30 flex items-center gap-2"
-            >
-              <RiVipCrownLine className="text-lg" /> New VIP Tier
-            </button>
-          )}
+          <button 
+            onClick={() => { setPkgToEdit(null); setIsPkgModalOpen(true); }}
+            className="bg-[#E91E63] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#D81B60] transition-all shadow-md shadow-[#E91E63]/25 flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <RiAddLine className="text-lg" /> New Package
+          </button>
         </div>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm rounded-lg flex items-center gap-2 shrink-0">
+        <div className="relative z-10 mb-4 p-4 bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm rounded-xl flex items-center gap-2">
           <RiAlertLine /> {error}
         </div>
       )}
 
-      {/* Segmented Tabs */}
-      <div className="flex justify-center mb-6 shrink-0">
-        <div className="bg-admin-surface-light border border-admin-border p-1 rounded-xl inline-flex shadow-inner">
-          <button
-            onClick={() => setActiveTab('packages')}
-            className={`px-8 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
-              activeTab === 'packages'
-                ? 'bg-admin-card text-brand shadow-sm border border-admin-border'
-                : 'text-admin-text-muted hover:text-admin-text'
-            }`}
-          >
-            <RiBox3Line className="text-lg" /> Packages
-          </button>
-          <button
-            onClick={() => setActiveTab('memberships')}
-            className={`px-8 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
-              activeTab === 'memberships'
-                ? 'bg-admin-card text-brand shadow-sm border border-admin-border'
-                : 'text-admin-text-muted hover:text-admin-text'
-            }`}
-          >
-            <RiVipCrownLine className="text-lg" /> VIP Memberships
-          </button>
-        </div>
-      </div>
-
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="relative z-10 w-full">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map(i => <div key={i} className="h-64 bg-admin-surface-light rounded-2xl animate-pulse"></div>)}

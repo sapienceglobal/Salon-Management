@@ -5,12 +5,15 @@ import {
   RiWallet3Line, RiPercentLine, RiBarChartLine, RiAddLine, 
   RiSearchLine, RiCalendar2Line, RiFilter3Line, RiArrowUpDownLine,
   RiPencilLine, RiDeleteBinLine, RiArrowDownSLine, RiArrowLeftSLine,
-  RiArrowRightSLine, RiReceiptLine
+  RiArrowRightSLine, RiReceiptLine, RiDownload2Line, RiDeleteBin6Line
 } from 'react-icons/ri';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useConfirm } from '@/context/ConfirmContext';
 import AddExpenseModal from '@/components/admin/expenses/AddExpenseModal';
+import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
+import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
+import BulkActionBar from '@/components/admin/common/BulkActionBar';
 
 // Helper for exact date formatting matching screenshot: "28 Sep 2026"
 function formatScreenshotDate(dateStr) {
@@ -93,6 +96,8 @@ export default function ExpensesPage() {
   const [limit] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -133,6 +138,7 @@ export default function ExpensesPage() {
       }
 
       setExpenses(list);
+      setSelectedIds([]);
       if (res.meta?.summary) {
         setSummary({
           total_expenses: res.meta.summary.total_expenses || 0,
@@ -149,6 +155,71 @@ export default function ExpensesPage() {
       setLoading(false);
     }
   }, [page, limit, activeSearch, selectedCategory, selectedMethod, startDate, endDate, sortOrder]);
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(expenses.map(exp => exp.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleExportSelected = () => {
+    if (selectedIds.length === 0) return;
+    const selectedList = expenses.filter(exp => selectedIds.includes(exp.id));
+    const headers = ['Date', 'Category', 'Description', 'Amount', 'Tax', 'Payment Method', 'Added By'];
+    const csvRows = [headers.join(',')];
+
+    for (const row of selectedList) {
+      const values = [
+        `"${formatScreenshotDate(row.expense_date)}"`,
+        `"${row.category_name || ''}"`,
+        `"${row.description || ''}"`,
+        `"${row.amount || 0}"`,
+        `"${row.tax_amount || 0}"`,
+        `"${row.payment_method || ''}"`,
+        `"${row.added_by_name || 'Admin'}"`,
+      ];
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `selected_expenses_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${selectedList.length} selected expenses`);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const ok = await confirm({
+      title: 'Delete Selected Expenses',
+      message: `Are you sure you want to permanently delete ${selectedIds.length} expense${selectedIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: 'Delete Permanently',
+      type: 'danger',
+    });
+    if (!ok) return;
+
+    setBulkLoading(true);
+    try {
+      await api.post('/expenses/bulk-delete', { ids: selectedIds });
+      toast.success(`${selectedIds.length} expense${selectedIds.length > 1 ? 's' : ''} deleted`);
+      fetchExpenses();
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete selected expenses');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchCategories();
@@ -246,10 +317,13 @@ export default function ExpensesPage() {
     : '01 Sep 2026 - 30 Sep 2026';
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto animate-[fadeIn_0.3s_ease-out]">
+    <div className="relative min-h-[calc(100vh-70px)] w-full overflow-hidden animate-[fadeIn_0.3s_ease-out]">
+      <PageHeaderGradient height="h-[320px]" />
+      
+      <div className="relative z-10 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
       
       {/* 1. Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
             Expenses
@@ -268,7 +342,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* 2. Top 3 Metric Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Card 1: Total Expenses */}
         <div className="bg-white dark:bg-[#1e1e35] border border-slate-100 dark:border-white/5 rounded-2xl p-5 shadow-sm flex items-center gap-4.5 hover:shadow-md transition-shadow">
           <div className="w-13 h-13 rounded-2xl bg-rose-50 dark:bg-rose-500/10 text-[#e91e63] flex items-center justify-center text-2xl shrink-0">
@@ -458,10 +532,26 @@ export default function ExpensesPage() {
 
       {/* 4. Expenses Data Table */}
       <div className="bg-white dark:bg-[#1e1e35] border border-slate-100 dark:border-white/5 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-        <div className="overflow-x-auto custom-scrollbar">
+        <TableScrollContainer
+          leftGradientClass="bg-gradient-to-r from-white via-white/85 to-transparent dark:from-[#1e1e35] dark:via-[#1e1e35]/85 dark:to-transparent"
+          rightGradientClass="bg-gradient-to-l from-white via-white/85 to-transparent dark:from-[#1e1e35] dark:via-[#1e1e35]/85 dark:to-transparent"
+        >
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="border-b border-slate-100 dark:border-white/5 text-[11.5px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-white/[0.02]">
+                <th className="py-3.5 pl-5 pr-2 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={expenses.length > 0 && selectedIds.length === expenses.length}
+                    ref={(el) => {
+                      if (el) {
+                        el.indeterminate = selectedIds.length > 0 && selectedIds.length < expenses.length;
+                      }
+                    }}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 text-[#e91e63] focus:ring-[#e91e63] cursor-pointer"
+                  />
+                </th>
                 <th 
                   onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
                   className="py-3.5 px-5 font-semibold cursor-pointer select-none hover:text-slate-800 dark:hover:text-white transition-colors"
@@ -483,14 +573,14 @@ export default function ExpensesPage() {
             <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-400">
+                  <td colSpan={9} className="py-16 text-center text-slate-400">
                     <div className="inline-block w-8 h-8 border-3 border-[#e91e63] border-t-transparent rounded-full animate-spin mb-2" />
                     <p className="text-xs font-medium">Loading expenses...</p>
                   </td>
                 </tr>
               ) : expenses.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-400">
+                  <td colSpan={9} className="py-16 text-center text-slate-400">
                     <RiReceiptLine className="text-5xl mx-auto mb-2 opacity-30 text-slate-400" />
                     <p className="text-base font-semibold text-slate-700 dark:text-slate-200">No expenses found</p>
                     <p className="text-xs text-slate-400 mt-1">Try changing filters or add a new expense.</p>
@@ -500,12 +590,25 @@ export default function ExpensesPage() {
                 expenses.map((item) => {
                   const badgeClass = getCategoryBadgeClass(item.category_name);
                   const methodInfo = METHOD_BADGES[item.payment_method] || { label: item.payment_method || 'Cash', style: 'bg-slate-100 text-slate-600' };
+                  const isSelected = selectedIds.includes(item.id);
 
                   return (
                     <tr 
                       key={item.id} 
-                      className="hover:bg-slate-50/70 dark:hover:bg-white/[0.02] transition-colors group"
+                      className={`hover:bg-slate-50/70 dark:hover:bg-white/[0.02] transition-colors group ${
+                        isSelected ? 'bg-pink-50/40 dark:bg-pink-950/20' : ''
+                      }`}
                     >
+                      {/* Checkbox */}
+                      <td className="py-4 pl-5 pr-2 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelect(item.id)}
+                          className="w-4 h-4 rounded border-slate-300 text-[#e91e63] focus:ring-[#e91e63] cursor-pointer"
+                        />
+                      </td>
+
                       {/* DATE */}
                       <td className="py-4 px-5 whitespace-nowrap text-sm font-medium text-slate-800 dark:text-slate-200">
                         {formatScreenshotDate(item.expense_date)}
@@ -572,7 +675,7 @@ export default function ExpensesPage() {
               )}
             </tbody>
           </table>
-        </div>
+        </TableScrollContainer>
 
         {/* 5. Pagination Footer */}
         <div className="p-4.5 border-t border-slate-100 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
@@ -621,6 +724,29 @@ export default function ExpensesPage() {
 
       </div>
 
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={expenses.length}
+        onClear={() => setSelectedIds([])}
+        resourceName="expense"
+        actions={[
+          {
+            label: 'Export CSV',
+            icon: RiDownload2Line,
+            onClick: handleExportSelected,
+            variant: 'default',
+          },
+          {
+            label: 'Delete',
+            icon: RiDeleteBin6Line,
+            onClick: handleBulkDelete,
+            variant: 'danger',
+            loading: bulkLoading,
+          },
+        ]}
+      />
+
       {/* 6. Add / Edit Expense Popup Modal */}
       <AddExpenseModal
         isOpen={isModalOpen}
@@ -629,6 +755,7 @@ export default function ExpensesPage() {
         expenseToEdit={expenseToEdit}
       />
 
+      </div>
     </div>
   );
 }

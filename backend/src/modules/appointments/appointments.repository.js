@@ -250,6 +250,22 @@ class AppointmentRepository {
       await trx('appointments').where({ id, business_id: businessId }).del();
     });
   }
+
+  async bulkDelete(ids, businessId) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    return db.transaction(async (trx) => {
+      await trx('appointment_services').whereIn('appointment_id', ids).del();
+      return trx('appointments').where({ business_id: businessId }).whereIn('id', ids).del();
+    });
+  }
+
+  async bulkUpdateStatus(ids, businessId, status) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    return db('appointments').where({ business_id: businessId }).whereIn('id', ids).update({
+      status,
+      updated_at: db.fn.now(),
+    });
+  }
 }
 
 export const appointmentRepository = new AppointmentRepository();

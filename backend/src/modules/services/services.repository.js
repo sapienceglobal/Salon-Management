@@ -56,6 +56,17 @@ class ServiceRepository {
   async delete(id, businessId) {
     return db('salon_services').where({ id, business_id: businessId }).del();
   }
+  async bulkDelete(ids, businessId) {
+    if (!ids || ids.length === 0) return 0;
+    return db('salon_services').where('business_id', businessId).whereIn('id', ids).del();
+  }
+  async bulkUpdateStatus(ids, businessId, isActive) {
+    if (!ids || ids.length === 0) return 0;
+    return db('salon_services').where('business_id', businessId).whereIn('id', ids).update({
+      is_active: Boolean(isActive),
+      updated_at: db.fn.now(),
+    });
+  }
 }
 
 export const serviceRepository = new ServiceRepository();

@@ -75,3 +75,15 @@ export const getCustomersStats = asyncHandler(async (req, res) => {
   const stats = await customerService.getCustomerStats(req.user.business_id);
   ApiResponse.ok('Customer stats fetched', stats).send(res);
 });
+
+export const bulkDeleteCustomers = asyncHandler(async (req, res) => {
+  const { ids } = req.body;
+  const count = await customerService.bulkDelete(ids, req.user.business_id);
+  ApiResponse.ok(`${count} customers deleted successfully`, { count }).send(res);
+});
+
+export const bulkStatusCustomers = asyncHandler(async (req, res) => {
+  const { ids, is_active } = req.body;
+  const count = await customerService.bulkUpdateStatus(ids, req.user.business_id, is_active);
+  ApiResponse.ok(`${count} customers status updated`, { count }).send(res);
+});

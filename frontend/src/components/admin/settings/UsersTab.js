@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '@/lib/api';
-import { RiAddLine, RiUserSettingsLine, RiShieldStarLine, RiUserLine, RiCloseLine } from 'react-icons/ri';
+import { RiAddLine, RiUserSettingsLine, RiShieldStarLine, RiUserLine, RiCloseLine, RiLockPasswordLine, RiMailLine, RiPhoneLine } from 'react-icons/ri';
 import { createPortal } from 'react-dom';
+import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 
 export default function UsersTab() {
   const [users, setUsers] = useState([]);
@@ -10,7 +11,6 @@ export default function UsersTab() {
   
   // Add User Form State
   const [isAdding, setIsAdding] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [formData, setFormData] = useState({ 
     first_name: '', 
     last_name: '', 
@@ -24,12 +24,8 @@ export default function UsersTab() {
 
   useEffect(() => setMounted(true), []);
 
-  const closeDrawer = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsAdding(false);
-      setIsClosing(false);
-    }, 200); // match animation duration
+  const closeModal = () => {
+    setIsAdding(false);
   };
 
   const fetchUsers = useCallback(async () => {
@@ -56,7 +52,7 @@ export default function UsersTab() {
       await api.post('/settings/users', formData);
       toast.success('User created successfully');
       setFormData({ first_name: '', last_name: '', email: '', phone: '', password: '', role: 'receptionist' });
-      closeDrawer();
+      closeModal();
       fetchUsers();
     } catch (err) {
       console.error(err);
@@ -74,6 +70,9 @@ export default function UsersTab() {
     }
   };
 
+  const inputClass = "w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-[#E91E63] rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none transition-colors";
+  const labelClass = "block text-[13px] font-semibold text-gray-600 dark:text-gray-400 mb-1.5";
+
   if (loading) {
     return <div className="py-8 text-center text-gray-500">Loading users...</div>;
   }
@@ -83,73 +82,114 @@ export default function UsersTab() {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">User Management</h3>
-          <p className="text-sm text-gray-500">Manage staff access, roles, and login credentials.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Manage staff access, roles, and login credentials.</p>
         </div>
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#E91E63] text-white rounded-xl hover:bg-[#d81557] transition-all text-sm font-medium shadow-md shadow-[#E91E63]/25 cursor-pointer"
           >
-            <RiAddLine /> Add User
+            <RiAddLine className="text-lg" /> Add User
           </button>
         )}
       </div>
 
-      {/* Add User Drawer */}
+      {/* Add User Modal Popup */}
       {isAdding && mounted && createPortal(
-        <div className={`fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm ${isClosing ? 'animate-[fadeOut_0.2s_ease_forwards]' : 'animate-[fadeIn_0.2s_ease_forwards]'}`} onMouseDown={closeDrawer}>
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+          onMouseDown={closeModal}
+        >
           <div 
-            className={`bg-white dark:bg-gray-900 w-full max-w-md h-full border-l border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col ${isClosing ? 'animate-[slideOutRight_0.2s_ease_forwards]' : 'animate-[slideInRight_0.3s_ease_forwards]'}`}
+            className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
             onMouseDown={e => e.stopPropagation()}
           >
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 shrink-0">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Add System User</h2>
-                <p className="text-xs text-gray-500 mt-1">Create login access for Admins or Receptionists.</p>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
+                  <RiUserSettingsLine />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+                    Add System User
+                  </h2>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Create login access for Admins, Managers, or Receptionists.
+                  </p>
+                </div>
               </div>
-              <button onClick={closeDrawer} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+              <button 
+                onClick={closeModal} 
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              >
                 <RiCloseLine className="text-2xl" />
               </button>
             </div>
 
-            {/* Drawer Body */}
-            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-              <form id="user-form" onSubmit={handleSubmit} className="space-y-5">
+            {/* Modal Body */}
+            <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6 custom-scrollbar">
+              <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
                 
-                <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 p-3 rounded-lg text-xs mb-6 border border-blue-100 dark:border-blue-900/30">
-                  <strong>Note:</strong> To add Service Providers (Stylists, Barbers), please go to the <strong>Staff</strong> menu. This form is only for system administrators and front-desk users.
+                <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-3.5 rounded-xl text-xs border border-blue-100 dark:border-blue-900/30">
+                  <strong>Notice:</strong> To add Service Providers (Stylists, Therapists), please use the <strong>Staff</strong> page. This form is only for system administrators and front-desk users.
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">First Name *</label>
-                    <input type="text" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})}
-                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
+                    <label className={labelClass}>First Name <span className="text-[#E91E63]">*</span></label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={formData.first_name} 
+                      onChange={e => setFormData({...formData, first_name: e.target.value})}
+                      placeholder="e.g., Rohit"
+                      className={inputClass} 
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
-                    <input type="text" value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})}
-                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
+                    <label className={labelClass}>Last Name</label>
+                    <input 
+                      type="text" 
+                      value={formData.last_name} 
+                      onChange={e => setFormData({...formData, last_name: e.target.value})}
+                      placeholder="e.g., Sharma"
+                      className={inputClass} 
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email (Used for Login) *</label>
-                  <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
+                  <label className={labelClass}>Email (Login Username) <span className="text-[#E91E63]">*</span></label>
+                  <input 
+                    type="email" 
+                    required 
+                    value={formData.email} 
+                    onChange={e => setFormData({...formData, email: e.target.value})}
+                    placeholder="user@salondomain.com"
+                    className={inputClass} 
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
-                  <input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
+                  <label className={labelClass}>Phone Number</label>
+                  <input 
+                    type="text" 
+                    value={formData.phone} 
+                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                    placeholder="10-digit mobile number"
+                    className={inputClass} 
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">System Role *</label>
-                  <select required value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" >
+                  <label className={labelClass}>System Role <span className="text-[#E91E63]">*</span></label>
+                  <select 
+                    required 
+                    value={formData.role} 
+                    onChange={e => setFormData({...formData, role: e.target.value})}
+                    className={inputClass} 
+                  >
                     <option value="admin">Admin (Full System Access)</option>
                     <option value="manager">Manager (Operations Access)</option>
                     <option value="receptionist">Receptionist (Front Desk / Appointments)</option>
@@ -157,20 +197,35 @@ export default function UsersTab() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Temporary Password *</label>
-                  <input type="text" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} minLength={8}
-                    placeholder="Min 8 characters"
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none transition-colors" />
+                  <label className={labelClass}>Temporary Password <span className="text-[#E91E63]">*</span></label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={formData.password} 
+                    onChange={e => setFormData({...formData, password: e.target.value})} 
+                    minLength={8}
+                    placeholder="Minimum 8 characters"
+                    className={inputClass} 
+                  />
                 </div>
               </form>
             </div>
 
-            {/* Drawer Footer */}
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 shrink-0 flex justify-end gap-3">
-              <button type="button" onClick={closeDrawer} className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
+              <button 
+                type="button" 
+                onClick={closeModal} 
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+              >
                 Cancel
               </button>
-              <button type="submit" form="user-form" disabled={submitting} className="px-5 py-2.5 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-70 shadow-sm">
+              <button 
+                type="submit" 
+                form="user-form" 
+                disabled={submitting} 
+                className="px-6 py-2.5 text-sm font-semibold bg-[#E91E63] text-white rounded-xl hover:bg-[#d81557] transition-all disabled:opacity-50 shadow-md shadow-[#E91E63]/25 cursor-pointer"
+              >
                 {submitting ? 'Creating...' : 'Create User'}
               </button>
             </div>
@@ -180,45 +235,47 @@ export default function UsersTab() {
       )}
 
       {/* Users Table */}
-      <div className="overflow-x-auto border border-gray-100 dark:border-gray-800 rounded-xl custom-scrollbar">
+      <TableScrollContainer className="border border-gray-100 dark:border-white/10 rounded-2xl bg-white dark:bg-[#1a1a2e] shadow-sm overflow-hidden">
         <table className="w-full min-w-[700px] text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+            <tr className="bg-gray-50/70 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/10">
               <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
               <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
               <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
               <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          <tbody className="divide-y divide-gray-100 dark:divide-white/5">
             {users.length === 0 ? (
               <tr><td colSpan="4" className="p-8 text-center text-gray-500">No users found.</td></tr>
             ) : (
               users.map(user => (
-                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 font-bold uppercase">
-                        {user.first_name?.[0]}{user.last_name?.[0]}
+                      <div className="w-9 h-9 rounded-xl bg-[#E91E63]/10 text-[#E91E63] flex items-center justify-center font-bold text-sm">
+                        {user.first_name ? user.first_name.charAt(0).toUpperCase() : 'U'}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{user.first_name} {user.last_name}</p>
+                        <div className="font-semibold text-gray-900 dark:text-white text-sm">
+                          {user.first_name} {user.last_name || ''}
+                        </div>
+                        <div className="text-xs text-gray-400">{user.email}</div>
                       </div>
                     </div>
                   </td>
                   <td className="p-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
                       {getRoleIcon(user.role)}
-                      <span className="capitalize text-sm font-medium text-gray-700 dark:text-gray-300">{user.role}</span>
+                      <span className="capitalize">{user.role}</span>
                     </div>
                   </td>
-                  <td className="p-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
-                    <p className="text-xs text-gray-500">{user.phone}</p>
+                  <td className="p-4 text-xs text-gray-600 dark:text-gray-400">
+                    {user.phone || 'N/A'}
                   </td>
                   <td className="p-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {user.is_active ? 'Active' : 'Inactive'}
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400">
+                      Active
                     </span>
                   </td>
                 </tr>
@@ -226,7 +283,7 @@ export default function UsersTab() {
             )}
           </tbody>
         </table>
-      </div>
+      </TableScrollContainer>
     </div>
   );
 }

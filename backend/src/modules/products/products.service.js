@@ -60,6 +60,8 @@ class ProductService {
   }
 
   async delete(id, businessId) { await this.getById(id, businessId); await productRepository.delete(id, businessId); }
+  async bulkDelete(businessId, ids) { return productRepository.bulkDelete(ids, businessId); }
+  async bulkUpdateStatus(businessId, ids, isActive) { return productRepository.bulkUpdateStatus(ids, businessId, isActive); }
   async getLowStock(businessId) { return productRepository.getLowStock(businessId); }
 }
 

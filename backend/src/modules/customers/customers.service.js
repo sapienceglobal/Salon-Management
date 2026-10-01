@@ -117,6 +117,16 @@ class CustomerService {
       churn: 0 // Churn calculation can be complex, default to 0 for now as per UI request
     };
   }
+
+  async bulkDelete(ids, businessId) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    return customerRepository.bulkDelete(ids, businessId);
+  }
+
+  async bulkUpdateStatus(ids, businessId, isActive) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    return customerRepository.bulkUpdateStatus(ids, businessId, isActive);
+  }
 }
 
 export const customerService = new CustomerService();

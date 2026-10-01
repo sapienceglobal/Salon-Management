@@ -1,11 +1,22 @@
 'use client';
 
-import {  useState, useEffect  } from 'react';
+import { useState, useEffect } from 'react';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
 import api from '@/lib/api';
-import { RiCloseLine, RiUserLine, RiPhoneLine, RiMailLine, RiMapPinLine, RiCalendarEventLine } from 'react-icons/ri';
+import { 
+  RiCloseLine, 
+  RiUserLine, 
+  RiPhoneLine, 
+  RiMailLine, 
+  RiMapPinLine, 
+  RiCalendarEventLine, 
+  RiQuestionLine,
+  RiInformationLine,
+  RiQuestionAnswerLine
+} from 'react-icons/ri';
 import { leadSchema, formatZodErrors } from '@/lib/validations';
+import toast from 'react-hot-toast';
 
 export default function AddEnquiryModal({ isOpen, onClose, onEnquiryAdded, enquiryToEdit }) {
   const [formData, setFormData] = useState({
@@ -15,18 +26,17 @@ export default function AddEnquiryModal({ isOpen, onClose, onEnquiryAdded, enqui
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [error, setError] = useState('');
+
   useScrollLock(isOpen);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
-      setIsClosing(false);
       setError('');
       setFieldErrors({});
       if (enquiryToEdit) {
@@ -54,7 +64,6 @@ export default function AddEnquiryModal({ isOpen, onClose, onEnquiryAdded, enqui
   // Fetch staff for assignment
   useEffect(() => {
     if (isOpen) {
-      setIsClosing(false);
       api.get('/staff', { params: { active_only: true } })
         .then(res => {
           const raw = res.data?.staff || res.data || [];
@@ -68,7 +77,9 @@ export default function AddEnquiryModal({ isOpen, onClose, onEnquiryAdded, enqui
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true); setError(''); setFieldErrors({});
+    setLoading(true); 
+    setError(''); 
+    setFieldErrors({});
     
     try {
       const payload = { ...formData };
@@ -86,12 +97,14 @@ export default function AddEnquiryModal({ isOpen, onClose, onEnquiryAdded, enqui
 
       if (enquiryToEdit) {
         await api.put(`/leads/${enquiryToEdit.id}`, payload);
+        toast.success('Enquiry updated successfully');
       } else {
         await api.post('/leads', payload);
+        toast.success('Enquiry created successfully');
       }
       
-      onEnquiryAdded();
-      handleClose();
+      onEnquiryAdded && onEnquiryAdded();
+      onClose();
     } catch (err) {
       console.error(err);
       setError(err?.response?.data?.message || err?.message || 'Failed to save enquiry');
@@ -100,92 +113,151 @@ export default function AddEnquiryModal({ isOpen, onClose, onEnquiryAdded, enqui
     }
   };
 
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 200);
-  };
-
   if (!isOpen || !mounted) return null;
 
+  const inputClass = (fieldName) =>
+    `w-full bg-gray-50 dark:bg-white/5 border ${fieldErrors[fieldName] ? 'border-red-400 dark:border-red-400/60 focus:border-red-500' : 'border-gray-200 dark:border-white/10 focus:border-[#E91E63]'} rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none transition-colors`;
+
+  const labelClass = 'block text-[13px] font-semibold text-gray-600 dark:text-gray-400 mb-1.5';
+
   return createPortal(
-    <div className={`fixed inset-0 z-[110] flex justify-end ${isClosing ? 'animate-[fadeOut_0.3s_ease_forwards]' : 'animate-[fadeIn_0.3s_ease_forwards]'}`}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+      onMouseDown={onClose}
+    >
       <div 
-        className={`bg-admin-card text-admin-text w-full max-w-md h-full border-l border-admin-border shadow-2xl flex flex-col ${isClosing ? 'animate-[slideOutRight_0.2s_ease_forwards]' : 'animate-[slideInRight_0.3s_ease_forwards]'}`}
+        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
         onMouseDown={e => e.stopPropagation()}
       >
-        
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-admin-border bg-admin-surface/50 shrink-0">
-          <h2 className="text-xl font-bold">{enquiryToEdit ? 'Edit Enquiry' : 'Add New Enquiry'}</h2>
-          <button onClick={handleClose} className="p-2 hover:bg-admin-surface rounded-full transition-colors text-admin-text-secondary hover:text-admin-text">
-            <RiCloseLine className="text-xl" />
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
+              <RiQuestionAnswerLine />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+                {enquiryToEdit ? 'Edit Customer Enquiry' : 'New Customer Enquiry'}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {enquiryToEdit ? 'Update prospective customer inquiry details.' : 'Log a new inquiry, consultation request, or prospective client lead.'}
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            <RiCloseLine className="text-2xl" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
-          {error && <div className="p-3 mb-4 rounded-xl bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm">{error}</div>}
+        {/* Modal Body */}
+        <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6 custom-scrollbar">
+          {error && (
+            <div className="flex items-center gap-2 p-3.5 mb-5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[13px] font-medium">
+              <RiInformationLine className="shrink-0 text-base" />
+              {error}
+            </div>
+          )}
           
-          <form id="enquiryForm" onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+          <form id="enquiryForm" onSubmit={handleSubmit} noValidate className="space-y-4">
             
-            {/* Name */}
-            <div>
-              <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Full Name *</label>
-              <div className="relative">
-                <RiUserLine className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted" />
-                <input name="name" value={formData.name} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl pl-10 pr-4 py-2.5 text-sm text-admin-text outline-none transition-colors ${fieldErrors.name ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}
-                  placeholder="Enter full name" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Name */}
+              <div>
+                <label className={labelClass}>Full Name <span className="text-[#E91E63]">*</span></label>
+                <div className="relative">
+                  <RiUserLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base" />
+                  <input 
+                    name="name" 
+                    value={formData.name} 
+                    onChange={handleChange}
+                    className={`${inputClass('name')} pl-10`}
+                    placeholder="Enter full name" 
+                  />
+                </div>
+                {fieldErrors.name && <p className="text-red-500 text-xs mt-1">{fieldErrors.name}</p>}
               </div>
-              {fieldErrors.name && <p className="text-accent-red text-xs mt-1">{fieldErrors.name}</p>}
+
+              {/* Phone */}
+              <div>
+                <label className={labelClass}>Mobile Number <span className="text-[#E91E63]">*</span></label>
+                <div className="relative">
+                  <RiPhoneLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base" />
+                  <input 
+                    name="phone" 
+                    value={formData.phone} 
+                    onChange={handleChange}
+                    className={`${inputClass('phone')} pl-10`}
+                    placeholder="10-digit number" 
+                  />
+                </div>
+                {fieldErrors.phone && <p className="text-red-500 text-xs mt-1">{fieldErrors.phone}</p>}
+              </div>
             </div>
 
-            {/* Phone */}
-            <div>
-              <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Mobile No *</label>
-              <div className="relative">
-                <RiPhoneLine className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted" />
-                <input name="phone" value={formData.phone} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl pl-10 pr-4 py-2.5 text-sm text-admin-text outline-none transition-colors ${fieldErrors.phone ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}
-                  placeholder="10-digit number" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Email */}
+              <div>
+                <label className={labelClass}>Email Address</label>
+                <div className="relative">
+                  <RiMailLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base" />
+                  <input 
+                    type="email" 
+                    name="email" 
+                    value={formData.email} 
+                    onChange={handleChange}
+                    className={`${inputClass('email')} pl-10`}
+                    placeholder="Optional" 
+                  />
+                </div>
+                {fieldErrors.email && <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>}
               </div>
-              {fieldErrors.phone && <p className="text-accent-red text-xs mt-1">{fieldErrors.phone}</p>}
+
+              {/* Location */}
+              <div>
+                <label className={labelClass}>Location / Area</label>
+                <div className="relative">
+                  <RiMapPinLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base" />
+                  <input 
+                    name="location" 
+                    value={formData.location} 
+                    onChange={handleChange}
+                    className={`${inputClass('location')} pl-10`}
+                    placeholder="City or locality" 
+                  />
+                </div>
+                {fieldErrors.location && <p className="text-red-500 text-xs mt-1">{fieldErrors.location}</p>}
+              </div>
             </div>
 
-            {/* Email */}
-            <div>
-              <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Email</label>
-              <div className="relative">
-                <RiMailLine className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted" />
-                <input type="email" name="email" value={formData.email} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl pl-10 pr-4 py-2.5 text-sm text-admin-text outline-none transition-colors ${fieldErrors.email ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}
-                  placeholder="Optional" />
-              </div>
-              {fieldErrors.email && <p className="text-accent-red text-xs mt-1">{fieldErrors.email}</p>}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Gender */}
               <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Gender</label>
-                <select name="gender" value={formData.gender} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl px-3 py-2.5 text-sm text-admin-text outline-none transition-colors ${fieldErrors.gender ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}>
+                <label className={labelClass}>Gender</label>
+                <select 
+                  name="gender" 
+                  value={formData.gender} 
+                  onChange={handleChange}
+                  className={inputClass('gender')}
+                >
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
                 </select>
-                {fieldErrors.gender && <p className="text-accent-red text-xs mt-1">{fieldErrors.gender}</p>}
+                {fieldErrors.gender && <p className="text-red-500 text-xs mt-1">{fieldErrors.gender}</p>}
               </div>
 
               {/* Source */}
               <div>
-                <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Source</label>
-                <select name="source" value={formData.source} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl px-3 py-2.5 text-sm text-admin-text outline-none transition-colors ${fieldErrors.source ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}>
+                <label className={labelClass}>Lead Source</label>
+                <select 
+                  name="source" 
+                  value={formData.source} 
+                  onChange={handleChange}
+                  className={inputClass('source')}
+                >
                   <option value="Walk-in">Walk-in</option>
                   <option value="Instagram">Instagram</option>
                   <option value="Facebook">Facebook</option>
@@ -193,86 +265,98 @@ export default function AddEnquiryModal({ isOpen, onClose, onEnquiryAdded, enqui
                   <option value="Referral">Referral</option>
                   <option value="Other">Other</option>
                 </select>
-                {fieldErrors.source && <p className="text-accent-red text-xs mt-1">{fieldErrors.source}</p>}
+                {fieldErrors.source && <p className="text-red-500 text-xs mt-1">{fieldErrors.source}</p>}
               </div>
             </div>
 
-            {/* Location */}
-            <div>
-              <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Location</label>
-              <div className="relative">
-                <RiMapPinLine className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted" />
-                <input name="location" value={formData.location} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl pl-10 pr-4 py-2.5 text-sm text-admin-text outline-none transition-colors ${fieldErrors.location ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}
-                  placeholder="City or Area" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Status */}
+              <div>
+                <label className={labelClass}>Enquiry Status</label>
+                <select 
+                  name="status" 
+                  value={formData.status} 
+                  onChange={handleChange}
+                  className={inputClass('status')}
+                >
+                  <option value="new">NEW</option>
+                  <option value="contacted">CONTACTED</option>
+                  <option value="follow_up">FOLLOW UP</option>
+                  <option value="converted">CONVERTED</option>
+                  <option value="lost">LOST</option>
+                </select>
+                {fieldErrors.status && <p className="text-red-500 text-xs mt-1">{fieldErrors.status}</p>}
               </div>
-              {fieldErrors.location && <p className="text-accent-red text-xs mt-1">{fieldErrors.location}</p>}
-            </div>
 
-            {/* Status */}
-            <div>
-              <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Lead Status</label>
-              <select name="status" value={formData.status} onChange={handleChange}
-                className={`w-full bg-admin-surface border rounded-xl px-3 py-2.5 text-sm text-admin-text outline-none transition-colors ${fieldErrors.status ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}>
-                <option value="new">NEW</option>
-                <option value="contacted">CONTACTED</option>
-                <option value="follow_up">FOLLOW UP</option>
-                <option value="converted">CONVERTED</option>
-                <option value="lost">LOST</option>
-              </select>
-              {fieldErrors.status && <p className="text-accent-red text-xs mt-1">{fieldErrors.status}</p>}
-            </div>
-
-            {/* Assigned To */}
-            <div>
-              <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Assigned Staff</label>
-              <select name="assigned_to" value={formData.assigned_to} onChange={handleChange}
-                className={`w-full bg-admin-surface border rounded-xl px-3 py-2.5 text-sm text-admin-text outline-none transition-colors ${fieldErrors.assigned_to ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}>
-                <option value="">Unassigned</option>
-                {staffList.map(s => (
-                  <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-                ))}
-              </select>
-              {fieldErrors.assigned_to && <p className="text-accent-red text-xs mt-1">{fieldErrors.assigned_to}</p>}
+              {/* Assigned To */}
+              <div>
+                <label className={labelClass}>Assigned Staff</label>
+                <select 
+                  name="assigned_to" 
+                  value={formData.assigned_to} 
+                  onChange={handleChange}
+                  className={inputClass('assigned_to')}
+                >
+                  <option value="">Unassigned</option>
+                  {staffList.map(s => (
+                    <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+                  ))}
+                </select>
+                {fieldErrors.assigned_to && <p className="text-red-500 text-xs mt-1">{fieldErrors.assigned_to}</p>}
+              </div>
             </div>
 
             {/* Follow Up Date */}
             <div>
-              <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Follow-up Date</label>
+              <label className={labelClass}>Follow-up Date</label>
               <div className="relative">
-                <RiCalendarEventLine className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted" />
-                <input type="date" name="follow_up_date" value={formData.follow_up_date} onChange={handleChange}
-                  className={`w-full bg-admin-surface border rounded-xl pl-10 pr-4 py-2.5 text-sm text-admin-text outline-none transition-colors [color-scheme:dark] html[data-theme-mode='light']:![color-scheme:light] ${fieldErrors.follow_up_date ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`} />
+                <RiCalendarEventLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base" />
+                <input 
+                  type="date" 
+                  name="follow_up_date" 
+                  value={formData.follow_up_date} 
+                  onChange={handleChange}
+                  className={`${inputClass('follow_up_date')} pl-10`} 
+                />
               </div>
-              {fieldErrors.follow_up_date && <p className="text-accent-red text-xs mt-1">{fieldErrors.follow_up_date}</p>}
+              {fieldErrors.follow_up_date && <p className="text-red-500 text-xs mt-1">{fieldErrors.follow_up_date}</p>}
             </div>
 
             {/* Notes */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-admin-text-secondary mb-1">Latest Note / Description</label>
-              <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3"
-                className={`w-full bg-admin-surface border rounded-xl p-4 text-sm text-admin-text outline-none transition-colors resize-none ${fieldErrors.notes ? 'border-accent-red focus:border-accent-red' : 'border-admin-border focus:border-brand'}`}
-                placeholder="Enter enquiry details or remarks..."></textarea>
-              {fieldErrors.notes && <p className="text-accent-red text-xs mt-1">{fieldErrors.notes}</p>}
+            <div>
+              <label className={labelClass}>Requirement / Remarks / Notes</label>
+              <textarea 
+                name="notes" 
+                value={formData.notes} 
+                onChange={handleChange} 
+                rows="3"
+                className={`${inputClass('notes')} resize-none`}
+                placeholder="Details of the services inquired, preferred timing, client requirements..."
+              />
+              {fieldErrors.notes && <p className="text-red-500 text-xs mt-1">{fieldErrors.notes}</p>}
             </div>
             
           </form>
         </div>
 
-        {/* Fixed Footer */}
-        <div className="p-6 border-t border-admin-border bg-admin-surface/50 flex justify-end gap-3 shrink-0">
-              <button type="button" onClick={handleClose} disabled={loading}
-                className="px-6 py-2.5 rounded-xl border border-admin-border text-admin-text-secondary hover:text-admin-text hover:bg-admin-surface-light text-sm font-bold transition-colors">
-                Cancel
-              </button>
-              <button
-                type="submit"
-                form="enquiryForm"
-                disabled={loading}
-                className="px-6 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-light transition-colors disabled:opacity-50 shadow-sm shadow-brand/20"
-              >
-                {loading ? 'Saving...' : enquiryToEdit ? 'Update Enquiry' : 'Save Enquiry'}
-              </button>
+        {/* Modal Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
+          <button 
+            type="button" 
+            onClick={onClose} 
+            disabled={loading}
+            className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="enquiryForm"
+            disabled={loading}
+            className="px-6 py-2.5 bg-[#E91E63] text-white rounded-xl text-sm font-semibold hover:bg-[#d81557] transition-all disabled:opacity-50 shadow-md shadow-[#E91E63]/25 cursor-pointer"
+          >
+            {loading ? 'Saving...' : enquiryToEdit ? 'Update Enquiry' : 'Save Enquiry'}
+          </button>
         </div>
       </div>
     </div>,

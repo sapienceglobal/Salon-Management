@@ -111,6 +111,7 @@ class StaffService {
     delete staffData.role;
     delete staffData.password;
     delete staffData.image;
+    delete staffData.avatar_url;
 
     const [id] = await db('staff_members').insert({
       ...cleanObject(staffData),
@@ -154,6 +155,7 @@ class StaffService {
     delete staffData.role;
     delete staffData.password;
     delete staffData.image;
+    delete staffData.avatar_url;
 
     await db('staff_members').where({ id, business_id: businessId }).update({ ...cleanObject(staffData), updated_at: db.fn.now() });
     return this.getById(id, businessId);

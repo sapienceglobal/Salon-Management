@@ -49,6 +49,14 @@ class ServiceService {
     return serviceRepository.update(id, businessId, cleanObject(data));
   }
   async delete(id, businessId) { await this.getById(id, businessId); await serviceRepository.delete(id, businessId); }
+  async bulkDelete(ids, businessId) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    return serviceRepository.bulkDelete(ids, businessId);
+  }
+  async bulkUpdateStatus(ids, businessId, isActive) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    return serviceRepository.bulkUpdateStatus(ids, businessId, isActive);
+  }
 }
 
 export const serviceService = new ServiceService();

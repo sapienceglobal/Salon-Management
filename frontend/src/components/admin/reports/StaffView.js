@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { RiUserStarLine, RiScissorsLine, RiMoneyDollarCircleLine } from 'react-icons/ri';
+import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 
 export default function StaffView({ startDate, endDate }) {
   const [data, setData] = useState([]);
@@ -81,7 +82,10 @@ export default function StaffView({ startDate, endDate }) {
 
       {/* Staff Performance Table - Matching dark UI */}
       <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto custom-scrollbar">
+        <TableScrollContainer
+          leftGradientClass="bg-gradient-to-r from-white via-white/85 to-transparent dark:from-[#1e1e35] dark:via-[#1e1e35]/85 dark:to-transparent"
+          rightGradientClass="bg-gradient-to-l from-white via-white/85 to-transparent dark:from-[#1e1e35] dark:via-[#1e1e35]/85 dark:to-transparent"
+        >
           <table className="w-full min-w-[600px] text-left border-collapse">
             <thead>
               <tr className="bg-admin-surface/70 text-admin-text-secondary border-b border-admin-border text-xs uppercase tracking-wider">
@@ -109,7 +113,7 @@ export default function StaffView({ startDate, endDate }) {
               )}
             </tbody>
           </table>
-        </div>
+        </TableScrollContainer>
       </div>
     </div>
   );

@@ -15,6 +15,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import StatCard from '@/components/admin/StatCard';
+import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
+import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -108,7 +110,24 @@ const ChartTooltip = ({ active, payload, label }) => {
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const greeting = getGreeting();
+  const [greeting, setGreeting] = useState('');
+
+  useEffect(() => {
+    setGreeting(getGreeting());
+    const interval = setInterval(() => {
+      setGreeting(getGreeting());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getGreetingName = () => {
+    if (!user) return 'Admin';
+    const first = (user.first_name || '').trim();
+    if (!first || first.toLowerCase() === 'super') {
+      return 'Admin';
+    }
+    return first;
+  };
 
   // State for all dashboard data
   const [summary, setSummary] = useState(null);
@@ -266,35 +285,41 @@ export default function DashboardPage() {
   return (
     <div className="animate-[fadeIn_0.5s_ease_forwards]">
 
-      {/* ====== Greeting Row ====== */}
-      <div className="flex items-center justify-between gap-5 mb-6">
-        <div>
-          <h1 className="font-heading text-[1.75rem] font-bold">{greeting}, {user?.first_name || 'Admin'}!</h1>
-          <p className="text-sm text-admin-text-secondary mt-1">Here&apos;s your salon business overview for today.</p>
-        </div>
-       
-      </div>
+      {/* ====== Top Hero & Stat Cards Section with Gradient ====== */}
+      <div className="relative -mx-6 -mt-6 px-6 pt-6 mb-6 overflow-hidden">
+        <PageHeaderGradient height="h-[320px]" />
 
-      {/* ====== Stat Cards ====== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
-        ) : (
-          statCards.map((card, i) => (
-            <StatCard
-              key={i}
-              icon={card.icon}
-              label={card.label}
-              value={card.value}
-              color={card.color}
-              trend={card.trend}
-              up={card.up}
-              href={card.href}
-              loading={loading}
-              delay={`${(i + 1) * 0.1}s`}
-            />
-          ))
-        )}
+        {/* ====== Greeting Row ====== */}
+        <div className="relative z-10 flex items-center justify-between gap-5 mb-6">
+          <div>
+            <h1 className="font-heading text-[1.75rem] font-bold text-gray-900 dark:text-white tracking-tight">
+              {greeting || getGreeting()}, {getGreetingName()}!
+            </h1>
+            <p className="text-sm text-admin-text-secondary mt-1">Here&apos;s your salon business overview for today.</p>
+          </div>
+        </div>
+
+        {/* ====== Stat Cards ====== */}
+        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-5 mb-2">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
+          ) : (
+            statCards.map((card, i) => (
+              <StatCard
+                key={i}
+                icon={card.icon}
+                label={card.label}
+                value={card.value}
+                color={card.color}
+                trend={card.trend}
+                up={card.up}
+                href={card.href}
+                loading={loading}
+                delay={`${(i + 1) * 0.1}s`}
+              />
+            ))
+          )}
+        </div>
       </div>
 
       {/* ====== Row 2: Appointments Table + Revenue Chart ====== */}
@@ -306,13 +331,17 @@ export default function DashboardPage() {
             <span className="text-[0.95rem] font-semibold">Today&apos;s Appointments</span>
             <Link href="/appointments" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
-          <div className="p-0 max-h-[360px] overflow-y-auto overflow-x-auto custom-scrollbar relative">
+          <div className="p-0 max-h-[360px] overflow-y-auto relative">
             {loading ? (
               <TableSkeleton rows={5} />
             ) : todayAppointments.length === 0 ? (
               <EmptyState message="No appointments scheduled for today" />
             ) : (
-              <table className="w-full min-w-[500px] border-collapse">
+              <TableScrollContainer
+                leftGradientClass="bg-gradient-to-r from-white via-white/85 to-transparent dark:from-[#1e1e35] dark:via-[#1e1e35]/85 dark:to-transparent"
+                rightGradientClass="bg-gradient-to-l from-white via-white/85 to-transparent dark:from-[#1e1e35] dark:via-[#1e1e35]/85 dark:to-transparent"
+              >
+                <table className="w-full min-w-[550px] border-collapse">
                 <thead className="sticky top-0 bg-admin-card z-10 shadow-sm">
                   <tr>
                     {['Time', 'Customer', 'Service', 'Staff', 'Status'].map((h) => (
@@ -343,6 +372,7 @@ export default function DashboardPage() {
                   ))}
                 </tbody>
               </table>
+            </TableScrollContainer>
             )}
           </div>
         </div>

@@ -26,11 +26,11 @@ export const updateCategorySchema = {
 
 export const createServiceSchema = {
   body: z.object({
-    category_id: z.coerce.number().int().positive().optional(),
+    category_id: z.coerce.number().int().positive().optional().nullable(),
     name: z.string().min(1).max(255),
     description: z.string().max(1000).optional().nullable(),
     duration_minutes: z.coerce.number().int().positive().min(1),
-    price: z.coerce.number().positive(),
+    price: z.coerce.number().nonnegative(),
     discounted_price: z.coerce.number().nonnegative().optional().nullable(),
     cost_price: z.coerce.number().nonnegative().optional().nullable(),
     hsn_sac_code: z.string().max(20).optional().nullable(),
@@ -56,7 +56,7 @@ export const updateServiceSchema = {
     name: z.string().min(1).max(255).optional(),
     description: z.string().max(1000).optional().nullable(),
     duration_minutes: z.coerce.number().int().positive().min(1).optional(),
-    price: z.coerce.number().positive().optional(),
+    price: z.coerce.number().nonnegative().optional(),
     discounted_price: z.coerce.number().nonnegative().optional().nullable(),
     cost_price: z.coerce.number().nonnegative().optional().nullable(),
     hsn_sac_code: z.string().max(20).optional().nullable(),

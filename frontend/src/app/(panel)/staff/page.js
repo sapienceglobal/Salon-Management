@@ -11,6 +11,7 @@ import StaffDetailsModal from '@/components/admin/StaffDetailsModal';
 import { formatCurrency, parseSpecializations } from '@/lib/utils';
 import { useConfirm } from '@/context/ConfirmContext';
 import toast from 'react-hot-toast';
+import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 
 export default function StaffPage() {
   const confirm = useConfirm();
@@ -129,54 +130,59 @@ export default function StaffPage() {
   return (
     <div className="animate-[fadeIn_0.5s_ease_forwards] flex flex-col h-full">
       
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="font-heading text-[1.75rem] font-bold">Staff Directory</h1>
-          <p className="text-sm text-admin-text-secondary mt-1">Manage your team, roles, and view performance.</p>
-        </div>
-        <button 
-          onClick={openAddForm}
-          className="bg-brand text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-brand-light transition-colors shadow-lg shadow-brand/20 flex items-center gap-2"
-        >
-          <RiUserAddLine className="text-lg" /> Onboard Staff
-        </button>
-      </div>
+      {/* Header & Toolbar Section with Ambient Pink-White Gradient */}
+      <div className="relative -mx-6 -mt-6 px-6 pt-6 pb-2 mb-6 overflow-hidden">
+        <PageHeaderGradient height="h-[240px]" />
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-admin-card border border-admin-border p-3 rounded-xl">
-        {/* Search */}
-        <div className="flex items-center gap-2 bg-admin-surface-light border border-admin-border rounded-lg px-4 py-2 focus-within:border-brand transition-colors w-full max-w-md">
-          <RiSearchLine className="text-admin-text-muted shrink-0" />
-          <input 
-            type="text" 
-            placeholder="Search by name, email, or designation..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent border-none text-sm w-full outline-none" 
-          />
+        {/* Header */}
+        <div className="relative z-10 flex items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="font-heading text-2xl sm:text-[1.75rem] font-bold text-gray-900 dark:text-white tracking-tight">Staff Directory</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your team, roles, and view performance.</p>
+          </div>
+          <button 
+            onClick={openAddForm}
+            className="bg-[#E91E63] hover:bg-[#D81B60] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md shadow-[#E91E63]/25 flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] shrink-0"
+          >
+            <RiUserAddLine className="text-lg" /> Onboard Staff
+          </button>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex items-center bg-admin-surface-light border border-admin-border rounded-lg p-1 text-xs font-medium">
-          <button
-            onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${statusFilter === 'all' ? 'bg-brand text-white shadow-sm' : 'text-admin-text-secondary hover:text-admin-text'}`}
-          >
-            All ({allStaffCount})
-          </button>
-          <button
-            onClick={() => setStatusFilter('active')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${statusFilter === 'active' ? 'bg-accent-green text-white shadow-sm' : 'text-admin-text-secondary hover:text-admin-text'}`}
-          >
-            Active ({activeStaffCount})
-          </button>
-          <button
-            onClick={() => setStatusFilter('inactive')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${statusFilter === 'inactive' ? 'bg-accent-red text-white shadow-sm' : 'text-admin-text-secondary hover:text-admin-text'}`}
-          >
-            Inactive ({inactiveStaffCount})
-          </button>
+        {/* Toolbar */}
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 bg-white/80 dark:bg-admin-card/80 backdrop-blur-sm border border-pink-100/80 dark:border-white/10 p-3 rounded-2xl shadow-sm">
+          {/* Search */}
+          <div className="flex items-center gap-2 bg-admin-surface-light border border-admin-border rounded-xl px-4 py-2 focus-within:border-[#E91E63] transition-colors w-full max-w-md">
+            <RiSearchLine className="text-admin-text-muted shrink-0" />
+            <input 
+              type="text" 
+              placeholder="Search by name, email, or designation..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent border-none text-sm w-full outline-none" 
+            />
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex items-center bg-admin-surface-light border border-admin-border rounded-xl p-1 text-xs font-semibold">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-lg transition-colors ${statusFilter === 'all' ? 'bg-[#E91E63] text-white shadow-sm' : 'text-admin-text-secondary hover:text-admin-text'}`}
+            >
+              All ({allStaffCount})
+            </button>
+            <button
+              onClick={() => setStatusFilter('active')}
+              className={`px-3 py-1.5 rounded-lg transition-colors ${statusFilter === 'active' ? 'bg-accent-green text-white shadow-sm' : 'text-admin-text-secondary hover:text-admin-text'}`}
+            >
+              Active ({activeStaffCount})
+            </button>
+            <button
+              onClick={() => setStatusFilter('inactive')}
+              className={`px-3 py-1.5 rounded-lg transition-colors ${statusFilter === 'inactive' ? 'bg-accent-red text-white shadow-sm' : 'text-admin-text-secondary hover:text-admin-text'}`}
+            >
+              Inactive ({inactiveStaffCount})
+            </button>
+          </div>
         </div>
       </div>
 

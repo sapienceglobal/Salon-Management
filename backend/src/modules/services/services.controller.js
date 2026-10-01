@@ -61,3 +61,15 @@ export const deleteService = asyncHandler(async (req, res) => {
   await serviceService.delete(req.params.id, req.user.business_id);
   ApiResponse.ok('Service deactivated').send(res);
 });
+
+export const bulkDeleteServices = asyncHandler(async (req, res) => {
+  const { ids } = req.body;
+  const count = await serviceService.bulkDelete(ids, req.user.business_id);
+  ApiResponse.ok(`${count} services deleted successfully`, { count }).send(res);
+});
+
+export const bulkStatusServices = asyncHandler(async (req, res) => {
+  const { ids, is_active } = req.body;
+  const count = await serviceService.bulkUpdateStatus(ids, req.user.business_id, is_active);
+  ApiResponse.ok(`${count} services status updated`, { count }).send(res);
+});

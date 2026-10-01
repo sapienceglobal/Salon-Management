@@ -3,7 +3,17 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useScrollLock } from '@/hooks/useScrollLock';
-import { RiCloseLine, RiUserStarLine, RiMoneyDollarCircleLine, RiScissorsLine, RiCalendarCheckLine, RiDeleteBinLine, RiPhoneLine, RiMailLine } from 'react-icons/ri';
+import { 
+  RiCloseLine, 
+  RiUserStarLine, 
+  RiMoneyDollarCircleLine, 
+  RiScissorsLine, 
+  RiCalendarCheckLine, 
+  RiDeleteBinLine, 
+  RiPhoneLine, 
+  RiMailLine,
+  RiEdit2Line
+} from 'react-icons/ri';
 import { formatCurrency, parseSpecializations } from '@/lib/utils';
 import api from '@/lib/api';
 import { useConfirm } from '@/context/ConfirmContext';
@@ -12,31 +22,11 @@ import toast from 'react-hot-toast';
 export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, onDelete, onStatusChange }) {
   const { confirm } = useConfirm();
   const [mounted, setMounted] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [staff, setStaff] = useState(null);
   const [performance, setPerformance] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useScrollLock(isOpen);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen && staffId) {
-      setIsClosing(false);
-      fetchStaffDetails(staffId);
-    }
-  }, [isOpen, staffId]);
-
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 200); // match animation duration
-  };
 
   const fetchStaffDetails = async (id) => {
     setLoading(true);
@@ -53,6 +43,16 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && staffId) {
+      fetchStaffDetails(staffId);
+    }
+  }, [isOpen, staffId]);
 
   const handleToggleActive = async () => {
     if (!staff) return;
@@ -73,25 +73,65 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
   const specs = parseSpecializations(staff?.specializations);
 
   return createPortal(
-    <div className={`fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-sm ${isClosing ? 'animate-[fadeOut_0.2s_ease_forwards]' : 'animate-[fadeIn_0.2s_ease_forwards]'}`} onMouseDown={handleClose}>
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+      onMouseDown={onClose}
+    >
       <div 
-        className={`bg-admin-card text-admin-text w-full max-w-[480px] h-full border-l border-admin-border shadow-2xl flex flex-col ${isClosing ? 'animate-[slideOutRight_0.2s_ease_forwards]' : 'animate-[slideInRight_0.3s_ease_forwards]'}`}
+        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
         onMouseDown={e => e.stopPropagation()}
       >
         {loading ? (
-          <div className="flex-1 p-6 space-y-6">
-            <div className="h-24 bg-admin-surface-light rounded-2xl animate-pulse"></div>
-            <div className="h-40 bg-admin-surface-light rounded-2xl animate-pulse"></div>
+          <div className="p-8 space-y-6">
+            <div className="h-24 bg-gray-100 dark:bg-white/5 rounded-2xl animate-pulse"></div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="h-24 bg-admin-surface-light rounded-2xl animate-pulse"></div>
-              <div className="h-24 bg-admin-surface-light rounded-2xl animate-pulse"></div>
+              <div className="h-24 bg-gray-100 dark:bg-white/5 rounded-2xl animate-pulse"></div>
+              <div className="h-24 bg-gray-100 dark:bg-white/5 rounded-2xl animate-pulse"></div>
             </div>
+            <div className="h-28 bg-gray-100 dark:bg-white/5 rounded-2xl animate-pulse"></div>
           </div>
         ) : staff ? (
           <>
-            {/* Header / Profile Card */}
-            <div className="p-6 border-b border-admin-border bg-admin-surface/30 shrink-0 relative">
-              <div className="absolute top-4 right-4 flex items-center gap-2">
+            {/* Modal Header / Profile Card */}
+            <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+              <div className="flex items-center gap-4">
+                {staff.avatar_url ? (
+                  <img
+                    src={staff.avatar_url}
+                    alt={`${staff.first_name} ${staff.last_name}`}
+                    className="w-14 h-14 rounded-2xl object-cover shadow-sm border border-gray-200 dark:border-white/10 ring-2 ring-[#E91E63]/30 shrink-0"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-[#E91E63]/10 text-[#E91E63] flex items-center justify-center text-xl shrink-0 font-bold border border-[#E91E63]/20">
+                    {staff.first_name ? staff.first_name.charAt(0) : ''}{staff.last_name ? staff.last_name.charAt(0) : ''}
+                  </div>
+                )}
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+                      {staff.first_name} {staff.last_name}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={handleToggleActive}
+                      className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full transition-colors cursor-pointer ${
+                        staff.is_active 
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' 
+                          : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200 dark:border-rose-800'
+                      }`}
+                      title={`Click to ${staff.is_active ? 'deactivate' : 'activate'}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${staff.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                      {staff.is_active ? 'Active' : 'Inactive'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
+                    {staff.designation || 'Staff Member'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1">
                 <button 
                   onClick={async () => {
                     const isConfirmed = await confirm({
@@ -101,115 +141,77 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
                     });
                     if (isConfirmed) {
                       onDelete && onDelete(staff.id);
-                      handleClose();
+                      onClose();
                     }
                   }} 
-                  className="text-admin-text-secondary hover:text-accent-red p-2 rounded-md hover:bg-accent-red/10 transition-colors"
+                  className="text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
                   title="Delete Staff"
                 >
                   <RiDeleteBinLine className="text-xl" />
                 </button>
-                <button onClick={handleClose} className="text-admin-text-secondary hover:text-admin-text p-2 rounded-md hover:bg-admin-surface-light transition-colors" title="Close">
+                <button 
+                  onClick={onClose} 
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                >
                   <RiCloseLine className="text-2xl" />
                 </button>
               </div>
-              
-              <div className="flex items-center gap-5 mt-2">
-                {staff.avatar_url ? (
-                  <img
-                    src={staff.avatar_url}
-                    alt={`${staff.first_name} ${staff.last_name}`}
-                    className="w-20 h-20 rounded-2xl object-cover shadow-sm border-2 border-white dark:border-white/10 ring-2 ring-[#E91E63]/30 shrink-0"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-2xl bg-brand/10 text-brand flex items-center justify-center text-3xl shrink-0 font-bold border border-brand/20">
-                    {staff.first_name ? staff.first_name.charAt(0) : ''}{staff.last_name ? staff.last_name.charAt(0) : ''}
-                  </div>
-                )}
-                <div>
-                  <h2 className="text-2xl font-bold">{staff.first_name} {staff.last_name}</h2>
-                  <div className="flex items-center gap-2.5 mt-1.5 mb-2 flex-wrap">
-                    <span className="text-sm font-semibold text-admin-text-secondary uppercase tracking-wider">{staff.designation || 'Staff'}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-admin-border"></span>
-                    <button
-                      type="button"
-                      onClick={handleToggleActive}
-                      className={`inline-flex items-center gap-1.5 text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-md transition-colors cursor-pointer ${
-                        staff.is_active 
-                          ? 'bg-accent-green/10 text-accent-green hover:bg-accent-green/20 border border-accent-green/20' 
-                          : 'bg-accent-red/10 text-accent-red hover:bg-accent-red/20 border border-accent-red/20'
-                      }`}
-                      title={`Click to ${staff.is_active ? 'deactivate' : 'activate'}`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${staff.is_active ? 'bg-accent-green animate-pulse' : 'bg-accent-red'}`}></span>
-                      {staff.is_active ? 'Active' : 'Inactive'}
-                    </button>
-                    {/* Inline switch */}
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={staff.is_active}
-                      onClick={handleToggleActive}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        staff.is_active ? 'bg-accent-green' : 'bg-admin-surface border border-admin-border'
-                      }`}
-                      title={staff.is_active ? 'Click to deactivate' : 'Click to activate'}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          staff.is_active ? 'translate-x-4' : 'translate-x-0 bg-admin-text-muted'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-4 mt-2">
-                    <a href={`mailto:${staff.email}`} className="flex items-center gap-1.5 text-sm text-admin-text-muted hover:text-brand transition-colors">
-                      <RiMailLine /> {staff.email}
-                    </a>
-                    <a href={`tel:${staff.phone}`} className="flex items-center gap-1.5 text-sm text-admin-text-muted hover:text-brand transition-colors">
-                      <RiPhoneLine /> {staff.phone}
-                    </a>
-                  </div>
-                </div>
-              </div>
             </div>
 
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Modal Body */}
+            <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6 space-y-6 custom-scrollbar">
               
+              {/* Contact info strip */}
+              <div className="flex flex-wrap gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/5">
+                {staff.email && (
+                  <a href={`mailto:${staff.email}`} className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-[#E91E63] dark:hover:text-[#E91E63] transition-colors">
+                    <RiMailLine className="text-base text-[#E91E63]" /> {staff.email}
+                  </a>
+                )}
+                {staff.phone && (
+                  <a href={`tel:${staff.phone}`} className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-[#E91E63] dark:hover:text-[#E91E63] transition-colors">
+                    <RiPhoneLine className="text-base text-[#E91E63]" /> {staff.phone}
+                  </a>
+                )}
+              </div>
+
               {/* Performance Metrics for Current Month */}
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-admin-text-muted mb-3 flex items-center gap-2">
-                  <RiUserStarLine /> Current Month Performance
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
+                  <RiUserStarLine className="text-[#E91E63]" /> Current Month Performance
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-admin-surface-light border border-admin-border p-4 rounded-2xl">
-                    <div className="flex items-center gap-2 text-admin-text-secondary mb-1">
-                      <RiScissorsLine /> <span className="text-xs font-semibold uppercase">Services</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/5 p-4 rounded-2xl">
+                    <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 mb-1">
+                      <RiScissorsLine className="text-base text-[#E91E63]" /> 
+                      <span className="text-[11px] font-semibold uppercase">Services</span>
                     </div>
-                    <div className="text-2xl font-bold">{performance?.total_services || 0}</div>
+                    <div className="text-xl font-bold text-gray-900 dark:text-white">{performance?.total_services || 0}</div>
                   </div>
                   
-                  <div className="bg-admin-surface-light border border-admin-border p-4 rounded-2xl">
-                    <div className="flex items-center gap-2 text-admin-text-secondary mb-1">
-                      <RiMoneyDollarCircleLine /> <span className="text-xs font-semibold uppercase">Revenue</span>
+                  <div className="bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/5 p-4 rounded-2xl">
+                    <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 mb-1">
+                      <RiMoneyDollarCircleLine className="text-base text-emerald-500" /> 
+                      <span className="text-[11px] font-semibold uppercase">Revenue</span>
                     </div>
-                    <div className="text-2xl font-bold text-accent-green">{formatCurrency(performance?.total_revenue || 0)}</div>
+                    <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(performance?.total_revenue || 0)}</div>
                   </div>
 
-                  <div className="bg-admin-surface-light border border-admin-border p-4 rounded-2xl">
-                    <div className="flex items-center gap-2 text-admin-text-secondary mb-1">
-                      <RiMoneyDollarCircleLine /> <span className="text-xs font-semibold uppercase">Commission</span>
+                  <div className="bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/5 p-4 rounded-2xl">
+                    <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 mb-1">
+                      <RiMoneyDollarCircleLine className="text-base text-[#E91E63]" /> 
+                      <span className="text-[11px] font-semibold uppercase">Commission</span>
                     </div>
-                    <div className="text-2xl font-bold text-brand">{formatCurrency(performance?.total_commission || 0)}</div>
+                    <div className="text-xl font-bold text-[#E91E63]">{formatCurrency(performance?.total_commission || 0)}</div>
                   </div>
 
-                  <div className="bg-admin-surface-light border border-admin-border p-4 rounded-2xl">
-                    <div className="flex items-center gap-2 text-admin-text-secondary mb-1">
-                      <RiCalendarCheckLine /> <span className="text-xs font-semibold uppercase">Attendance</span>
+                  <div className="bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/5 p-4 rounded-2xl">
+                    <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 mb-1">
+                      <RiCalendarCheckLine className="text-base text-blue-500" /> 
+                      <span className="text-[11px] font-semibold uppercase">Attendance</span>
                     </div>
-                    <div className="text-2xl font-bold">
-                      {performance?.present_days || 0} <span className="text-sm text-admin-text-muted font-normal">/ {performance?.present_days + performance?.absent_days + performance?.half_days || 0}</span>
+                    <div className="text-xl font-bold text-gray-900 dark:text-white">
+                      {performance?.present_days || 0} <span className="text-xs text-gray-400 font-normal">/ {(performance?.present_days || 0) + (performance?.absent_days || 0) + (performance?.half_days || 0)}</span>
                     </div>
                   </div>
                 </div>
@@ -218,10 +220,12 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
               {/* Specializations */}
               {specs.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-admin-text-muted mb-3">Specializations</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2.5">
+                    Specializations & Skills
+                  </h3>
                   <div className="flex flex-wrap gap-2">
                     {specs.map((spec, i) => (
-                      <span key={i} className="px-3 py-1 bg-admin-surface-light border border-admin-border rounded-lg text-sm font-medium">
+                      <span key={i} className="px-3 py-1.5 bg-[#E91E63]/10 text-[#E91E63] border border-[#E91E63]/20 rounded-xl text-xs font-semibold">
                         {spec}
                       </span>
                     ))}
@@ -232,41 +236,43 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
               {/* Bio */}
               {staff.bio && (
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-admin-text-muted mb-3">Bio / Notes</h3>
-                  <p className="text-sm text-admin-text-secondary leading-relaxed bg-admin-surface-light p-4 rounded-2xl border border-admin-border">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+                    Bio / Notes
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed bg-gray-50 dark:bg-white/[0.02] p-4 rounded-2xl border border-gray-100 dark:border-white/5 whitespace-pre-wrap">
                     {staff.bio}
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Footer Actions */}
-            <div className="p-6 border-t border-admin-border bg-admin-surface/50 shrink-0 grid grid-cols-2 gap-3">
+            {/* Modal Footer Actions */}
+            <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
               <button 
                 type="button" 
-                onClick={handleClose}
-                className="flex items-center justify-center py-2.5 px-4 rounded-xl font-medium border border-admin-border hover:bg-admin-surface transition-colors w-full"
+                onClick={onClose}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
               >
                 Close
               </button>
               
               <button 
                 type="button"
-                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold bg-brand text-white hover:bg-brand-dark transition-colors shadow-lg shadow-brand/25 w-full"
+                className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold bg-[#E91E63] text-white rounded-xl hover:bg-[#d81557] transition-all shadow-md shadow-[#E91E63]/25 cursor-pointer"
                 onClick={() => {
-                  handleClose();
+                  onClose();
                   setTimeout(() => {
                     onEdit && onEdit(staff);
-                  }, 250);
+                  }, 150);
                 }}
               >
-                <RiUserStarLine className="text-lg" /> Edit Profile
+                <RiEdit2Line className="text-base" /> Edit Profile
               </button>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-admin-text-muted">Staff not found.</p>
+          <div className="p-12 text-center text-gray-400">
+            Staff not found.
           </div>
         )}
       </div>

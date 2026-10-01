@@ -27,11 +27,15 @@ import {
   RiRefreshLine,
   RiLoader2Line,
   RiDeleteBin6Line,
+  RiCloseLine,
 } from 'react-icons/ri';
 import AddCustomerModal from '@/components/admin/customers/AddCustomerModal';
 import CustomerProfilePanel from '@/components/admin/customers/CustomerProfilePanel';
 import ImportCustomersModal from '@/components/admin/customers/ImportCustomersModal';
 import CustomerFilterDrawer from '@/components/admin/customers/CustomerFilterDrawer';
+import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
+import BulkActionBar from '@/components/admin/common/BulkActionBar';
+import { useConfirm } from '@/context/ConfirmContext';
 import toast from 'react-hot-toast';
 
 const ALPHABETS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -59,6 +63,7 @@ function MiniBars({ color = 'pink', heights = [30, 45, 60, 80, 100] }) {
 }
 
 export default function CustomersPage() {
+  const { confirm } = useConfirm();
   const [customers, setCustomers] = useState([]);
   const [meta, setMeta] = useState({ total: 7, page: 1, limit: 20, totalPages: 1 });
   const [stats, setStats] = useState({
@@ -68,6 +73,7 @@ export default function CustomersPage() {
     defected_customers: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
 
   const [filters, setFilters] = useState({
@@ -177,6 +183,93 @@ export default function CustomersPage() {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
+  };
+
+  const handleBulkActivate = async () => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+      await api.post('/customers/bulk-status', { ids: selectedIds, is_active: true });
+      toast.success(`${selectedIds.length} customer${selectedIds.length > 1 ? 's' : ''} activated`);
+      fetchCustomers();
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to activate selected customers');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+      await api.post('/customers/bulk-status', { ids: selectedIds, is_active: false });
+      toast.success(`${selectedIds.length} customer${selectedIds.length > 1 ? 's' : ''} deactivated`);
+      fetchCustomers();
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to deactivate selected customers');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleExportSelected = () => {
+    if (selectedIds.length === 0) return;
+    const selectedCustomers = customers.filter((c) => selectedIds.includes(c.id));
+    const headers = ['First Name', 'Last Name', 'Phone', 'Email', 'Status', 'Source', 'Total Spent', 'Total Visits', 'Wallet Balance'];
+    const csvRows = [headers.join(',')];
+
+    for (const row of selectedCustomers) {
+      const values = [
+        `"${row.first_name || ''}"`,
+        `"${row.last_name || ''}"`,
+        `"${row.phone || ''}"`,
+        `"${row.email || ''}"`,
+        `"${row.is_active ? 'Active' : 'Inactive'}"`,
+        `"${row.source || ''}"`,
+        `"${row.total_spent || 0}"`,
+        `"${row.total_visits || 0}"`,
+        `"${row.wallet_balance || 0}"`,
+      ];
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `selected_customers_${formatDate(new Date()).replace(/\//g, '-')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${selectedCustomers.length} selected customers`);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const isOk = await confirm({
+      title: 'Delete Selected Customers',
+      message: `Are you sure you want to permanently delete ${selectedIds.length} customer${selectedIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: 'Delete Permanently',
+      type: 'danger',
+    });
+    if (!isOk) return;
+
+    setBulkLoading(true);
+    try {
+      await api.post('/customers/bulk-delete', { ids: selectedIds });
+      toast.success(`${selectedIds.length} customer${selectedIds.length > 1 ? 's' : ''} deleted`);
+      fetchCustomers();
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete selected customers');
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   const exportToCSV = async () => {
@@ -314,38 +407,68 @@ export default function CustomersPage() {
              (Full-bleed from root header down behind stat cards)
          ======================================================== */}
       <div className="relative w-full mb-6">
-        {/* Full-bleed ambient backdrop extending down through the stat cards */}
-        <div 
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            background: 'linear-gradient(180deg, rgba(255, 235, 243, 0.95) 0%, rgba(255, 242, 247, 0.75) 45%, rgba(255, 248, 252, 0.3) 75%, transparent 100%)',
-          }}
-        />
-
-        {/* Ambient radial pink aura centered behind model & quote */}
         <div
-          className="absolute top-0 left-[15%] right-[5%] h-[340px] pointer-events-none z-0"
+          className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
           style={{
-            background: 'radial-gradient(ellipse 75% 65% at 55% 25%, rgba(255, 202, 225, 0.8) 0%, rgba(255, 226, 239, 0.4) 50%, transparent 85%)',
+            maskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
           }}
-        />
+        >
+          {/* ========================================================
+              LIGHT MODE GRADIENTS (Hidden completely in dark mode)
+             ======================================================== */}
+          {/* Full-bleed ambient backdrop extending down through the stat cards */}
+          <div 
+            className="dark:hidden absolute inset-0 pointer-events-none"
+            style={{
+              background: 'linear-gradient(180deg, rgba(255, 235, 243, 0.95) 0%, rgba(255, 242, 247, 0.75) 45%, rgba(255, 248, 252, 0.3) 75%, transparent 100%)',
+            }}
+          />
 
-        {/* Dark mode gradient for seamless blend */}
-        <div 
-          className="hidden dark:block absolute inset-0 pointer-events-none z-0"
-          style={{
-            background: 'linear-gradient(180deg, rgba(46, 25, 42, 0.6) 0%, rgba(32, 22, 38, 0.35) 50%, transparent 100%)',
-          }}
-        />
+          {/* Ambient radial pink aura centered behind model & quote */}
+          <div
+            className="dark:hidden absolute top-0 left-[15%] right-[5%] h-[340px] pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 75% 65% at 55% 25%, rgba(255, 202, 225, 0.8) 0%, rgba(255, 226, 239, 0.4) 50%, transparent 85%)',
+            }}
+          />
 
-        {/* Exact Model & Calligraphy Graphic — top-0 touches the root header directly, bottom cascades behind the stat cards */}
-        <div className="hidden lg:block absolute left-[54%] xl:left-[52%] -translate-x-1/2 top-0 pointer-events-none z-0">
+          {/* ========================================================
+              DARK MODE GRADIENTS (Luxury seamless dark aura matching #0f0f1a)
+             ======================================================== */}
+          {/* Primary vertical dark wash: delicate rose-wine diffusing into dark background */}
+          <div 
+            className="hidden dark:block absolute inset-0 pointer-events-none"
+            style={{
+              background: 'linear-gradient(180deg, rgba(233, 30, 99, 0.16) 0%, rgba(194, 24, 91, 0.08) 35%, rgba(15, 15, 26, 0.3) 70%, transparent 100%)',
+            }}
+          />
+
+          {/* Dark mode radial pink aura centered behind header & stat cards */}
+          <div
+            className="hidden dark:block absolute top-0 left-[15%] right-[5%] h-[340px] pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 75% 65% at 55% 25%, rgba(233, 30, 99, 0.18) 0%, rgba(194, 24, 91, 0.06) 50%, transparent 85%)',
+            }}
+          />
+
+          {/* Dark mode secondary violet aura on left for rich depth */}
+          <div
+            className="hidden dark:block absolute top-0 left-0 w-1/2 h-[300px] pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 60% 50% at 20% 0%, rgba(168, 85, 247, 0.09) 0%, transparent 75%)',
+            }}
+          />
+        </div>
+
+        {/* Exact Model & Calligraphy Graphic (commented out for now) */}
+        {/* <div className="hidden lg:block absolute left-[54%] xl:left-[52%] -translate-x-1/2 top-0 pointer-events-none z-0">
           <img
             src="/customer_hero_full.png"
             alt="Loyal Clients Stronger Business"
             className="h-[220px] xl:h-[240px] 2xl:h-[255px] w-auto object-contain select-none"
           />
-        </div>
+        </div> */}
 
         {/* Top Bar: Title on left, Add Button on far right */}
         <div className="relative z-10 flex items-start justify-between min-h-[125px] xl:min-h-[138px] 2xl:min-h-[148px] px-6 pt-5 sm:pt-6 mb-2">
@@ -582,14 +705,19 @@ export default function CustomersPage() {
           5. CUSTOMERS TABLE
          ======================================================== */}
       <div className="bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/10 rounded-2xl shadow-sm overflow-hidden flex flex-col mb-4">
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
+        <TableScrollContainer>
+          <table className="w-full text-left border-collapse whitespace-nowrap min-w-[950px]">
             <thead>
               <tr className="border-b border-gray-100 dark:border-white/10 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider select-none bg-gray-50/50 dark:bg-white/[0.02]">
                 <th className="py-3.5 pl-5 pr-2 w-10 text-center">
                   <input
                     type="checkbox"
                     checked={customers.length > 0 && selectedIds.length === customers.length}
+                    ref={(el) => {
+                      if (el) {
+                        el.indeterminate = selectedIds.length > 0 && selectedIds.length < customers.length;
+                      }
+                    }}
                     onChange={handleSelectAll}
                     className="w-4 h-4 rounded border-gray-300 dark:border-white/20 text-[#e91e63] focus:ring-[#e91e63] cursor-pointer"
                   />
@@ -668,11 +796,15 @@ export default function CustomersPage() {
                     ? c.phone
                     : `+91  ${c.phone || ''}`;
 
+                  const isRowSelected = selectedIds.includes(c.id);
+
                   return (
                     <tr
                       key={c.id}
                       onClick={() => setSelectedCustomer(c)}
-                      className="hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors cursor-pointer group"
+                      className={`hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors cursor-pointer group ${
+                        isRowSelected ? 'bg-pink-50/40 dark:bg-pink-950/20' : ''
+                      }`}
                     >
                       {/* Checkbox */}
                       <td
@@ -787,7 +919,7 @@ export default function CustomersPage() {
               )}
             </tbody>
           </table>
-        </div>
+        </TableScrollContainer>
       </div>
 
       {/* ========================================================
@@ -878,6 +1010,43 @@ export default function CustomersPage() {
             toast.error('Failed to delete customer');
           }
         }}
+      />
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={customers.length}
+        onClear={() => setSelectedIds([])}
+        resourceName="customer"
+        actions={[
+          {
+            label: 'Activate',
+            icon: RiShieldCheckLine,
+            onClick: handleBulkActivate,
+            variant: 'success',
+            loading: bulkLoading,
+          },
+          {
+            label: 'Deactivate',
+            icon: RiCloseLine,
+            onClick: handleBulkDeactivate,
+            variant: 'default',
+            loading: bulkLoading,
+          },
+          {
+            label: 'Export CSV',
+            icon: RiDownload2Line,
+            onClick: handleExportSelected,
+            variant: 'default',
+          },
+          {
+            label: 'Delete',
+            icon: RiDeleteBin6Line,
+            onClick: handleBulkDelete,
+            variant: 'danger',
+            loading: bulkLoading,
+          },
+        ]}
       />
       </div>
     </div>

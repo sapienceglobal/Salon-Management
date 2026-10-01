@@ -16,6 +16,7 @@ import RoomsTab from '@/components/admin/settings/RoomsTab';
 import UsersTab from '@/components/admin/settings/UsersTab';
 import CommissionsTab from '@/components/admin/settings/CommissionsTab';
 import NotificationsTab from '@/components/admin/settings/NotificationsTab';
+import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general');
@@ -61,10 +62,15 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-admin-text">Settings</h1>
-          <p className="text-sm text-admin-text-muted">Manage your salon configuration, billing, and team access.</p>
+      {/* Top Header Section with Ambient Pink-White Gradient */}
+      <div className="relative -mx-6 -mt-6 px-6 pt-6 pb-2 mb-6 overflow-hidden">
+        <PageHeaderGradient height="h-[180px]" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="font-heading text-2xl sm:text-[1.75rem] font-bold text-gray-900 dark:text-white tracking-tight">Settings</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your salon configuration, billing, and team access.</p>
+          </div>
         </div>
       </div>
 

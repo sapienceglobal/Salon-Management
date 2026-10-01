@@ -20,6 +20,7 @@ import ReceiptModal from '@/components/admin/billing/ReceiptModal';
 import ViewDraftsDrawer from '@/components/admin/billing/ViewDraftsDrawer';
 import { formatCurrency } from '@/lib/utils';
 import { useConfirm } from '@/context/ConfirmContext';
+import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 
 const getShiftLabel = (shift) => {
   switch (shift) {
@@ -535,10 +536,10 @@ export default function POSPage() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-70px)] flex flex-col xl:flex-row gap-5 p-4 sm:p-5 lg:p-6 bg-[#fcfcfe] dark:bg-[#0f0f1a] text-slate-800 dark:text-slate-100 font-sans transition-colors">
+    <div className="relative min-h-[calc(100vh-70px)] flex flex-col lg:flex-row gap-5 p-4 sm:p-5 lg:p-6 bg-[#fcfcfe] dark:bg-[#0f0f1a] text-slate-800 dark:text-slate-100 font-sans transition-colors">
       
-      {/* Ambient Radial Gradient Glow */}
-      <div className="pointer-events-none absolute -top-20 right-1/4 w-[500px] h-[500px] bg-gradient-to-br from-[#E91E63]/10 to-transparent rounded-full blur-3xl transition-opacity duration-500" />
+      {/* Ambient Pink-White Top Gradient */}
+      <PageHeaderGradient height="h-[300px]" />
 
       {/* ======================================================== */}
       {/* LEFT & CENTER COLUMN: CATALOGUE & CUSTOMER */}
@@ -1163,13 +1164,10 @@ export default function POSPage() {
 
       </div>
 
-      {/* ======================================================== */}
-      {/* RIGHT PANEL: CART (Sticky & Smoothly Interactive) */}
-      {/* ======================================================== */}
-      <div className="w-full xl:w-[350px] 2xl:w-[370px] shrink-0 flex flex-col bg-white dark:bg-[#1a1a2e] rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm overflow-hidden z-10 self-start xl:sticky xl:top-6 transition-all duration-300">
+      <div className="w-full lg:w-[350px] xl:w-[370px] 2xl:w-[390px] shrink-0 flex flex-col bg-white dark:bg-[#1a1a2e] rounded-2xl border border-slate-100 dark:border-white/5 shadow-md overflow-hidden z-20 self-start lg:sticky lg:top-[calc(var(--spacing-header)+1rem)] lg:max-h-[calc(100vh-var(--spacing-header)-2rem)] transition-all duration-300">
         
         {/* Cart Top Header */}
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between shrink-0 bg-white dark:bg-[#1a1a2e]">
           <div className="flex items-center gap-1.5">
             <h2 className="text-base font-black text-slate-900 dark:text-white">
               Cart
@@ -1186,7 +1184,7 @@ export default function POSPage() {
         </div>
 
         {/* Quick Assign & Discount Controls */}
-        <div className="p-4 border-b border-slate-100 dark:border-white/5 grid grid-cols-2 gap-3 bg-slate-50/50 dark:bg-white/[0.02]">
+        <div className="p-4 border-b border-slate-100 dark:border-white/5 grid grid-cols-2 gap-3 bg-slate-50/50 dark:bg-white/[0.02] shrink-0">
           {/* Quick Assign */}
           <div>
             <label className="block text-[10px] font-semibold text-slate-400 mb-1">
@@ -1239,7 +1237,7 @@ export default function POSPage() {
         </div>
 
         {/* Cart Items List */}
-        <div className="flex-1 overflow-y-auto max-h-[380px] p-4 space-y-3 custom-scrollbar transition-all duration-300">
+        <div className="flex-1 min-h-[140px] overflow-y-auto p-4 space-y-3 custom-scrollbar transition-all duration-300">
           {cart.length === 0 ? (
             <div className="py-12 text-center text-slate-400 text-xs font-medium animate-fade-in">
               Cart is currently empty.
@@ -1372,7 +1370,7 @@ export default function POSPage() {
         </div>
 
         {/* Coupon Code Section */}
-        <div className="px-4 py-3 border-t border-slate-100 dark:border-white/5">
+        <div className="px-4 py-3 border-t border-slate-100 dark:border-white/5 shrink-0 bg-white dark:bg-[#1a1a2e]">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <RiTicket2Line className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E91E63] text-sm" />
@@ -1395,7 +1393,7 @@ export default function POSPage() {
         </div>
 
         {/* Pricing Summary Breakdown */}
-        <div className="px-4 py-3 border-t border-slate-100 dark:border-white/5 space-y-2 text-xs transition-all duration-200">
+        <div className="px-4 py-3 border-t border-slate-100 dark:border-white/5 space-y-2 text-xs transition-all duration-200 shrink-0 bg-white dark:bg-[#1a1a2e]">
           <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
             <span>Subtotal</span>
             <span className="font-bold text-slate-800 dark:text-slate-200">
@@ -1430,7 +1428,7 @@ export default function POSPage() {
         </div>
 
         {/* Bottom Action Buttons: Save as Draft & Collect Payment */}
-        <div className="p-4 border-t border-slate-100 dark:border-white/5 flex gap-3 bg-slate-50/30 dark:bg-white/[0.01]">
+        <div className="p-4 border-t border-slate-100 dark:border-white/5 flex gap-3 bg-slate-50/50 dark:bg-white/[0.02] shrink-0">
           <button
             onClick={handleSaveDraft}
             disabled={isSavingDraft || cart.length === 0}
