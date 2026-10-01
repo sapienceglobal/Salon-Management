@@ -41,13 +41,39 @@ export default function InventoryPage() {
     totalValue: 0
   });
 
+  const fetchMetrics = useCallback(async () => {
+    try {
+      const res = await api.get('/products?limit=500&is_active=true');
+      const activeProducts = res.data?.products || res.data || [];
+      let low = 0, out = 0, value = 0;
+      activeProducts.forEach(p => {
+        const qty = parseInt(p.stock_quantity, 10) || 0;
+        const minAlert = parseInt(p.min_stock_alert, 10) || 5;
+        const price = parseFloat(p.selling_price) || 0;
+        if (qty === 0) out++;
+        else if (qty <= minAlert) low++;
+        value += (price * qty);
+      });
+      setMetrics({
+        totalProducts: activeProducts.length,
+        lowStockAlerts: low,
+        outOfStock: out,
+        totalValue: value
+      });
+    } catch (err) {
+      console.error('Failed to fetch inventory metrics:', err);
+    }
+  }, []);
+
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      let query = `/products?limit=100`;
+      let query = `/products?limit=200`;
       if (searchTerm) query += `&search=${encodeURIComponent(searchTerm)}`;
       if (category) query += `&category=${encodeURIComponent(category)}`;
       if (lowStockOnly) query += `&low_stock=true`;
+      if (statusFilter === 'active') query += `&is_active=true`;
+      else if (statusFilter === 'inactive') query += `&is_active=false`;
       
       const res = await api.get(query);
       const data = res.data?.products || res.data || [];
@@ -66,28 +92,16 @@ export default function InventoryPage() {
           window.history.replaceState({}, '', url);
         }
       }
-      
-      // Calculate metrics on client side for now (or fetch from summary endpoint if exists)
-      const activeProducts = data.filter(p => p.is_active);
-      let low = 0, out = 0, value = 0;
-      activeProducts.forEach(p => {
-        if (p.stock_quantity === 0) out++;
-        else if (p.stock_quantity <= p.min_stock_alert) low++;
-        value += (p.selling_price * p.stock_quantity);
-      });
-      
-      setMetrics({
-        totalProducts: activeProducts.length,
-        lowStockAlerts: low,
-        outOfStock: out,
-        totalValue: value
-      });
     } catch (err) {
       console.error('Failed to fetch products:', err);
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, category, lowStockOnly]);
+  }, [searchTerm, category, lowStockOnly, statusFilter]);
+
+  useEffect(() => {
+    fetchMetrics();
+  }, [fetchMetrics]);
 
   useEffect(() => {
     fetchProducts();
@@ -104,8 +118,9 @@ export default function InventoryPage() {
   };
 
   const displayedProducts = products.filter(p => {
-    if (statusFilter === 'active' && !p.is_active) return false;
-    if (statusFilter === 'inactive' && p.is_active) return false;
+    const isActive = Boolean(p.is_active);
+    if (statusFilter === 'active' && !isActive) return false;
+    if (statusFilter === 'inactive' && isActive) return false;
     return true;
   });
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
@@ -136,6 +151,7 @@ export default function InventoryPage() {
       await api.post('/products/bulk-status', { ids: selectedIds, is_active: true });
       toast.success(`${selectedIds.length} product${selectedIds.length > 1 ? 's' : ''} activated`);
       fetchProducts();
+      fetchMetrics();
       setSelectedIds([]);
     } catch (err) {
       console.error(err);
@@ -152,6 +168,7 @@ export default function InventoryPage() {
       await api.post('/products/bulk-status', { ids: selectedIds, is_active: false });
       toast.success(`${selectedIds.length} product${selectedIds.length > 1 ? 's' : ''} deactivated`);
       fetchProducts();
+      fetchMetrics();
       setSelectedIds([]);
     } catch (err) {
       console.error(err);
@@ -450,6 +467,7 @@ export default function InventoryPage() {
         onSuccess={() => {
           setIsAddModalOpen(false);
           fetchProducts();
+          fetchMetrics();
         }} 
       />
 
@@ -461,7 +479,10 @@ export default function InventoryPage() {
           setProductToEdit(prod);
           setIsAddModalOpen(true);
         }}
-        onUpdateSuccess={fetchProducts}
+        onUpdateSuccess={() => {
+          fetchProducts();
+          fetchMetrics();
+        }}
       />
 
       {/* Floating Bulk Action Bar */}

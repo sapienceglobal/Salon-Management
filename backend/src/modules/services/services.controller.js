@@ -1,6 +1,7 @@
 import { serviceService } from './services.service.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import { deleteUploadedFile } from '../../utils/fileUpload.js';
 
 // Categories
 export const getCategories = asyncHandler(async (req, res) => {
@@ -52,18 +53,34 @@ export const updateService = asyncHandler(async (req, res) => {
   const data = { ...req.body };
   if (data.existing_images) delete data.existing_images;
   if (req.files && req.files.length > 0) {
+    const existing = await serviceService.getById(req.params.id, req.user.business_id).catch(() => null);
+    if (existing?.image_url) {
+      deleteUploadedFile(existing.image_url);
+    }
     data.image_url = `/uploads/${req.files[0].filename}`;
   }
   const service = await serviceService.update(req.params.id, req.user.business_id, data);
   ApiResponse.ok('Service updated', service).send(res);
 });
 export const deleteService = asyncHandler(async (req, res) => {
+  const existing = await serviceService.getById(req.params.id, req.user.business_id).catch(() => null);
+  if (existing?.image_url) {
+    deleteUploadedFile(existing.image_url);
+  }
   await serviceService.delete(req.params.id, req.user.business_id);
   ApiResponse.ok('Service deactivated').send(res);
 });
 
 export const bulkDeleteServices = asyncHandler(async (req, res) => {
   const { ids } = req.body;
+  if (Array.isArray(ids) && ids.length > 0) {
+    for (const id of ids) {
+      const existing = await serviceService.getById(id, req.user.business_id).catch(() => null);
+      if (existing?.image_url) {
+        deleteUploadedFile(existing.image_url);
+      }
+    }
+  }
   const count = await serviceService.bulkDelete(ids, req.user.business_id);
   ApiResponse.ok(`${count} services deleted successfully`, { count }).send(res);
 });

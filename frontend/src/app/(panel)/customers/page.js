@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, getImageUrl } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
   RiAddLine,
@@ -824,7 +824,7 @@ export default function CustomersPage() {
                         <div className="flex items-center gap-3">
                           {c.profile_image_url ? (
                             <img
-                              src={c.profile_image_url}
+                              src={getImageUrl(c.profile_image_url)}
                               alt={fullName}
                               className="w-8 h-8 rounded-full object-cover shrink-0 border border-gray-100 dark:border-white/10"
                             />

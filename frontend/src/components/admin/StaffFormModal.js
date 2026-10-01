@@ -24,7 +24,7 @@ import {
   RiCalendarLine,
 } from 'react-icons/ri';
 import api from '@/lib/api';
-import { parseSpecializations } from '@/lib/utils';
+import { parseSpecializations, getImageUrl } from '@/lib/utils';
 import { staffSchema, formatZodErrors } from '@/lib/validations';
 import toast from 'react-hot-toast';
 
@@ -843,7 +843,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                     <div className="border border-gray-200 dark:border-white/10 rounded-xl p-3.5 bg-white dark:bg-[#121224] flex items-center justify-between gap-3 shadow-xs">
                       <div className="flex items-center gap-3 min-w-0">
                         <img
-                          src={imagePreview}
+                          src={getImageUrl(imagePreview)}
                           alt="Staff Preview"
                           className="w-14 h-14 rounded-full object-cover border border-gray-100 dark:border-white/10 shrink-0"
                         />

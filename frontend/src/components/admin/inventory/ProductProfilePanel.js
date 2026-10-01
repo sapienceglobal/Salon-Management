@@ -78,7 +78,7 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
     if (!isConfirmed) return;
     try {
       if (product.is_active) {
-        await api.delete(`/products/${product.id}`);
+        await api.put(`/products/${product.id}`, { is_active: false });
         toast.success('Product marked as inactive');
       } else {
         await api.put(`/products/${product.id}`, { is_active: true });

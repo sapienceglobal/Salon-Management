@@ -20,6 +20,7 @@ import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { generateToken } from './middlewares/csrf.js';
 import { secureApi } from './middlewares/secureApi.js';
+import { getUploadDir } from './utils/fileUpload.js';
 
 // Route imports
 import authRoutes from './modules/auth/auth.routes.js';
@@ -99,10 +100,18 @@ app.use(requestLogger);
 app.use(passport.initialize());
 
 // ===================================================================
-// STATIC FILES
+// STATIC FILES — Uploads folder for local & VPS (Hostinger) storage
 // ===================================================================
 
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use(
+  '/uploads',
+  express.static(getUploadDir(), {
+    maxAge: '7d',
+    etag: true,
+    lastModified: true,
+    dotfiles: 'ignore',
+  })
+);
 
 // ===================================================================
 // HEALTH CHECK

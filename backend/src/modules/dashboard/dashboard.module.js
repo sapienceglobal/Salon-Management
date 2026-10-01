@@ -334,7 +334,25 @@ class DashboardService {
       )
       .orderBy('a.start_time', 'asc');
 
-    return rows;
+    const appointmentMap = new Map();
+    for (const row of rows) {
+      if (!appointmentMap.has(row.id)) {
+        appointmentMap.set(row.id, {
+          ...row,
+          services: row.service_name ? [row.service_name] : [],
+        });
+      } else {
+        const existing = appointmentMap.get(row.id);
+        if (row.service_name && !existing.services.includes(row.service_name)) {
+          existing.services.push(row.service_name);
+        }
+      }
+    }
+
+    return Array.from(appointmentMap.values()).map((apt) => ({
+      ...apt,
+      service_name: apt.services.length > 0 ? apt.services.join(', ') : 'Service',
+    }));
   }
 
   /**
@@ -362,10 +380,27 @@ class DashboardService {
         db.raw("CONCAT(c.first_name, ' ', COALESCE(c.last_name, '')) as customer_name"),
         's.name as service_name'
       )
-      .orderBy([{ column: 'a.appointment_date', order: 'asc' }, { column: 'a.start_time', order: 'asc' }])
-      .limit(5);
+      .orderBy([{ column: 'a.appointment_date', order: 'asc' }, { column: 'a.start_time', order: 'asc' }]);
 
-    return rows;
+    const appointmentMap = new Map();
+    for (const row of rows) {
+      if (!appointmentMap.has(row.id)) {
+        appointmentMap.set(row.id, {
+          ...row,
+          services: row.service_name ? [row.service_name] : [],
+        });
+      } else {
+        const existing = appointmentMap.get(row.id);
+        if (row.service_name && !existing.services.includes(row.service_name)) {
+          existing.services.push(row.service_name);
+        }
+      }
+    }
+
+    return Array.from(appointmentMap.values()).slice(0, 5).map((apt) => ({
+      ...apt,
+      service_name: apt.services.length > 0 ? apt.services.join(', ') : 'Service',
+    }));
   }
 
   /**

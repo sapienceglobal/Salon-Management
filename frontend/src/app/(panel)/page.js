@@ -350,8 +350,8 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {todayAppointments.map((apt) => (
-                    <tr key={apt.id} onClick={() => router.push(`/appointments?appointment_id=${apt.id}`)} className="hover:bg-white/[0.02] transition-colors cursor-pointer">
+                  {todayAppointments.map((apt, index) => (
+                    <tr key={apt.id ? `today-apt-${apt.id}-${index}` : `today-apt-${index}`} onClick={() => router.push(`/appointments?appointment_id=${apt.id}`)} className="hover:bg-white/[0.02] transition-colors cursor-pointer">
                       <td className="px-3 py-3 text-sm font-medium border-b border-admin-border last:border-0">{formatTime(apt.start_time)}</td>
                       <td className="px-3 py-3 text-sm border-b border-admin-border">
                         <div className="flex items-center gap-2">
@@ -517,8 +517,8 @@ export default function DashboardPage() {
             ) : upcomingAppointments.length === 0 ? (
               <EmptyState message="No upcoming appointments" />
             ) : (
-              upcomingAppointments.map((apt) => (
-                <div key={apt.id} onClick={() => router.push(`/appointments?appointment_id=${apt.id}`)} className="flex items-center gap-3.5 py-3 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer px-2 rounded-lg -mx-2">
+              upcomingAppointments.map((apt, index) => (
+                <div key={apt.id ? `up-apt-${apt.id}-${index}` : `up-apt-${index}`} onClick={() => router.push(`/appointments?appointment_id=${apt.id}`)} className="flex items-center gap-3.5 py-3 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer px-2 rounded-lg -mx-2">
                   <span className="text-sm font-semibold text-admin-text-secondary min-w-[65px]">{formatTime(apt.start_time)}</span>
                   <span className="w-2 h-2 rounded-full bg-brand shrink-0"></span>
                   <div className="flex-1">
@@ -575,8 +575,8 @@ export default function DashboardPage() {
             ) : recentCustomers.length === 0 ? (
               <EmptyState message="No customers added yet" />
             ) : (
-              recentCustomers.map((cust) => (
-                <div key={cust.id} onClick={() => router.push(`/customers?customer_id=${cust.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
+              recentCustomers.map((cust, index) => (
+                <div key={cust.id ? `cust-${cust.id}-${index}` : `cust-${index}`} onClick={() => router.push(`/customers?customer_id=${cust.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-[0.7rem] font-bold text-white shrink-0">
                     {getInitials(cust.first_name, cust.last_name)}
                   </div>

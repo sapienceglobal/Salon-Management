@@ -25,6 +25,7 @@ import {
 } from 'react-icons/ri';
 import api from '@/lib/api';
 import { serviceSchema, formatZodErrors } from '@/lib/validations';
+import { getImageUrl } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 const PRESET_IMAGES = [
@@ -708,7 +709,7 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
                     <div className="border border-gray-200 dark:border-white/10 rounded-xl p-3.5 bg-white dark:bg-[#121224] flex items-center justify-between gap-3 shadow-xs">
                       <div className="flex items-center gap-3 min-w-0">
                         <img
-                          src={imagePreview}
+                          src={getImageUrl(imagePreview)}
                           alt="Service Preview"
                           className="w-14 h-14 rounded-xl object-cover border border-gray-100 dark:border-white/10 shrink-0"
                         />

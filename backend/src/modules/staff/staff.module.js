@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorize, businessScope } from '../../middlewares/authorize.js';
 import { validate } from '../../middlewares/validate.js';
-import { singleImage } from '../../utils/fileUpload.js';
+import { singleImage, deleteUploadedFile } from '../../utils/fileUpload.js';
 
 const idParam = z.object({ id: z.string().regex(/^\d+$/).transform(Number) });
 
@@ -347,9 +347,12 @@ const createStaffMember = asyncHandler(async (req, res) => {
   ApiResponse.created('Staff member created', staff).send(res);
 });
 const updateStaffMember = asyncHandler(async (req, res) => {
+  const staffRec = await staffService.getById(req.params.id, req.user.business_id);
   const avatarUrl = req.file ? `/uploads/${req.file.filename}` : req.body.avatar_url;
-  if (avatarUrl !== undefined && avatarUrl !== null) {
-    const staffRec = await staffService.getById(req.params.id, req.user.business_id);
+  if (req.file && staffRec?.avatar_url && staffRec.avatar_url !== avatarUrl) {
+    deleteUploadedFile(staffRec.avatar_url);
+  }
+  if (avatarUrl !== undefined && avatarUrl !== null && staffRec?.user_id) {
     await db('users').where({ id: staffRec.user_id }).update({ avatar_url: avatarUrl });
   }
   const payload = { ...req.body };

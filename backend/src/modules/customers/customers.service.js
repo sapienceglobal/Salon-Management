@@ -85,6 +85,9 @@ class CustomerService {
       if (existing && existing.id !== id) throw ApiError.conflict('Email already in use by another customer');
     }
     const cleanData = cleanObject(data);
+    if (data.profile_image_url === null) {
+      cleanData.profile_image_url = null;
+    }
     return customerRepository.update(id, businessId, cleanData);
   }
 

@@ -1,6 +1,7 @@
 import { customerService } from './customers.service.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import { deleteUploadedFile } from '../../utils/fileUpload.js';
 
 export const getCustomers = asyncHandler(async (req, res) => {
   const { customers, meta } = await customerService.getAll(req.user.business_id, req.query);
@@ -44,7 +45,17 @@ export const importCustomers = asyncHandler(async (req, res) => {
 export const updateCustomer = asyncHandler(async (req, res) => {
   const data = { ...req.body };
   if (req.file) {
+    const existing = await customerService.getById(req.params.id, req.user.business_id).catch(() => null);
+    if (existing?.profile_image_url) {
+      deleteUploadedFile(existing.profile_image_url);
+    }
     data.profile_image_url = `/uploads/${req.file.filename}`;
+  } else if (data.profile_image_url === null || data.profile_image_url === '') {
+    const existing = await customerService.getById(req.params.id, req.user.business_id).catch(() => null);
+    if (existing?.profile_image_url) {
+      deleteUploadedFile(existing.profile_image_url);
+    }
+    data.profile_image_url = null;
   }
   if (data.source) data.source = mapSource(data.source);
   const customer = await customerService.update(req.params.id, req.user.business_id, data);
@@ -52,6 +63,10 @@ export const updateCustomer = asyncHandler(async (req, res) => {
 });
 
 export const deleteCustomer = asyncHandler(async (req, res) => {
+  const existing = await customerService.getById(req.params.id, req.user.business_id).catch(() => null);
+  if (existing?.profile_image_url) {
+    deleteUploadedFile(existing.profile_image_url);
+  }
   await customerService.delete(req.params.id, req.user.business_id);
   ApiResponse.ok('Customer deactivated successfully').send(res);
 });
@@ -78,6 +93,14 @@ export const getCustomersStats = asyncHandler(async (req, res) => {
 
 export const bulkDeleteCustomers = asyncHandler(async (req, res) => {
   const { ids } = req.body;
+  if (Array.isArray(ids) && ids.length > 0) {
+    for (const id of ids) {
+      const existing = await customerService.getById(id, req.user.business_id).catch(() => null);
+      if (existing?.profile_image_url) {
+        deleteUploadedFile(existing.profile_image_url);
+      }
+    }
+  }
   const count = await customerService.bulkDelete(ids, req.user.business_id);
   ApiResponse.ok(`${count} customers deleted successfully`, { count }).send(res);
 });

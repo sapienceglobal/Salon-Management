@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getImageUrl } from '@/lib/utils';
 import api from '@/lib/api';
 import {
   RiAddLine,
@@ -341,7 +341,7 @@ export default function ServicesPage() {
   };
 
   const getServiceAvatar = (svc) => {
-    if (svc.image_url) return svc.image_url;
+    if (svc.image_url) return getImageUrl(svc.image_url);
     const n = (svc.name || '').toLowerCase();
     if (n.includes('men') && n.includes('hair')) return '/service_men_haircut.png';
     if (n.includes('women') && n.includes('hair')) return '/service_women_haircut.png';

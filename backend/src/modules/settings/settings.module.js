@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorize, businessScope } from '../../middlewares/authorize.js';
 import { validate } from '../../middlewares/validate.js';
+import { deleteUploadedFile } from '../../utils/fileUpload.js';
 
 // ===== SETTINGS SERVICE =====
 class SettingsService {
@@ -89,6 +90,9 @@ class SettingsService {
   async updateUser(userId, businessId, data) {
     const user = await db('users').where({ id: userId, business_id: businessId }).first();
     if (!user) throw ApiError.notFound('User not found');
+    if (data.avatar_url && user.avatar_url && data.avatar_url !== user.avatar_url) {
+      deleteUploadedFile(user.avatar_url);
+    }
     await db('users').where({ id: userId }).update({ ...cleanObject(data), updated_at: db.fn.now() });
     return db('users').where({ id: userId }).select('id', 'email', 'first_name', 'last_name', 'role', 'avatar_url', 'is_active').first();
   }

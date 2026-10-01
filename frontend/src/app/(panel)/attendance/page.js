@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   RiUpload2Line,
   RiDownload2Line,
@@ -206,8 +207,13 @@ const INITIAL_FALLBACK_STAFF = [
 ];
 
 export default function AttendancePage() {
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [staffData, setStaffData] = useState(INITIAL_FALLBACK_STAFF);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Timeframe selector: Daily, Weekly, Monthly
   const [timeframe, setTimeframe] = useState('Daily');
@@ -318,7 +324,9 @@ export default function AttendancePage() {
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (popoverRef.current && !popoverRef.current.contains(e.target)) {
-        setActiveCellPopover(null);
+        if (!e.target.closest('[data-cell-btn]')) {
+          setActiveCellPopover(null);
+        }
       }
       if (!e.target.closest('.branch-dropdown-wrapper')) {
         setBranchDropdownOpen(false);
@@ -336,6 +344,21 @@ export default function AttendancePage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Close active cell popover on scroll or window resize so it never floats away
+  useEffect(() => {
+    if (!activeCellPopover) return;
+    const handleScrollOrResize = (e) => {
+      if (popoverRef.current && popoverRef.current.contains(e.target)) return;
+      setActiveCellPopover(null);
+    };
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [activeCellPopover]);
 
   // Shift dates
   const shiftDate = (days) => {
@@ -557,7 +580,7 @@ export default function AttendancePage() {
       </div>
 
       {/* 2. Controls / Filters Toolbar */}
-      <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 mb-5">
+      <div className="relative z-30 flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 mb-5">
         <div className="flex items-center flex-wrap gap-2.5 sm:gap-3">
           {/* Daily | Weekly | Monthly switcher */}
           <div className="inline-flex items-center bg-white dark:bg-[#1a1a2e] border border-gray-200/80 dark:border-white/10 p-1 rounded-xl shadow-xs">
@@ -587,10 +610,10 @@ export default function AttendancePage() {
             </button>
 
             {/* Date Range Display Box */}
-            <div className="relative date-picker-wrapper">
+            <div className={`relative date-picker-wrapper ${datePickerOpen ? 'z-40' : 'z-20'}`}>
               <button
                 onClick={() => setDatePickerOpen(!datePickerOpen)}
-                className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-1.5 flex items-center gap-2 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-xs hover:border-gray-300 dark:hover:border-white/20 transition-all"
+                className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-1.5 flex items-center gap-2 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-xs hover:border-gray-300 dark:hover:border-white/20 transition-all cursor-pointer"
               >
                 <RiCalendarLine className="text-base text-gray-500" />
                 <span>{formattedRange}</span>
@@ -598,7 +621,7 @@ export default function AttendancePage() {
 
               {/* Jump to Date / Today Dropdown */}
               {datePickerOpen && (
-                <div className="absolute left-0 top-full mt-2 w-64 bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/10 rounded-2xl shadow-xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute left-0 top-full mt-2 w-64 bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/10 rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Select Date</p>
                   <input
                     type="date"
@@ -614,7 +637,7 @@ export default function AttendancePage() {
                   <div className="mt-3 flex gap-2">
                     <button
                       onClick={jumpToToday}
-                      className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-pink-50 dark:bg-pink-900/30 text-[#E91E63] hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors"
+                      className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-pink-50 dark:bg-pink-900/30 text-[#E91E63] hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors cursor-pointer"
                     >
                       Current Window
                     </button>
@@ -623,7 +646,7 @@ export default function AttendancePage() {
                         setCurrentStartDate(new Date('2026-09-25T00:00:00'));
                         setDatePickerOpen(false);
                       }}
-                      className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-200 transition-colors"
+                      className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-200 transition-colors cursor-pointer"
                     >
                       Reset 25 Sep
                     </button>
@@ -645,16 +668,16 @@ export default function AttendancePage() {
         {/* Dropdowns & Search */}
         <div className="flex items-center flex-wrap gap-2.5 sm:gap-3">
           {/* Branch Dropdown */}
-          <div className="relative branch-dropdown-wrapper">
+          <div className={`relative branch-dropdown-wrapper ${branchDropdownOpen ? 'z-40' : 'z-20'}`}>
             <button
               onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
-              className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between gap-3 shadow-xs hover:border-gray-300 transition-colors min-w-[130px]"
+              className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between gap-3 shadow-xs hover:border-gray-300 transition-colors min-w-[130px] cursor-pointer"
             >
               <span>{selectedBranch}</span>
               <RiArrowDownSLine className="text-gray-400 text-base" />
             </button>
             {branchDropdownOpen && (
-              <div className="absolute left-0 top-full mt-1.5 w-48 bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/10 rounded-xl shadow-lg p-1.5 z-40 animate-in fade-in duration-100">
+              <div className="absolute left-0 top-full mt-1.5 w-48 bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/10 rounded-xl shadow-2xl p-1.5 z-50 animate-in fade-in duration-100">
                 {['All Branches', 'Downtown Branch', 'Main Branch', 'Westside Branch'].map((b) => (
                   <button
                     key={b}
@@ -662,7 +685,7 @@ export default function AttendancePage() {
                       setSelectedBranch(b);
                       setBranchDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
                       selectedBranch === b ? 'bg-pink-50 dark:bg-pink-900/30 text-[#E91E63]' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'
                     }`}
                   >
@@ -674,22 +697,22 @@ export default function AttendancePage() {
           </div>
 
           {/* Staff Dropdown */}
-          <div className="relative staff-dropdown-wrapper">
+          <div className={`relative staff-dropdown-wrapper ${staffDropdownOpen ? 'z-40' : 'z-20'}`}>
             <button
               onClick={() => setStaffDropdownOpen(!staffDropdownOpen)}
-              className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between gap-3 shadow-xs hover:border-gray-300 transition-colors min-w-[120px]"
+              className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between gap-3 shadow-xs hover:border-gray-300 transition-colors min-w-[120px] cursor-pointer"
             >
               <span>{selectedStaff}</span>
               <RiArrowDownSLine className="text-gray-400 text-base" />
             </button>
             {staffDropdownOpen && (
-              <div className="absolute left-0 top-full mt-1.5 w-48 bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/10 rounded-xl shadow-lg p-1.5 z-40 max-h-56 overflow-y-auto custom-scrollbar animate-in fade-in duration-100">
+              <div className="absolute left-0 top-full mt-1.5 w-48 bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/10 rounded-xl shadow-2xl p-1.5 z-50 max-h-56 overflow-y-auto custom-scrollbar animate-in fade-in duration-100">
                 <button
                   onClick={() => {
                     setSelectedStaff('All Staff');
                     setStaffDropdownOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                  className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
                     selectedStaff === 'All Staff' ? 'bg-pink-50 dark:bg-pink-900/30 text-[#E91E63]' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'
                   }`}
                 >
@@ -704,7 +727,7 @@ export default function AttendancePage() {
                         setSelectedStaff(fullName);
                         setStaffDropdownOpen(false);
                       }}
-                      className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold truncate ${
+                      className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold truncate cursor-pointer ${
                         selectedStaff === fullName ? 'bg-pink-50 dark:bg-pink-900/30 text-[#E91E63]' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'
                       }`}
                     >
@@ -845,48 +868,61 @@ export default function AttendancePage() {
                         const statusKey = attRecord?.status;
                         const statusCfg = STATUS_CONFIG[statusKey];
 
+                        const isPopoverActive =
+                          activeCellPopover?.staffId === staff.id &&
+                          activeCellPopover?.dateStr === dateStr;
+
+                        const handleCellClick = (e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setActiveCellPopover((prev) => {
+                            if (prev && prev.staffId === staff.id && prev.dateStr === dateStr) {
+                              return null;
+                            }
+                            return {
+                              staffId: staff.id,
+                              staffName: fullName,
+                              dateStr,
+                              dateFormatted: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+                              currentStatus: statusKey || null,
+                              checkInTime: attRecord?.check_in_time,
+                              checkOutTime: attRecord?.check_out_time,
+                              rect: {
+                                top: rect.top,
+                                bottom: rect.bottom,
+                                left: rect.left,
+                                right: rect.right,
+                                width: rect.width,
+                                height: rect.height,
+                              },
+                            };
+                          });
+                        };
+
                         return (
                           <td key={dIdx} className="py-3 px-2 text-center">
                             <div className="flex justify-center items-center">
                               {statusCfg ? (
                                 <button
                                   type="button"
-                                  onClick={(e) => {
-                                    const rect = e.currentTarget.getBoundingClientRect();
-                                    setActiveCellPopover({
-                                      staffId: staff.id,
-                                      staffName: fullName,
-                                      dateStr,
-                                      dateFormatted: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-                                      currentStatus: statusKey,
-                                      checkInTime: attRecord?.check_in_time,
-                                      checkOutTime: attRecord?.check_out_time,
-                                      x: rect.left + rect.width / 2,
-                                      y: rect.bottom + window.scrollY,
-                                    });
-                                  }}
+                                  data-cell-btn="true"
+                                  onClick={handleCellClick}
                                   title={`${statusCfg.label} - Click to change`}
-                                  className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all duration-150 transform hover:scale-110 active:scale-95 shadow-xs ${statusCfg.badgeBg} ${statusCfg.badgeBorder} ${statusCfg.badgeText}`}
+                                  className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all duration-150 transform hover:scale-110 active:scale-95 shadow-xs cursor-pointer ${statusCfg.badgeBg} ${statusCfg.badgeBorder} ${statusCfg.badgeText} ${
+                                    isPopoverActive ? 'ring-2 ring-[#E91E63] ring-offset-2 dark:ring-offset-[#1a1a2e]' : ''
+                                  }`}
                                 >
                                   <statusCfg.icon className="text-lg" />
                                 </button>
                               ) : (
                                 <button
                                   type="button"
-                                  onClick={(e) => {
-                                    const rect = e.currentTarget.getBoundingClientRect();
-                                    setActiveCellPopover({
-                                      staffId: staff.id,
-                                      staffName: fullName,
-                                      dateStr,
-                                      dateFormatted: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-                                      currentStatus: null,
-                                      x: rect.left + rect.width / 2,
-                                      y: rect.bottom + window.scrollY,
-                                    });
-                                  }}
+                                  data-cell-btn="true"
+                                  onClick={handleCellClick}
                                   title="Unmarked - Click to mark attendance"
-                                  className="w-9 h-9 rounded-xl border border-dashed border-gray-200 dark:border-white/10 bg-gray-50/60 dark:bg-white/5 text-gray-300 dark:text-gray-600 hover:text-[#E91E63] hover:border-[#E91E63]/40 hover:bg-pink-50/20 flex items-center justify-center transition-all duration-150 transform hover:scale-110"
+                                  className={`w-9 h-9 rounded-xl border border-dashed border-gray-200 dark:border-white/10 bg-gray-50/60 dark:bg-white/5 text-gray-300 dark:text-gray-600 hover:text-[#E91E63] hover:border-[#E91E63]/40 hover:bg-pink-50/20 flex items-center justify-center transition-all duration-150 transform hover:scale-110 cursor-pointer ${
+                                    isPopoverActive ? 'ring-2 ring-[#E91E63] ring-offset-2 dark:ring-offset-[#1a1a2e]' : ''
+                                  }`}
                                 >
                                   <RiAddLine className="text-base" />
                                 </button>
@@ -995,65 +1031,111 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {/* Floating Status Picker Popover on Cell Click */}
-      {activeCellPopover && (
-        <div
-          ref={popoverRef}
-          style={{
-            position: 'absolute',
-            left: `${Math.max(16, Math.min(activeCellPopover.x - 110, window.innerWidth - 240))}px`,
-            top: `${activeCellPopover.y + 6}px`,
-          }}
-          className="z-50 w-56 bg-white dark:bg-[#1a1a2e] border border-gray-200/90 dark:border-white/10 rounded-2xl shadow-2xl p-2.5 animate-in fade-in zoom-in-95 duration-150"
-        >
-          <div className="px-2 py-1 mb-1.5 border-b border-gray-100 dark:border-white/5">
-            <p className="text-[11px] font-bold text-gray-900 dark:text-white truncate">{activeCellPopover.staffName}</p>
-            <p className="text-[10px] text-gray-400">{activeCellPopover.dateFormatted}</p>
-          </div>
+      {/* Floating Status Picker Popover on Cell Click (Portal with Fixed Precision Coordinates) */}
+      {mounted && activeCellPopover && activeCellPopover.rect && createPortal(
+        (() => {
+          const popoverWidth = 224;
+          const popoverHeight = 285;
+          const { top: btnTop, bottom: btnBottom, left: btnLeft, width: btnWidth } = activeCellPopover.rect;
 
-          <div className="space-y-1">
-            {Object.values(STATUS_CONFIG).map((cfg) => {
-              const isSelected = activeCellPopover.currentStatus === cfg.key;
-              return (
-                <button
-                  key={cfg.key}
-                  onClick={() => handleQuickStatusChange(activeCellPopover.staffId, activeCellPopover.dateStr, cfg.key)}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    isSelected
-                      ? `${cfg.badgeBg} ${cfg.badgeText} border ${cfg.badgeBorder}`
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-full ${cfg.dotColor}`} />
-                    <span>{cfg.label}</span>
-                  </div>
-                  <cfg.icon className="text-base" />
-                </button>
-              );
-            })}
-          </div>
+          // Center horizontally relative to the cell button
+          const btnCenter = btnLeft + btnWidth / 2;
+          let left = btnCenter - popoverWidth / 2;
+          // Boundary checks to stay cleanly on screen
+          left = Math.max(12, Math.min(left, window.innerWidth - popoverWidth - 12));
+          const arrowLeft = Math.max(16, Math.min(btnCenter - left, popoverWidth - 16));
 
-          <div className="mt-2 pt-2 border-t border-gray-100 dark:border-white/5 flex gap-1">
-            <button
-              onClick={() => {
-                const s = staffData.find((m) => m.id === activeCellPopover.staffId);
-                setEditingStaffMember(s);
-                setIsEditModalOpen(true);
-                setActiveCellPopover(null);
+          // Space check: show above if near bottom of screen
+          const spaceBelow = window.innerHeight - btnBottom;
+          const showAbove = spaceBelow < popoverHeight + 10 && btnTop > popoverHeight + 10;
+          const top = showAbove ? Math.max(10, btnTop - popoverHeight - 8) : btnBottom + 8;
+
+          return (
+            <div
+              ref={popoverRef}
+              style={{
+                position: 'fixed',
+                left: `${left}px`,
+                top: `${top}px`,
+                width: `${popoverWidth}px`,
               }}
-              className="flex-1 py-1 text-[11px] font-semibold text-[#E91E63] hover:bg-pink-50 dark:hover:bg-pink-900/30 rounded-lg transition-colors text-center"
+              className="z-[9999] bg-white dark:bg-[#1a1a2e] border border-gray-200/90 dark:border-white/10 rounded-2xl shadow-2xl p-2.5 animate-in fade-in zoom-in-95 duration-150 select-none relative"
+              onClick={(e) => e.stopPropagation()}
             >
-              Custom Time...
-            </button>
-            <button
-              onClick={() => handleClearCell(activeCellPopover.staffId, activeCellPopover.dateStr)}
-              className="px-2 py-1 text-[11px] font-semibold text-gray-400 hover:text-red-500 rounded-lg transition-colors"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
+              {/* Pointer Caret Arrow */}
+              {showAbove ? (
+                <div
+                  style={{ left: `${arrowLeft}px` }}
+                  className="absolute -bottom-1.5 -translate-x-1/2 w-3 h-3 rotate-45 bg-white dark:bg-[#1a1a2e] border-r border-b border-gray-200/90 dark:border-white/10 pointer-events-none"
+                />
+              ) : (
+                <div
+                  style={{ left: `${arrowLeft}px` }}
+                  className="absolute -top-1.5 -translate-x-1/2 w-3 h-3 rotate-45 bg-white dark:bg-[#1a1a2e] border-l border-t border-gray-200/90 dark:border-white/10 pointer-events-none"
+                />
+              )}
+
+              <div className="px-2 py-1 mb-1.5 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
+                <div className="min-w-0 pr-2">
+                  <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{activeCellPopover.staffName}</p>
+                  <p className="text-[10px] text-gray-400">{activeCellPopover.dateFormatted}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveCellPopover(null)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  title="Close"
+                >
+                  <RiCloseLine className="text-sm" />
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                {Object.values(STATUS_CONFIG).map((cfg) => {
+                  const isSelected = activeCellPopover.currentStatus === cfg.key;
+                  return (
+                    <button
+                      key={cfg.key}
+                      onClick={() => handleQuickStatusChange(activeCellPopover.staffId, activeCellPopover.dateStr, cfg.key)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        isSelected
+                          ? `${cfg.badgeBg} ${cfg.badgeText} border ${cfg.badgeBorder} shadow-xs`
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${cfg.dotColor}`} />
+                        <span>{cfg.label}</span>
+                      </div>
+                      <cfg.icon className="text-base" />
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-white/5 flex gap-1">
+                <button
+                  onClick={() => {
+                    const s = staffData.find((m) => m.id === activeCellPopover.staffId);
+                    setEditingStaffMember(s);
+                    setIsEditModalOpen(true);
+                    setActiveCellPopover(null);
+                  }}
+                  className="flex-1 py-1.5 text-[11px] font-semibold text-[#E91E63] hover:bg-pink-50 dark:hover:bg-pink-900/30 rounded-lg transition-colors text-center cursor-pointer"
+                >
+                  Custom Time...
+                </button>
+                <button
+                  onClick={() => handleClearCell(activeCellPopover.staffId, activeCellPopover.dateStr)}
+                  className="px-2.5 py-1.5 text-[11px] font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          );
+        })(),
+        document.body
       )}
 
       {/* MODAL 1: Mark Attendance (Bulk or Single Date) */}

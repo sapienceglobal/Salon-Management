@@ -8,11 +8,12 @@ import {
   RiLoader2Line, RiCheckLine, RiDeleteBinLine,
   RiFlashlightLine, RiHome4Line, RiShoppingBag3Line,
   RiToolsLine, RiMegaphoneLine, RiUserStarLine, RiApps2Line,
-  RiMoneyDollarCircleLine, RiQrCodeLine, RiBankCardLine, RiBankLine
+  RiMoneyDollarCircleLine, RiQrCodeLine, RiBankCardLine, RiBankLine, RiEyeLine
 } from 'react-icons/ri';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { expenseSchema, formatZodErrors } from '@/lib/validations';
+import { getImageUrl } from '@/lib/utils';
 
 // Category icon & color mappings
 const CATEGORY_META = {
@@ -583,17 +584,31 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess, expenseToE
                         <p className="text-[10px] text-emerald-600 font-medium">Attached</p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFormData(prev => ({ ...prev, receipt_url: '', receipt_name: '' }));
-                      }}
-                      className="p-1 rounded-lg hover:bg-rose-100 text-rose-500 transition-colors"
-                      title="Remove file"
-                    >
-                      <RiDeleteBinLine className="text-sm" />
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {formData.receipt_url && (
+                        <a
+                          href={getImageUrl(formData.receipt_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 hover:text-[#E91E63] transition-colors"
+                          title="Open attached receipt"
+                        >
+                          <RiEyeLine className="text-sm" />
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFormData(prev => ({ ...prev, receipt_url: '', receipt_name: '' }));
+                        }}
+                        className="p-1 rounded-lg hover:bg-rose-100 text-rose-500 transition-colors"
+                        title="Remove file"
+                      >
+                        <RiDeleteBinLine className="text-sm" />
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <>

@@ -98,3 +98,41 @@ export function parseSpecializations(val) {
   return [];
 }
 
+/**
+ * Safely format an image or document URL.
+ * Handles local backend uploads, remote HTTP/HTTPS URLs, blob previews, and public fallback assets.
+ * Seamlessly resolves images across local development and VPS (Hostinger) production hosting.
+ *
+ * @param {string} path - Image path, relative URL, or full URL
+ * @param {string} [fallback=''] - Fallback path if empty
+ * @returns {string} Fully resolved and safe URL
+ */
+export function getImageUrl(path, fallback = '') {
+  if (!path || typeof path !== 'string') return fallback;
+  const trimmed = path.trim();
+  if (!trimmed) return fallback;
+
+  // Blob or Data URLs (used for instant preview during file selection)
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+
+  // Remote external URLs
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+
+  // Ensure leading slash
+  const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+
+  // If it's a backend upload
+  if (cleanPath.startsWith('/uploads/')) {
+    const backendOrigin = process.env.NEXT_PUBLIC_BACKEND_URL;
+    if (backendOrigin && typeof window !== 'undefined' && !backendOrigin.includes(window.location.host)) {
+      return `${backendOrigin.replace(/\/+$/, '')}${cleanPath}`;
+    }
+    return cleanPath;
+  }
+
+  return cleanPath;
+}

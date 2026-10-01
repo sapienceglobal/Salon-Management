@@ -8,7 +8,7 @@ import {
 import api from '@/lib/api';
 import StaffFormModal from '@/components/admin/StaffFormModal';
 import StaffDetailsModal from '@/components/admin/StaffDetailsModal';
-import { formatCurrency, parseSpecializations } from '@/lib/utils';
+import { formatCurrency, parseSpecializations, getImageUrl } from '@/lib/utils';
 import { useConfirm } from '@/context/ConfirmContext';
 import toast from 'react-hot-toast';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
@@ -279,7 +279,7 @@ export default function StaffPage() {
                 {staff.avatar_url ? (
                   <div className="relative mb-4">
                     <img
-                      src={staff.avatar_url}
+                      src={getImageUrl(staff.avatar_url)}
                       alt={`${staff.first_name} ${staff.last_name}`}
                       className="w-20 h-20 rounded-full object-cover shadow-sm border-2 border-white dark:border-white/10 ring-2 ring-[#E91E63]/30"
                     />

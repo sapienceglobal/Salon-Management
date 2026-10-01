@@ -1,6 +1,7 @@
 import { productService } from './products.service.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import { deleteUploadedFile } from '../../utils/fileUpload.js';
 
 export const getProducts = asyncHandler(async (req, res) => {
   const { products, meta } = await productService.getAll(req.user.business_id, req.query);
@@ -21,6 +22,10 @@ export const createProduct = asyncHandler(async (req, res) => {
 export const updateProduct = asyncHandler(async (req, res) => {
   const payload = { ...req.body };
   if (req.file) {
+    const existing = await productService.getById(req.params.id, req.user.business_id).catch(() => null);
+    if (existing?.image_url) {
+      deleteUploadedFile(existing.image_url);
+    }
     payload.image_url = `/uploads/${req.file.filename}`;
   }
   const product = await productService.update(req.params.id, req.user.business_id, payload);
@@ -31,11 +36,28 @@ export const updateStock = asyncHandler(async (req, res) => {
   ApiResponse.ok('Stock updated', product).send(res);
 });
 export const deleteProduct = asyncHandler(async (req, res) => {
-  await productService.delete(req.params.id, req.user.business_id);
+  if (req.query.permanent === 'true') {
+    const existing = await productService.getById(req.params.id, req.user.business_id).catch(() => null);
+    if (existing?.image_url) {
+      deleteUploadedFile(existing.image_url);
+    }
+    await productService.delete(req.params.id, req.user.business_id);
+    return ApiResponse.ok('Product permanently deleted').send(res);
+  }
+  await productService.update(req.params.id, req.user.business_id, { is_active: false });
   ApiResponse.ok('Product deactivated').send(res);
 });
 export const bulkDeleteProducts = asyncHandler(async (req, res) => {
-  const count = await productService.bulkDelete(req.user.business_id, req.body.ids);
+  const { ids } = req.body;
+  if (Array.isArray(ids) && ids.length > 0) {
+    for (const id of ids) {
+      const existing = await productService.getById(id, req.user.business_id).catch(() => null);
+      if (existing?.image_url) {
+        deleteUploadedFile(existing.image_url);
+      }
+    }
+  }
+  const count = await productService.bulkDelete(req.user.business_id, ids);
   ApiResponse.ok(`${count} products deleted`, { count }).send(res);
 });
 export const bulkStatusProducts = asyncHandler(async (req, res) => {

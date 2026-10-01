@@ -110,16 +110,31 @@ html[data-theme-mode="light"] {
     -moz-appearance: textfield;
   }
 
-  /* Admin dropdown option styling — dark */
-  html[data-theme-mode="dark"] [data-theme="admin"] select option {
-    background-color: var(--color-admin-card);
-    color: var(--color-admin-text);
+  /* Color scheme for native controls (date picker, native select dropdowns, scrollbars) */
+  html[data-theme-mode="dark"],
+  html.dark {
+    color-scheme: dark;
   }
 
-  /* Admin dropdown option styling — light */
-  html[data-theme-mode="light"] [data-theme="admin"] select option {
-    background-color: #ffffff;
-    color: #0f172a;
+  html[data-theme-mode="light"],
+  html:not(.dark) {
+    color-scheme: light;
+  }
+
+  /* Universal dropdown option styling — dark */
+  html[data-theme-mode="dark"] select option,
+  html.dark select option,
+  .dark select option,
+  select option:is(.dark *) {
+    background-color: #1a1a2e !important;
+    color: #f8fafc !important;
+  }
+
+  /* Universal dropdown option styling — light */
+  html[data-theme-mode="light"] select option,
+  html:not(.dark) select option {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
   }
 
   /* === Global Scrollbar (Pink Theme) === */

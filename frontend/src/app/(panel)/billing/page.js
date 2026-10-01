@@ -18,7 +18,8 @@ import AddCustomerModal from '@/components/admin/customers/AddCustomerModal';
 import CheckoutModal from '@/components/admin/billing/CheckoutModal';
 import ReceiptModal from '@/components/admin/billing/ReceiptModal';
 import ViewDraftsDrawer from '@/components/admin/billing/ViewDraftsDrawer';
-import { formatCurrency } from '@/lib/utils';
+import ViewInvoicesDrawer from '@/components/admin/billing/ViewInvoicesDrawer';
+import { formatCurrency, getImageUrl } from '@/lib/utils';
 import { useConfirm } from '@/context/ConfirmContext';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 
@@ -82,17 +83,13 @@ export default function POSPage() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isViewDraftsOpen, setIsViewDraftsOpen] = useState(false);
+  const [isInvoicesDrawerOpen, setIsInvoicesDrawerOpen] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState(null);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [completedInvoice, setCompletedInvoice] = useState(null);
   const [appointmentId, setAppointmentId] = useState(null);
   const [mounted, setMounted] = useState(false);
 
-  // Load Initial Data from Real Backend
-  useEffect(() => {
-    setMounted(true);
-    fetchData();
-  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -237,6 +234,12 @@ export default function POSPage() {
     }
   };
 
+  // Load Initial Data from Real Backend
+  useEffect(() => {
+    setMounted(true);
+    fetchData();
+  }, []);
+
   // Dynamic Product Categories calculated from real products
   const productCategories = useMemo(() => {
     const map = new Map();
@@ -349,20 +352,20 @@ export default function POSPage() {
     } else {
       let subtitle = '';
       let price = 0;
-      let img = item.image_url || '/pos/svc_women_haircut.png';
+      let img = getImageUrl(item.image_url) || '/pos/svc_women_haircut.png';
 
       if (type === 'service') {
         subtitle = `${item.duration_minutes || 45} mins`;
         price = parseFloat(item.price) || 0;
-        img = item.image_url || (item.gender_target === 'male' ? '/pos/svc_men_haircut.png' : '/pos/svc_women_haircut.png');
+        img = getImageUrl(item.image_url) || (item.gender_target === 'male' ? '/pos/svc_men_haircut.png' : '/pos/svc_women_haircut.png');
       } else if (type === 'product') {
         subtitle = item.unit || '1 pc';
         price = parseFloat(item.selling_price || item.price) || 0;
-        img = item.image_url || '/pos/prod_shampoo.jpg';
+        img = getImageUrl(item.image_url) || '/pos/prod_shampoo.jpg';
       } else if (type === 'package') {
         subtitle = `${item.validity_days || 30} Days Validity`;
         price = parseFloat(item.total_price || item.price) || 0;
-        img = item.image_url || '/pos/pkg_keratin.jpg';
+        img = getImageUrl(item.image_url) || '/pos/pkg_keratin.jpg';
       }
 
       setCart([
@@ -383,17 +386,77 @@ export default function POSPage() {
   };
 
   const updateCartQty = (id, type, delta) => {
-    setCart(cart.map(c => {
-      if (String(c.id) === String(id) && c.type === type) {
-        const newQty = Math.max(1, c.qty + delta);
-        return { ...c, qty: newQty };
-      }
-      return c;
-    }));
+    const existing = cart.find(c => String(c.id) === String(id) && c.type === type);
+    if (!existing) return;
+
+    const newQty = existing.qty + delta;
+    if (newQty <= 0) {
+      setCart(cart.filter(c => !(String(c.id) === String(id) && c.type === type)));
+      toast.success(`Removed ${existing.name} from cart`, { duration: 1200 });
+    } else {
+      setCart(cart.map(c => String(c.id) === String(id) && c.type === type ? { ...c, qty: newQty } : c));
+    }
   };
 
   const removeFromCart = (id, type) => {
+    const existing = cart.find(c => String(c.id) === String(id) && c.type === type);
     setCart(cart.filter(c => !(String(c.id) === String(id) && c.type === type)));
+    if (existing) {
+      toast.success(`Removed ${existing.name} from cart`, { duration: 1200 });
+    }
+  };
+
+  // Flipkart / Blinkit style cart action button / quantity stepper: [ + ADD ] or [ - count + ]
+  const renderItemActionButton = (item, type) => {
+    const cartItem = cart.find(c => String(c.id) === String(item.id) && c.type === type);
+    const qty = cartItem ? cartItem.qty : 0;
+
+    if (qty > 0) {
+      return (
+        <div 
+          onClick={(e) => e.stopPropagation()}
+          className="h-8 flex items-center bg-[#E91E63] text-white rounded-xl shadow-md shadow-[#E91E63]/25 shrink-0 overflow-hidden font-bold select-none transition-all duration-200 hover:shadow-lg hover:shadow-[#E91E63]/35"
+        >
+          <button
+            type="button"
+            onClick={() => updateCartQty(item.id, type, -1)}
+            className="w-7 sm:w-8 h-8 flex items-center justify-center text-white/90 hover:text-white hover:bg-black/15 active:scale-90 transition-all cursor-pointer"
+            title="Decrease quantity"
+            aria-label="Decrease quantity"
+          >
+            <RiSubtractLine className="text-sm font-black" />
+          </button>
+          <span className="min-w-[20px] sm:min-w-[24px] px-1 text-center text-xs font-black tracking-tight leading-none text-white">
+            {qty}
+          </span>
+          <button
+            type="button"
+            onClick={() => updateCartQty(item.id, type, 1)}
+            className="w-7 sm:w-8 h-8 flex items-center justify-center text-white/90 hover:text-white hover:bg-black/15 active:scale-90 transition-all cursor-pointer"
+            title="Increase quantity"
+            aria-label="Increase quantity"
+          >
+            <RiAddLine className="text-sm font-black" />
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          addToCart(item, type);
+        }}
+        className="h-8 px-2.5 sm:px-3 rounded-xl bg-pink-50 hover:bg-[#E91E63] dark:bg-pink-950/40 dark:hover:bg-[#E91E63] text-[#E91E63] hover:text-white border border-[#E91E63]/25 hover:border-[#E91E63] flex items-center justify-center gap-1 font-extrabold text-[11px] sm:text-xs uppercase tracking-wider transition-all duration-200 hover:scale-105 active:scale-95 shadow-xs shrink-0 cursor-pointer"
+        title={`Add ${item.name} to Cart`}
+        aria-label={`Add ${item.name} to Cart`}
+      >
+        <RiAddLine className="text-base font-black" />
+        <span>ADD</span>
+      </button>
+    );
   };
 
   const handleEditPriceSave = (id, type) => {
@@ -547,13 +610,33 @@ export default function POSPage() {
       <div className="flex-1 flex flex-col min-w-0 gap-5 z-10">
 
         {/* 1. Page Header */}
-        <div className="flex flex-col transition-all duration-300">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-            POS & Billing
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
-            Create bills, manage sales and process payments easily.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-300">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              POS & Billing
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+              Create bills, manage sales and process payments easily.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsInvoicesDrawerOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#E91E63] hover:text-[#E91E63] transition-all shadow-sm"
+            >
+              <RiFileList3Line className="text-base text-[#E91E63]" />
+              Invoices History
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsViewDraftsOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-[#E91E63] hover:text-[#E91E63] transition-all shadow-sm"
+            >
+              <RiFileList3Line className="text-base text-amber-500" />
+              Drafts ({draftCount})
+            </button>
+          </div>
         </div>
 
         {/* 2. Customer Card with Smooth Expand & Collapse */}
@@ -752,11 +835,12 @@ export default function POSPage() {
             <select
               value={selectedStaffId}
               onChange={(e) => handleStaffFilterChange(e.target.value)}
-              className="appearance-none bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-9 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-[#E91E63] transition-all duration-200 cursor-pointer shadow-sm hover:border-slate-300"
+              style={{ colorScheme: 'dark light' }}
+              className="appearance-none bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-9 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-[#E91E63] transition-all duration-200 cursor-pointer shadow-sm hover:border-slate-300 [color-scheme:light] dark:[color-scheme:dark]"
             >
-              <option value="">All Staff</option>
+              <option value="" className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white">All Staff</option>
               {staffList.map((st) => (
-                <option key={st.id} value={st.id}>
+                <option key={st.id} value={st.id} className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white py-1">
                   {st.first_name} {st.last_name || ''} ({st.designation || 'Staff'} • {getShiftLabel(st.shift_schedule)})
                 </option>
               ))}
@@ -826,20 +910,21 @@ export default function POSPage() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="appearance-none bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-9 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-[#E91E63] transition-all duration-200 cursor-pointer shadow-sm hover:border-slate-300"
+              style={{ colorScheme: 'dark light' }}
+              className="appearance-none bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-9 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-[#E91E63] transition-all duration-200 cursor-pointer shadow-sm hover:border-slate-300 [color-scheme:light] dark:[color-scheme:dark]"
             >
-              <option value="all">All Categories</option>
+              <option value="all" className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white">All Categories</option>
               {activeTab === 'Products' ? (
                 productCategories.filter(c => c.id !== 'all').map(c => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
+                  <option key={c.id} value={c.name} className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white py-1">{c.name}</option>
                 ))
               ) : activeTab === 'Packages' ? (
                 packageCategories.filter(c => c.id !== 'all').map(c => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
+                  <option key={c.id} value={c.name} className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white py-1">{c.name}</option>
                 ))
               ) : (
                 ['Hair Care', 'Skin Care', 'Makeup', 'Nail Care', 'Wellness', 'Grooming'].map(c => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c} className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white py-1">{c}</option>
                 ))
               )}
             </select>
@@ -866,7 +951,7 @@ export default function POSPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5">
                   {filteredServices.map((service) => {
                     const isInCart = cart.some(c => String(c.id) === String(service.id) && c.type === 'service');
-                    const imgUrl = service.image_url || (service.gender_target === 'male' ? '/pos/svc_men_haircut.png' : '/pos/svc_women_haircut.png');
+                    const imgUrl = getImageUrl(service.image_url) || (service.gender_target === 'male' ? '/pos/svc_men_haircut.png' : '/pos/svc_women_haircut.png');
 
                     return (
                       <div
@@ -904,14 +989,8 @@ export default function POSPage() {
                           </span>
                         </div>
 
-                        {/* Pink Add to Cart Button */}
-                        <button
-                          onClick={() => addToCart(service, 'service')}
-                          className="w-8 h-8 rounded-xl bg-pink-50 hover:bg-[#E91E63] dark:bg-pink-950/40 dark:hover:bg-[#E91E63] text-[#E91E63] hover:text-white flex items-center justify-center font-bold transition-all duration-200 hover:scale-105 active:scale-90 shadow-sm shrink-0"
-                          title="Add to Cart"
-                        >
-                          <RiAddLine className="text-lg" />
-                        </button>
+                        {/* Flipkart / Blinkit Style Action Button */}
+                        {renderItemActionButton(service, 'service')}
                       </div>
                     );
                   })}
@@ -986,7 +1065,7 @@ export default function POSPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-3.5">
                     {filteredProducts.map((prod) => {
                       const isInCart = cart.some(c => String(c.id) === String(prod.id) && c.type === 'product');
-                      const imgUrl = prod.image_url || '/pos/prod_shampoo.jpg';
+                      const imgUrl = getImageUrl(prod.image_url) || '/pos/prod_shampoo.jpg';
 
                       return (
                         <div
@@ -1020,14 +1099,8 @@ export default function POSPage() {
                             </span>
                           </div>
 
-                          {/* Pink Add to Cart Button */}
-                          <button
-                            onClick={() => addToCart(prod, 'product')}
-                            className="w-8 h-8 rounded-xl bg-pink-50 hover:bg-[#E91E63] dark:bg-pink-950/40 dark:hover:bg-[#E91E63] text-[#E91E63] hover:text-white flex items-center justify-center font-bold transition-all duration-200 hover:scale-105 active:scale-90 shadow-sm shrink-0"
-                            title="Add to Cart"
-                          >
-                            <RiAddLine className="text-lg" />
-                          </button>
+                          {/* Flipkart / Blinkit Style Action Button */}
+                          {renderItemActionButton(prod, 'product')}
                         </div>
                       );
                     })}
@@ -1101,7 +1174,7 @@ export default function POSPage() {
                             {/* Package Model Image */}
                             <div className="relative w-16 h-22 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
                               <Image
-                                src={pkg.image_url || '/pos/pkg_keratin.jpg'}
+                                src={getImageUrl(pkg.image_url) || '/pos/pkg_keratin.jpg'}
                                 alt={pkg.name}
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -1143,13 +1216,8 @@ export default function POSPage() {
                             <span className="text-sm font-black text-slate-900 dark:text-white">
                               ₹{(parseFloat(pkg.total_price || pkg.price) || 0).toLocaleString()}
                             </span>
-                            <button
-                              onClick={() => addToCart(pkg, 'package')}
-                              className="w-8 h-8 rounded-xl bg-pink-50 hover:bg-[#E91E63] dark:bg-pink-950/40 dark:hover:bg-[#E91E63] text-[#E91E63] hover:text-white flex items-center justify-center font-bold transition-all duration-200 hover:scale-105 active:scale-90 shadow-sm shrink-0"
-                              title="Add Package to Cart"
-                            >
-                              <RiAddLine className="text-lg" />
-                            </button>
+                            {/* Flipkart / Blinkit Style Action Button */}
+                            {renderItemActionButton(pkg, 'package')}
                           </div>
                         </div>
                       );
@@ -1201,11 +1269,12 @@ export default function POSPage() {
                   const matched = staffList.find(s => String(s.id) === String(val));
                   if (matched) toast.success(`Assigned cart to ${matched.first_name}`);
                 }}
-                className="w-full appearance-none bg-white dark:bg-[#121224] border border-slate-200 dark:border-white/10 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-[#E91E63] cursor-pointer shadow-sm truncate transition-colors duration-200"
+                style={{ colorScheme: 'dark light' }}
+                className="w-full appearance-none bg-white dark:bg-[#121224] border border-slate-200 dark:border-white/10 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-[#E91E63] cursor-pointer shadow-sm truncate transition-colors duration-200 [color-scheme:light] dark:[color-scheme:dark]"
               >
-                <option value="">Select Staff</option>
+                <option value="" className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white">Select Staff</option>
                 {staffList.map(st => (
-                  <option key={st.id} value={st.id}>
+                  <option key={st.id} value={st.id} className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white py-1">
                     {st.first_name} {st.last_name || ''} ({getShiftLabel(st.shift_schedule).split(' ')[0]})
                   </option>
                 ))}
@@ -1223,13 +1292,14 @@ export default function POSPage() {
               <select
                 value={discountPercent}
                 onChange={(e) => setDiscountPercent(parseInt(e.target.value) || 0)}
-                className="w-full appearance-none bg-white dark:bg-[#121224] border border-slate-200 dark:border-white/10 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-[#E91E63] cursor-pointer shadow-sm truncate transition-colors duration-200"
+                style={{ colorScheme: 'dark light' }}
+                className="w-full appearance-none bg-white dark:bg-[#121224] border border-slate-200 dark:border-white/10 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-[#E91E63] cursor-pointer shadow-sm truncate transition-colors duration-200 [color-scheme:light] dark:[color-scheme:dark]"
               >
-                <option value={0}>Select Discount</option>
-                <option value={5}>5% Off</option>
-                <option value={10}>10% Off</option>
-                <option value={15}>15% Off</option>
-                <option value={20}>20% Off</option>
+                <option value={0} className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white">Select Discount</option>
+                <option value={5} className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white">5% Off</option>
+                <option value={10} className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white">10% Off</option>
+                <option value={15} className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white">15% Off</option>
+                <option value={20} className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white">20% Off</option>
               </select>
               <RiArrowDownSLine className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none transition-transform duration-200" />
             </div>
@@ -1315,11 +1385,12 @@ export default function POSPage() {
                               const newStaffId = e.target.value ? parseInt(e.target.value) : null;
                               setCart(cart.map((c, i) => i === idx ? { ...c, staff_member_id: newStaffId } : c));
                             }}
-                            className="bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer max-w-[125px] truncate"
+                            style={{ colorScheme: 'dark light' }}
+                            className="bg-slate-50 dark:bg-[#1a1a2e] border border-slate-200/80 dark:border-white/10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer max-w-[125px] truncate [color-scheme:light] dark:[color-scheme:dark]"
                           >
-                            <option value="">No Staff</option>
+                            <option value="" className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white">No Staff</option>
                             {staffList.map(st => (
-                              <option key={st.id} value={st.id}>
+                              <option key={st.id} value={st.id} className="bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-white py-1">
                                 {st.first_name} ({getShiftLabel(st.shift_schedule).split(' ')[0]})
                               </option>
                             ))}
@@ -1499,6 +1570,15 @@ export default function POSPage() {
           })));
         }}
         onDraftDeleted={() => setDraftCount(prev => Math.max(0, prev - 1))}
+      />
+
+      <ViewInvoicesDrawer
+        isOpen={isInvoicesDrawerOpen}
+        onClose={() => setIsInvoicesDrawerOpen(false)}
+        onSelectInvoice={(inv) => {
+          setCompletedInvoice(inv);
+          setIsReceiptOpen(true);
+        }}
       />
       
       <CheckoutModal

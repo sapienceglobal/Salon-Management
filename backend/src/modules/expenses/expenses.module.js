@@ -4,7 +4,7 @@ import { cleanObject } from '../../utils/helpers.js';
 import { parsePagination, buildPaginationMeta } from '../../utils/pagination.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
-import { singleDocument } from '../../utils/fileUpload.js';
+import { singleDocument, deleteUploadedFile } from '../../utils/fileUpload.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../../middlewares/authenticate.js';
@@ -142,6 +142,10 @@ class ExpenseService {
       updated_at: db.fn.now(),
     });
 
+    if (data.receipt_url !== undefined && expense.receipt_url && data.receipt_url !== expense.receipt_url) {
+      deleteUploadedFile(expense.receipt_url);
+    }
+
     await db('expenses').where({ id }).update(updateData);
     return this.getById(id, businessId);
   }
@@ -149,11 +153,18 @@ class ExpenseService {
   async delete(id, businessId) {
     const expense = await db('expenses').where({ id, business_id: businessId }).first();
     if (!expense) throw ApiError.notFound('Expense not found');
+    if (expense.receipt_url) {
+      deleteUploadedFile(expense.receipt_url);
+    }
     await db('expenses').where({ id }).del();
   }
 
   async bulkDelete(ids, businessId) {
     if (!Array.isArray(ids) || ids.length === 0) return 0;
+    const expenses = await db('expenses').where({ business_id: businessId }).whereIn('id', ids).select('receipt_url');
+    for (const exp of expenses) {
+      if (exp.receipt_url) deleteUploadedFile(exp.receipt_url);
+    }
     return db('expenses').where({ business_id: businessId }).whereIn('id', ids).del();
   }
 

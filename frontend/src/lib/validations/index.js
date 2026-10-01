@@ -93,20 +93,33 @@ export function cleanZodMessage(issue) {
 
 export const customerSchema = z.object({
   first_name: z.string({ message: 'First name is required' }).trim().min(1, 'First name is required').max(100, 'First name cannot exceed 100 characters'),
-  last_name: z.string().trim().max(100, 'Last name cannot exceed 100 characters').optional().or(z.literal('')),
+  last_name: z.string().trim().max(100, 'Last name cannot exceed 100 characters').optional().nullable().or(z.literal('')),
   phone: z.string({ message: 'Mobile number is required' })
     .trim()
     .min(1, 'Mobile number is required')
-    .refine((val) => !val || val.length >= 10, { message: 'Mobile number must be at least 10 digits' })
-    .refine((val) => !val || val.length <= 15, { message: 'Mobile number cannot exceed 15 digits' }),
-  email: z.string().trim().email('Please enter a valid email address').max(255).optional().or(z.literal('')),
-  gender: z.enum(['male', 'female', 'other'], { message: 'Please select a gender' }).optional().or(z.literal('')),
-  date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date format: YYYY-MM-DD').optional().or(z.literal('')),
-  anniversary: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date format: YYYY-MM-DD').optional().or(z.literal('')),
-  address: z.string().max(1000, 'Address cannot exceed 1000 characters').optional().or(z.literal('')),
-  gst_number: z.string().max(20, 'GST number cannot exceed 20 characters').optional().or(z.literal('')),
-  source: z.enum(['walk_in', 'referral', 'online', 'campaign', ''], { message: 'Please select a valid source' }).optional().or(z.literal('')),
-  notes: z.string().max(2000, 'Notes cannot exceed 2000 characters').optional().or(z.literal('')),
+    .refine((val) => !val || val.replace(/\D/g, '').length >= 10, { message: 'Mobile number must be at least 10 digits' })
+    .refine((val) => !val || val.length <= 20, { message: 'Mobile number cannot exceed 20 characters' }),
+  email: z.string().trim().optional().nullable().or(z.literal('')).refine(
+    (val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+    { message: 'Please enter a valid email address' }
+  ),
+  gender: z.enum(['male', 'female', 'other'], { message: 'Please select a gender' }).optional().nullable().or(z.literal('')),
+  date_of_birth: z.string().optional().nullable().or(z.literal('')).refine(
+    (val) => !val || /^\d{4}-\d{2}-\d{2}$/.test(val),
+    { message: 'Date format: YYYY-MM-DD' }
+  ),
+  anniversary: z.string().optional().nullable().or(z.literal('')).refine(
+    (val) => !val || /^\d{4}-\d{2}-\d{2}$/.test(val),
+    { message: 'Date format: YYYY-MM-DD' }
+  ),
+  address: z.string().max(1000, 'Address cannot exceed 1000 characters').optional().nullable().or(z.literal('')),
+  location: z.string().max(255).optional().nullable().or(z.literal('')),
+  gst_number: z.string().max(20, 'GST number cannot exceed 20 characters').optional().nullable().or(z.literal('')),
+  source: z.string().max(50, 'Source cannot exceed 50 characters').optional().nullable().or(z.literal('')),
+  notes: z.string().max(2000, 'Notes cannot exceed 2000 characters').optional().nullable().or(z.literal('')),
+  sms_opt_in: z.boolean().optional(),
+  email_opt_in: z.boolean().optional(),
+  whatsapp_opt_in: z.boolean().optional(),
 });
 
 export const categorySchema = z.object({

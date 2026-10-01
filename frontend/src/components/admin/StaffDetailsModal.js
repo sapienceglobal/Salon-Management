@@ -14,7 +14,7 @@ import {
   RiMailLine,
   RiEdit2Line
 } from 'react-icons/ri';
-import { formatCurrency, parseSpecializations } from '@/lib/utils';
+import { formatCurrency, parseSpecializations, getImageUrl } from '@/lib/utils';
 import api from '@/lib/api';
 import { useConfirm } from '@/context/ConfirmContext';
 import toast from 'react-hot-toast';
@@ -97,7 +97,7 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
               <div className="flex items-center gap-4">
                 {staff.avatar_url ? (
                   <img
-                    src={staff.avatar_url}
+                    src={getImageUrl(staff.avatar_url)}
                     alt={`${staff.first_name} ${staff.last_name}`}
                     className="w-14 h-14 rounded-2xl object-cover shadow-sm border border-gray-200 dark:border-white/10 ring-2 ring-[#E91E63]/30 shrink-0"
                   />

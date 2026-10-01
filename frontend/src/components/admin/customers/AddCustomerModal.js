@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
 import api from '@/lib/api';
 import { customerSchema, formatZodErrors } from '@/lib/validations';
+import { getImageUrl } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
   RiCloseLine,
@@ -29,6 +30,10 @@ import {
   RiCalendarLine,
   RiHeart3Line,
   RiGiftLine,
+  RiCameraLine,
+  RiUpload2Line,
+  RiDeleteBinLine,
+  RiImageAddLine,
 } from 'react-icons/ri';
 
 export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialData }) {
@@ -51,6 +56,11 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
     email_opt_in: false,
     whatsapp_opt_in: false,
   });
+
+  const fileInputRef = useRef(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -83,15 +93,20 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
           email_opt_in: initialData.email_opt_in ?? false,
           whatsapp_opt_in: initialData.whatsapp_opt_in ?? false,
         });
+        setImagePreview(initialData.profile_image_url ? getImageUrl(initialData.profile_image_url) : '');
       } else {
         setFormData({
           first_name: '', last_name: '', phone: '', email: '', gender: 'female',
           gst_number: '', date_of_birth: '', anniversary: '', location: '', source: '',
           address: '', notes: '', sms_opt_in: false, email_opt_in: false, whatsapp_opt_in: false,
         });
+        setImagePreview('');
       }
+      setSelectedFile(null);
+      setIsDragging(false);
       setError('');
       setFieldErrors({});
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, [isOpen, initialData]);
 
@@ -103,8 +118,50 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
     if (fieldErrors[name]) setFieldErrors(prev => ({ ...prev, [name]: null }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (PNG, JPG, WEBP)');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be under 5 MB');
+      return;
+    }
+
+    setSelectedFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleDrop = (e) => {
     e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (PNG, JPG, WEBP)');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be under 5 MB');
+      return;
+    }
+
+    setSelectedFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setImagePreview('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     setLoading(true);
     setError('');
     setFieldErrors({});
@@ -117,10 +174,31 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
         validationPayload[key] = typeof val === 'string' ? val.trim() : val;
       });
 
+      // Quick validation for required fields
+      if (!validationPayload.first_name) {
+        setFieldErrors(prev => ({ ...prev, first_name: 'First name is required' }));
+        setError('First name is required');
+        toast.error('First name is required');
+        setLoading(false);
+        return;
+      }
+
+      if (!validationPayload.phone) {
+        setFieldErrors(prev => ({ ...prev, phone: 'Mobile number is required' }));
+        setError('Mobile number is required');
+        toast.error('Mobile number is required');
+        setLoading(false);
+        return;
+      }
+
       // 2. Zod Validation with clean human-readable error messages
       const result = customerSchema.safeParse(validationPayload);
       if (!result.success) {
-        setFieldErrors(formatZodErrors(result.error));
+        const errors = formatZodErrors(result.error);
+        setFieldErrors(errors);
+        const firstMsg = Object.values(errors)[0] || 'Please fix the errors in the form';
+        setError(firstMsg);
+        toast.error(firstMsg);
         setLoading(false);
         return;
       }
@@ -128,23 +206,63 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
       // 3. Prepare API payload (remove empty optional fields so backend doesn't receive blank strings)
       const payload = { ...validationPayload };
       Object.keys(payload).forEach(key => {
-        if (payload[key] === '' || payload[key] === null) {
+        if (payload[key] === '' || payload[key] === null || payload[key] === undefined) {
           delete payload[key];
         }
       });
 
-      if (isEditing) {
-        const res = await api.put(`/customers/${initialData.id}`, payload);
-        onSuccess(res.data || res);
-      } else {
-        const res = await api.post('/customers', payload);
-        onSuccess(res.data || res);
+      // Safely map location into address if provided
+      if (payload.location) {
+        if (!payload.address) {
+          payload.address = payload.location;
+        } else if (!payload.address.includes(payload.location)) {
+          payload.address = `${payload.address}, ${payload.location}`;
+        }
+        delete payload.location;
       }
+
+      let res;
+      if (selectedFile) {
+        const formDataPayload = new FormData();
+        Object.keys(payload).forEach(key => {
+          if (payload[key] !== '' && payload[key] !== null && payload[key] !== undefined) {
+            formDataPayload.append(key, payload[key]);
+          }
+        });
+        formDataPayload.append('image', selectedFile);
+
+        if (isEditing) {
+          res = await api.put(`/customers/${initialData.id}`, formDataPayload, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        } else {
+          res = await api.post('/customers', formDataPayload, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        }
+      } else {
+        if (isEditing && !imagePreview && initialData?.profile_image_url) {
+          payload.profile_image_url = null;
+        }
+        if (isEditing) {
+          res = await api.put(`/customers/${initialData.id}`, payload);
+        } else {
+          res = await api.post('/customers', payload);
+        }
+      }
+
+      if (onSuccess) onSuccess(res?.data?.data || res?.data || res);
       toast.success(isEditing ? 'Customer updated successfully!' : 'Customer added successfully!');
       onClose();
     } catch (err) {
-      console.error(err);
-      setError(err?.message || err?.response?.data?.message || 'Failed to save customer');
+      console.error('Error saving customer:', err);
+      const errMsg =
+        err?.response?.data?.message ||
+        (err?.response?.data?.errors && err?.response?.data?.errors[0]?.message) ||
+        err?.message ||
+        'Failed to save customer';
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -193,23 +311,101 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
           </button>
         </div>
 
-        {/* ══════════════════════════════════════════════════════════
-            MODAL BODY
-           ══════════════════════════════════════════════════════════ */}
-        <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6">
-          {error && (
-            <div className="flex items-center gap-2 p-3.5 mb-5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[13px] font-medium">
-              <RiInformationLine className="shrink-0 text-base" />
-              {error}
-            </div>
-          )}
+        <form id="customerForm" onSubmit={handleSubmit} noValidate className="flex flex-col flex-1 overflow-hidden">
+          {/* ══════════════════════════════════════════════════════════
+              MODAL BODY
+             ══════════════════════════════════════════════════════════ */}
+          <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6">
+            {error && (
+              <div className="flex items-center gap-2 p-3.5 mb-5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[13px] font-medium">
+                <RiInformationLine className="shrink-0 text-base" />
+                {error}
+              </div>
+            )}
 
-          <form id="customerForm" onSubmit={handleSubmit} noValidate>
             {/* ─── Section: Basic Information ─── */}
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-4">
                 <RiUserLine className="text-[#E91E63] text-base" />
                 <h3 className="text-[14px] font-bold text-gray-800 dark:text-white">Basic Information</h3>
+              </div>
+
+              {/* Profile Photo Uploader */}
+              <div className="mb-5 p-4 rounded-2xl bg-gray-50/80 dark:bg-white/[0.03] border border-dashed border-gray-200 dark:border-white/10">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                  {/* Avatar Preview */}
+                  <div className="relative group shrink-0">
+                    <div className="w-20 h-20 rounded-full ring-4 ring-pink-100 dark:ring-pink-950/40 overflow-hidden bg-gradient-to-br from-pink-50 to-pink-100 dark:from-white/5 dark:to-white/10 flex items-center justify-center shadow-inner">
+                      {imagePreview ? (
+                        <img
+                          src={imagePreview}
+                          alt="Customer Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <RiUserLine className="text-3xl text-gray-400 dark:text-gray-500" />
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[#E91E63] text-white flex items-center justify-center shadow-md hover:bg-[#D81B60] transition-transform active:scale-95 cursor-pointer"
+                      title="Upload photo"
+                    >
+                      <RiCameraLine className="text-sm" />
+                    </button>
+                  </div>
+
+                  {/* Details & Action Controls */}
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    className={`flex-1 w-full flex flex-col justify-center rounded-xl p-2.5 sm:p-3 text-center sm:text-left transition-colors ${
+                      isDragging ? 'bg-pink-50/50 dark:bg-pink-900/20 border border-[#E91E63]' : ''
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-[13px] font-bold text-gray-800 dark:text-gray-200">Customer Profile Photo</h4>
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          Upload customer photo for quick recognition at reception & invoices. (PNG, JPG up to 5MB)
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-center sm:self-auto shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#E91E63] text-white hover:bg-[#D81B60] transition-colors shadow-sm cursor-pointer"
+                        >
+                          <RiUpload2Line className="text-sm" />
+                          {imagePreview ? 'Change Photo' : 'Upload Photo'}
+                        </button>
+
+                        {imagePreview && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/30 transition-colors cursor-pointer"
+                          >
+                            <RiDeleteBinLine className="text-sm" />
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -370,6 +566,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
                     <option value="social_media">Social Media</option>
                     <option value="google">Google</option>
                   </select>
+                  {fieldErrors.source && <p className="text-red-500 text-xs mt-1">{fieldErrors.source}</p>}
                 </div>
 
                 {/* GST Number */}
@@ -487,31 +684,31 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
                 </div>
               </div>
             </div>
-          </form>
-        </div>
+          </div>
 
-        {/* ══════════════════════════════════════════════════════════
-            MODAL FOOTER
-           ══════════════════════════════════════════════════════════ */}
-        <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="px-5 py-2.5 rounded-xl text-[14px] font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            form="customerForm"
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#E91E63] hover:bg-[#D81B60] text-white text-[14px] font-bold shadow-lg shadow-[#E91E63]/25 hover:shadow-[#E91E63]/35 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            <RiSaveLine className="text-base" />
-            {loading ? 'Saving...' : isEditing ? 'Update Customer' : 'Save Customer'}
-          </button>
-        </div>
+          {/* ══════════════════════════════════════════════════════════
+              MODAL FOOTER
+             ══════════════════════════════════════════════════════════ */}
+          <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01] shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="px-5 py-2.5 rounded-xl text-[14px] font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#E91E63] hover:bg-[#D81B60] text-white text-[14px] font-bold shadow-lg shadow-[#E91E63]/25 hover:shadow-[#E91E63]/35 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <RiSaveLine className="text-base" />
+              {loading ? 'Saving...' : isEditing ? 'Update Customer' : 'Save Customer'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>,
     document.body
