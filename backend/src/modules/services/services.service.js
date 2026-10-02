@@ -2,6 +2,31 @@ import { serviceRepository } from './services.repository.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { cleanObject } from '../../utils/helpers.js';
 
+const ALLOWED_SERVICE_FIELDS = [
+  'category_id',
+  'name',
+  'description',
+  'duration_minutes',
+  'price',
+  'cost_price',
+  'hsn_sac_code',
+  'tax_percentage',
+  'is_active',
+  'image_url',
+  'gender_target',
+  'sort_order',
+];
+
+function filterServiceData(data) {
+  const filtered = {};
+  for (const key of ALLOWED_SERVICE_FIELDS) {
+    if (key in data && data[key] !== undefined) {
+      filtered[key] = data[key];
+    }
+  }
+  return filtered;
+}
+
 class ServiceService {
   // Categories
   async getAllCategories(businessId) { return serviceRepository.findAllCategories(businessId); }
@@ -43,10 +68,15 @@ class ServiceService {
     await serviceRepository.update(id, businessId, { is_active: newStatus });
     return this.getById(id, businessId);
   }
-  async create(businessId, data) { return serviceRepository.create({ ...data, business_id: businessId }); }
+
+  async create(businessId, data) {
+    const payload = filterServiceData(data);
+    return serviceRepository.create({ ...payload, business_id: businessId });
+  }
   async update(id, businessId, data) {
     await this.getById(id, businessId);
-    return serviceRepository.update(id, businessId, cleanObject(data));
+    const payload = filterServiceData(data);
+    return serviceRepository.update(id, businessId, cleanObject(payload));
   }
   async delete(id, businessId) { await this.getById(id, businessId); await serviceRepository.delete(id, businessId); }
   async bulkDelete(ids, businessId) {

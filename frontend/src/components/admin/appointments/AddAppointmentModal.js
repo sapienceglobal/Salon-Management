@@ -1,9 +1,29 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
-import { RiCloseLine, RiCalendarLine, RiSearchLine, RiUserAddLine, RiTimeLine, RiLoader2Line, RiAlertLine, RiCheckboxCircleLine, RiUserLine, RiScissorsLine, RiSaveLine, RiInformationLine, RiFileTextLine, RiDoorLine } from 'react-icons/ri';
+import { 
+  RiCloseLine, 
+  RiCalendarLine, 
+  RiSearchLine, 
+  RiUserAddLine, 
+  RiTimeLine, 
+  RiLoader2Line, 
+  RiAlertLine, 
+  RiCheckboxCircleLine, 
+  RiUserLine, 
+  RiScissorsLine, 
+  RiSaveLine, 
+  RiInformationLine, 
+  RiFileTextLine, 
+  RiDoorLine,
+  RiCheckLine,
+  RiLockLine,
+  RiRefreshLine,
+  RiSparklingLine
+} from 'react-icons/ri';
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { appointmentSchema, formatZodErrors } from '@/lib/validations';
@@ -34,6 +54,55 @@ const getShiftInfo = (shiftType) => {
   }
 };
 
+const ALL_TIME_SLOTS = [
+  { time: '09:00:00', label: '09:00 AM', period: 'morning', startMinutes: 9 * 60 },
+  { time: '09:30:00', label: '09:30 AM', period: 'morning', startMinutes: 9 * 60 + 30 },
+  { time: '10:00:00', label: '10:00 AM', period: 'morning', startMinutes: 10 * 60 },
+  { time: '10:30:00', label: '10:30 AM', period: 'morning', startMinutes: 10 * 60 + 30 },
+  { time: '11:00:00', label: '11:00 AM', period: 'morning', startMinutes: 11 * 60 },
+  { time: '11:30:00', label: '11:30 AM', period: 'morning', startMinutes: 11 * 60 + 30 },
+  { time: '12:00:00', label: '12:00 PM', period: 'afternoon', startMinutes: 12 * 60 },
+  { time: '12:30:00', label: '12:30 PM', period: 'afternoon', startMinutes: 12 * 60 + 30 },
+  { time: '13:00:00', label: '01:00 PM', period: 'afternoon', startMinutes: 13 * 60 },
+  { time: '13:30:00', label: '01:30 PM', period: 'afternoon', startMinutes: 13 * 60 + 30 },
+  { time: '14:00:00', label: '02:00 PM', period: 'afternoon', startMinutes: 14 * 60 },
+  { time: '14:30:00', label: '02:30 PM', period: 'afternoon', startMinutes: 14 * 60 + 30 },
+  { time: '15:00:00', label: '03:00 PM', period: 'afternoon', startMinutes: 15 * 60 },
+  { time: '15:30:00', label: '03:30 PM', period: 'afternoon', startMinutes: 15 * 60 + 30 },
+  { time: '16:00:00', label: '04:00 PM', period: 'evening', startMinutes: 16 * 60 },
+  { time: '16:30:00', label: '04:30 PM', period: 'evening', startMinutes: 16 * 60 + 30 },
+  { time: '17:00:00', label: '05:00 PM', period: 'evening', startMinutes: 17 * 60 },
+  { time: '17:30:00', label: '05:30 PM', period: 'evening', startMinutes: 17 * 60 + 30 },
+  { time: '18:00:00', label: '06:00 PM', period: 'evening', startMinutes: 18 * 60 },
+  { time: '18:30:00', label: '06:30 PM', period: 'evening', startMinutes: 18 * 60 + 30 },
+  { time: '19:00:00', label: '07:00 PM', period: 'evening', startMinutes: 19 * 60 },
+  { time: '19:30:00', label: '07:30 PM', period: 'evening', startMinutes: 19 * 60 + 30 },
+  { time: '20:00:00', label: '08:00 PM', period: 'evening', startMinutes: 20 * 60 },
+];
+
+const formatTime12h = (timeStr) => {
+  if (!timeStr) return '';
+  const [hStr, mStr] = timeStr.split(':');
+  const h = parseInt(hStr, 10);
+  const m = mStr ? mStr.substring(0, 2) : '00';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const displayH = h % 12 === 0 ? 12 : h % 12;
+  return `${String(displayH).padStart(2, '0')}:${m} ${ampm}`;
+};
+
+const getEndTimeFormatted = (startTimeStr, durationMinutes) => {
+  if (!startTimeStr) return '';
+  const [h, m] = startTimeStr.split(':').map(Number);
+  const totalMins = (h || 0) * 60 + (m || 0) + Number(durationMinutes || 60);
+  const endH = Math.floor(totalMins / 60) % 24;
+  const endM = totalMins % 60;
+  const ampm = endH >= 12 ? 'PM' : 'AM';
+  const displayH = endH % 12 === 0 ? 12 : endH % 12;
+  return `${String(displayH).padStart(2, '0')}:${String(endM).padStart(2, '0')} ${ampm}`;
+};
+
+const subscribe = () => () => {};
+
 export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffList, customersList, servicesList, initialDate, editData, preselectedCustomerId }) {
   const [formData, setFormData] = useState({
     customer_id: '',
@@ -51,9 +120,15 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+
+  // Time Slots & Staff Availability State
+  const [dayAppointments, setDayAppointments] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [slotPeriod, setSlotPeriod] = useState('all');
+  const [showCustomTime, setShowCustomTime] = useState(false);
 
   useScrollLock(isOpen);
 
@@ -61,39 +136,145 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
     return (staffList || []).find((s) => String(s.id) === String(formData.staff_id));
   }, [staffList, formData.staff_id]);
 
-  const timingConflict = useMemo(() => {
-    if (!selectedStaffMember || !formData.start_time) return null;
-    const shift = getShiftInfo(selectedStaffMember.shift_schedule || 'full_time');
-    const [hours, mins] = (formData.start_time || '10:00').split(':').map(Number);
-    const startMins = (hours || 0) * 60 + (mins || 0);
-    const endMins = startMins + Number(formData.duration_minutes || 60);
-
-    if (startMins < shift.startMinutes || endMins > shift.endMinutes) {
-      const endH = Math.floor(endMins / 60).toString().padStart(2, '0');
-      const endM = (endMins % 60).toString().padStart(2, '0');
-      return {
-        shift,
-        startMins,
-        endMins,
-        reason: `${selectedStaffMember.first_name} works ${shift.label} (${shift.start} - ${shift.end}). This booking (${formData.start_time.substring(0, 5)} - ${endH}:${endM}) falls outside scheduled working hours.`,
-      };
+  // Fetch appointments for the selected date to compute live availability
+  const fetchDayAppointments = useCallback(async (date) => {
+    if (!date) return;
+    setLoadingSlots(true);
+    try {
+      const res = await api.get('/appointments', { params: { date, limit: 100 } });
+      const list = res.data?.data || res.data || [];
+      setDayAppointments(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error('Failed to load slots for date', err);
+    } finally {
+      setLoadingSlots(false);
     }
-    return null;
-  }, [selectedStaffMember, formData.start_time, formData.duration_minutes]);
-
-  useEffect(() => {
-    setMounted(true);
-    fetchRooms();
   }, []);
 
-  const fetchRooms = async () => {
+  useEffect(() => {
+    if (isOpen && formData.appointment_date) {
+      fetchDayAppointments(formData.appointment_date);
+    }
+  }, [isOpen, formData.appointment_date, fetchDayAppointments]);
+
+  // Calculate live availability for each standard 30-min slot
+  const slotAvailabilityList = useMemo(() => {
+    const duration = Number(formData.duration_minutes || 60);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isToday = formData.appointment_date === todayStr;
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+
+    const shift = selectedStaffMember 
+      ? getShiftInfo(selectedStaffMember.shift_schedule || 'full_time')
+      : null;
+
+    return ALL_TIME_SLOTS.map((slot) => {
+      const startMins = slot.startMinutes;
+      const endMins = startMins + duration;
+
+      // 1. Past check
+      if (isToday && startMins < currentMins) {
+        return { ...slot, status: 'past', reason: 'Time has already passed' };
+      }
+
+      // 2. Shift check (if staff is selected)
+      if (shift && (startMins < shift.startMinutes || endMins > shift.endMinutes)) {
+        return {
+          ...slot,
+          status: 'outside_shift',
+          reason: `Outside ${selectedStaffMember.first_name}'s shift (${shift.start} - ${shift.end})`,
+        };
+      }
+
+      // 3. Appointment conflict check
+      const conflictAppt = dayAppointments.find((appt) => {
+        if (editData && String(appt.id) === String(editData.id)) return false;
+        if (['cancelled', 'no_show'].includes(appt.status)) return false;
+        if (formData.staff_id && String(appt.staff_member_id) !== String(formData.staff_id)) return false;
+
+        const [ah1, am1] = (appt.start_time || '00:00').split(':').map(Number);
+        const [ah2, am2] = (appt.end_time || '00:00').split(':').map(Number);
+        const aStart = (ah1 || 0) * 60 + (am1 || 0);
+        const aEnd = (ah2 || 0) * 60 + (am2 || 0);
+
+        return aStart < endMins && aEnd > startMins;
+      });
+
+      if (conflictAppt) {
+        const cStart = formatTime12h(conflictAppt.start_time);
+        const cEnd = formatTime12h(conflictAppt.end_time);
+        return {
+          ...slot,
+          status: 'busy',
+          reason: `Booked (${cStart} - ${cEnd})`,
+        };
+      }
+
+      return { ...slot, status: 'available', reason: 'Available' };
+    });
+  }, [formData.duration_minutes, formData.appointment_date, formData.staff_id, selectedStaffMember, dayAppointments, editData]);
+
+  // Real-time conflict evaluator for the currently selected start_time
+  const activeConflict = useMemo(() => {
+    if (!formData.start_time) return null;
+    const [h, m] = (formData.start_time || '00:00').split(':').map(Number);
+    const startMins = (h || 0) * 60 + (m || 0);
+    const duration = Number(formData.duration_minutes || 60);
+    const endMins = startMins + duration;
+
+    // Check shift
+    if (selectedStaffMember) {
+      const shift = getShiftInfo(selectedStaffMember.shift_schedule || 'full_time');
+      if (startMins < shift.startMinutes || endMins > shift.endMinutes) {
+        return {
+          type: 'shift',
+          message: `${selectedStaffMember.first_name}'s working shift is ${shift.start} - ${shift.end}. This booking (${formatTime12h(formData.start_time)} - ${getEndTimeFormatted(formData.start_time, duration)}) falls outside their scheduled working hours.`,
+        };
+      }
+    }
+
+    // Check conflict
+    const conflictAppt = dayAppointments.find((appt) => {
+      if (editData && String(appt.id) === String(editData.id)) return false;
+      if (['cancelled', 'no_show'].includes(appt.status)) return false;
+      if (formData.staff_id && String(appt.staff_member_id) !== String(formData.staff_id)) return false;
+
+      const [ah1, am1] = (appt.start_time || '00:00').split(':').map(Number);
+      const [ah2, am2] = (appt.end_time || '00:00').split(':').map(Number);
+      const aStart = (ah1 || 0) * 60 + (am1 || 0);
+      const aEnd = (ah2 || 0) * 60 + (am2 || 0);
+
+      return aStart < endMins && aEnd > startMins;
+    });
+
+    if (conflictAppt) {
+      const staffName = selectedStaffMember 
+        ? `${selectedStaffMember.first_name} ${selectedStaffMember.last_name || ''}`.trim() 
+        : 'Staff';
+      const cStart = formatTime12h(conflictAppt.start_time);
+      const cEnd = formatTime12h(conflictAppt.end_time);
+      return {
+        type: 'conflict',
+        message: `${staffName} already has an active appointment from ${cStart} to ${cEnd}. Please pick an available slot marked in green.`,
+      };
+    }
+
+    return null;
+  }, [formData.start_time, formData.duration_minutes, formData.staff_id, selectedStaffMember, dayAppointments, editData]);
+
+  const fetchRooms = useCallback(async () => {
     try {
       const res = await api.get('/settings/rooms');
       setRoomsList(res.data || []);
     } catch (err) {
       console.error('Failed to fetch rooms', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchRooms();
+  }, [fetchRooms]);
 
   useEffect(() => {
     if (isOpen) {
@@ -200,6 +381,13 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
       if (payload.staff_id) payload.staff_id = parseInt(payload.staff_id);
       if (payload.room_id) payload.room_id = parseInt(payload.room_id);
 
+      if (activeConflict) {
+        setError(activeConflict.message);
+        toast.error(activeConflict.message, { duration: 4000 });
+        setLoading(false);
+        return;
+      }
+
       if (editData) {
         await api.patch(`/appointments/${editData.id}`, payload);
       } else {
@@ -208,7 +396,21 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
       toast.success(editData ? 'Appointment updated successfully!' : 'Appointment booked successfully!');
       onSuccess();
     } catch (err) {
-      setError(err?.message || err?.response?.data?.message || 'Failed to book appointment');
+      const serverMsg = err?.response?.data?.message;
+      const statusCode = err?.response?.status;
+      
+      if (statusCode === 409 || (serverMsg && serverMsg.toLowerCase().includes('conflict'))) {
+        const staffName = selectedStaffMember 
+          ? `${selectedStaffMember.first_name} ${selectedStaffMember.last_name || ''}`.trim()
+          : 'The selected staff member';
+        const friendly = `${staffName} already has an appointment booked at this time. Please pick another time slot marked in green.`;
+        setError(friendly);
+        toast.error(friendly, { duration: 5000 });
+      } else {
+        const fallback = serverMsg || 'Failed to book appointment. Please check details and try again.';
+        setError(fallback);
+        toast.error(fallback);
+      }
     } finally {
       setLoading(false);
     }
@@ -519,12 +721,12 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                     </span>
                   </div>
 
-                  {timingConflict ? (
+                  {activeConflict && activeConflict.type === 'shift' ? (
                     <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 flex items-start gap-2 text-amber-600 dark:text-amber-400">
                       <RiAlertLine className="text-base shrink-0 mt-0.5" />
                       <div className="text-[11px] leading-tight">
                         <span className="font-bold">Shift Timing Notice: </span>
-                        <span>{timingConflict.reason}</span>
+                        <span>{activeConflict.message}</span>
                       </div>
                     </div>
                   ) : (
@@ -539,15 +741,25 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
 
             {/* ─── Section: Date, Time & Duration ─── */}
             <div className="mb-6 pt-5 border-t border-gray-100 dark:border-white/5">
-              <div className="flex items-center gap-2 mb-4">
-                <RiTimeLine className="text-[#E91E63] text-base" />
-                <h3 className="text-[14px] font-bold text-gray-800 dark:text-white">Schedule</h3>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <RiTimeLine className="text-[#E91E63] text-base" />
+                  <h3 className="text-[14px] font-bold text-gray-800 dark:text-white">Schedule & Slots</h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCustomTime(!showCustomTime)}
+                  className="text-xs text-[#E91E63] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  {showCustomTime ? 'Hide Custom Time' : 'Custom Time / Exact Min'}
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 {/* Date */}
                 <div>
-                  <label className={labelClass}>Date <span className="text-[#E91E63]">*</span></label>
+                  <label className={labelClass}>Appointment Date <span className="text-[#E91E63]">*</span></label>
                   <div className="relative">
                     <RiCalendarLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base pointer-events-none" />
                     <input
@@ -560,10 +772,24 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                   {fieldErrors.appointment_date && <p className="text-red-500 text-xs mt-1">{fieldErrors.appointment_date}</p>}
                 </div>
 
-                {/* Time */}
+                {/* Duration */}
                 <div>
-                  <label className={labelClass}>Start Time <span className="text-[#E91E63]">*</span></label>
-                  <div className="relative">
+                  <label className={labelClass}>Estimated Duration</label>
+                  <select
+                    className={inputClass('duration_minutes')}
+                    value={formData.duration_minutes}
+                    onChange={e => setFormData({ ...formData, duration_minutes: Number(e.target.value) })}
+                  >
+                    {DURATION_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Optional Custom Time Input */}
+              {showCustomTime && (
+                <div className="mb-4 p-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.02]">
+                  <label className={labelClass}>Exact Start Time</label>
+                  <div className="relative max-w-xs">
                     <RiTimeLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base pointer-events-none" />
                     <input
                       type="time"
@@ -572,19 +798,143 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                       onChange={e => setFormData({ ...formData, start_time: e.target.value + ':00' })}
                     />
                   </div>
-                  {fieldErrors.start_time && <p className="text-red-500 text-xs mt-1">{fieldErrors.start_time}</p>}
+                </div>
+              )}
+
+              {/* Active Conflict Warning */}
+              {activeConflict && (
+                <div className="mb-4 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 flex items-start gap-3 text-rose-600 dark:text-rose-400 animate-[fadeIn_0.2s_ease_forwards]">
+                  <RiAlertLine className="text-lg shrink-0 mt-0.5" />
+                  <div className="text-[12px] leading-relaxed">
+                    <span className="font-bold">Timing Conflict: </span>
+                    <span>{activeConflict.message}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Interactive Time Slots Grid */}
+              <div className="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-gray-50/40 dark:bg-white/[0.01]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5">
+                  <div>
+                    <span className="text-[13px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                      <RiSparklingLine className="text-[#E91E63]" />
+                      Available Time Slots
+                    </span>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                      {selectedStaffMember 
+                        ? `Live schedule for ${selectedStaffMember.first_name} (${getShiftInfo(selectedStaffMember.shift_schedule || 'full_time').label})`
+                        : 'Select staff member above to see personalized shift availability.'}
+                    </p>
+                  </div>
+
+                  {/* Period Filter Tabs */}
+                  <div className="flex items-center gap-1 bg-white dark:bg-white/5 p-1 rounded-xl border border-gray-200/80 dark:border-white/10 shrink-0">
+                    {[
+                      { id: 'all', label: 'All' },
+                      { id: 'morning', label: 'Morning' },
+                      { id: 'afternoon', label: 'Afternoon' },
+                      { id: 'evening', label: 'Evening' },
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setSlotPeriod(tab.id)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                          slotPeriod === tab.id
+                            ? 'bg-[#E91E63] text-white shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Duration */}
-                <div>
-                  <label className={labelClass}>Duration</label>
-                  <select
-                    className={inputClass('duration_minutes')}
-                    value={formData.duration_minutes}
-                    onChange={e => setFormData({ ...formData, duration_minutes: Number(e.target.value) })}
-                  >
-                    {DURATION_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                  </select>
+                {/* Slots Grid */}
+                {loadingSlots ? (
+                  <div className="py-8 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
+                    <RiLoader2Line className="animate-spin text-xl text-[#E91E63]" />
+                    <span>Checking live staff schedule...</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                    {slotAvailabilityList
+                      .filter(slot => slotPeriod === 'all' || slot.period === slotPeriod)
+                      .map((slot) => {
+                        const isSelected = formData.start_time.startsWith(slot.time.substring(0, 5));
+                        const isAvailable = slot.status === 'available';
+                        const isBusy = slot.status === 'busy';
+                        const isOutsideShift = slot.status === 'outside_shift';
+                        const isPast = slot.status === 'past';
+
+                        return (
+                          <button
+                            key={slot.time}
+                            type="button"
+                            disabled={!isAvailable}
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, start_time: slot.time }));
+                              setError('');
+                            }}
+                            title={slot.reason}
+                            className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer select-none ${
+                              isSelected
+                                ? 'bg-[#E91E63] border-[#E91E63] text-white shadow-md shadow-[#E91E63]/30 scale-[1.02] ring-2 ring-[#E91E63]/30 font-bold'
+                                : isAvailable
+                                ? 'bg-white dark:bg-white/[0.03] border-emerald-500/30 hover:border-[#E91E63] text-gray-900 dark:text-white hover:bg-[#E91E63]/5 hover:scale-[1.01]'
+                                : isBusy
+                                ? 'bg-rose-50/70 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20 text-rose-500 dark:text-rose-400 opacity-60 cursor-not-allowed line-through'
+                                : isOutsideShift
+                                ? 'bg-gray-100/60 dark:bg-white/[0.02] border-dashed border-gray-300 dark:border-white/10 text-gray-400 opacity-50 cursor-not-allowed'
+                                : 'bg-gray-100/40 dark:bg-white/[0.01] border-gray-200 dark:border-white/5 text-gray-300 dark:text-gray-600 opacity-40 cursor-not-allowed'
+                            }`}
+                          >
+                            <span className="text-[12px] font-semibold tracking-tight">
+                              {slot.label}
+                            </span>
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider ${
+                              isSelected
+                                ? 'bg-white/20 text-white'
+                                : isAvailable
+                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                : isBusy
+                                ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 no-underline'
+                                : isOutsideShift
+                                ? 'text-gray-400'
+                                : 'text-gray-400'
+                            }`}>
+                              {isSelected ? 'Selected' : isAvailable ? 'Free' : isBusy ? 'Busy' : isOutsideShift ? 'Off' : 'Past'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
+
+                {/* Slots Legend & Selected Time Pill */}
+                <div className="mt-4 pt-3 border-t border-gray-200/60 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-[11px]">
+                  <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400 flex-wrap">
+                    <span className="inline-flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                      Free Slot
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+                      Booked (Busy)
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+                      Outside Shift
+                    </span>
+                  </div>
+
+                  {formData.start_time && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E91E63]/10 border border-[#E91E63]/20 text-[#E91E63] font-bold">
+                      <RiCheckLine className="text-sm" />
+                      <span>{formatTime12h(formData.start_time)} – {getEndTimeFormatted(formData.start_time, formData.duration_minutes)} ({formData.duration_minutes}m)</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

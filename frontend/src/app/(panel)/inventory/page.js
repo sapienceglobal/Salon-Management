@@ -6,7 +6,7 @@ import {
   RiShieldCheckLine, RiCloseLine, RiDownload2Line, RiDeleteBin6Line
 } from 'react-icons/ri';
 import api from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getImageUrl } from '@/lib/utils';
 import AddProductModal from '@/components/admin/inventory/AddProductModal';
 import ProductProfilePanel from '@/components/admin/inventory/ProductProfilePanel';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
@@ -423,8 +423,16 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-admin-surface flex items-center justify-center border border-admin-border shrink-0">
-                            <RiInboxLine className="text-admin-text-secondary text-lg" />
+                          <div className="w-10 h-10 rounded-xl bg-admin-surface flex items-center justify-center border border-admin-border shrink-0 overflow-hidden relative">
+                            {product.image_url ? (
+                              <img
+                                src={getImageUrl(product.image_url)}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <RiInboxLine className="text-admin-text-secondary text-lg" />
+                            )}
                           </div>
                           <div>
                             <p className="font-semibold text-admin-text text-sm group-hover:text-brand transition-colors">{product.name}</p>

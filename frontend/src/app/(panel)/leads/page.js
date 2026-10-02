@@ -208,11 +208,75 @@ const REFERENCE_LEADS = [
   },
 ];
 
+// Helper to determine follow up timeliness (Today, Overdue, Upcoming, Completed)
+export function getLeadFollowUpInfo(lead) {
+  const rawDate = lead.follow_up_date || lead.next_follow_up;
+  if (!rawDate || rawDate === '-') {
+    return { type: 'none', label: '-', isToday: false, isOverdue: false };
+  }
+  const s = (lead.status || '').toLowerCase();
+  if (['converted', 'lost'].includes(s)) {
+    return {
+      type: 'done',
+      label: lead.next_follow_up || (lead.follow_up_date ? String(lead.follow_up_date).split('T')[0] : '-'),
+      isToday: false,
+      isOverdue: false,
+    };
+  }
+
+  let d = null;
+  if (lead.follow_up_date) {
+    const str = String(lead.follow_up_date).split('T')[0];
+    d = new Date(str + 'T00:00:00');
+  } else if (lead.next_follow_up) {
+    d = new Date(lead.next_follow_up);
+  }
+
+  if (!d || isNaN(d.getTime())) {
+    return {
+      type: 'unknown',
+      label: lead.next_follow_up || String(lead.follow_up_date || '-'),
+      isToday: false,
+      isOverdue: false,
+    };
+  }
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const targetDate = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+  const timeStr = lead.follow_up_time || (lead.next_follow_up ? lead.next_follow_up.match(/\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?/)?.[0] : '') || '';
+
+  if (targetDate === todayStart) {
+    return {
+      type: 'today',
+      label: `Today${timeStr ? ` ${timeStr}` : ''}`,
+      isToday: true,
+      isOverdue: false,
+    };
+  } else if (targetDate < todayStart) {
+    return {
+      type: 'overdue',
+      label: `Overdue (${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}${timeStr ? ` ${timeStr}` : ''})`,
+      isToday: false,
+      isOverdue: true,
+    };
+  } else {
+    return {
+      type: 'upcoming',
+      label: `${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}${timeStr ? ` ${timeStr}` : ''}`,
+      isToday: false,
+      isOverdue: false,
+    };
+  }
+}
+
 function LeadsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') || 'list';
   const actionParam = searchParams.get('action') || '';
+  const initialFollowUp = searchParams.get('follow_up') || 'all';
 
   const { user } = useAuth();
   const { markAllAsRead } = useNotification();
@@ -237,6 +301,7 @@ function LeadsContent() {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [serviceFilter, setServiceFilter] = useState('all');
   const [staffFilter, setStaffFilter] = useState('all');
+  const [followUpFilter, setFollowUpFilter] = useState(initialFollowUp);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState('01 Aug 2026 - 31 Aug 2026');
 
@@ -409,9 +474,55 @@ function LeadsContent() {
     return () => document.removeEventListener('click', handleOutsideClick);
   }, []);
 
+  // Sync follow_up query parameter from URL
+  useEffect(() => {
+    const f = searchParams.get('follow_up');
+    if (f) {
+      setFollowUpFilter(f);
+    }
+  }, [searchParams]);
+
+  // Compute follow up counts for the agenda pills
+  const followUpCounts = useMemo(() => {
+    let todayCount = 0;
+    let overdueCount = 0;
+    let upcomingCount = 0;
+    let myLeadsCount = 0;
+
+    leads.forEach((l) => {
+      const info = getLeadFollowUpInfo(l);
+      if (info.isToday) todayCount++;
+      if (info.isOverdue) overdueCount++;
+      if (info.type === 'upcoming') upcomingCount++;
+      if (user?.id && Number(l.assigned_to) === Number(user.id)) myLeadsCount++;
+    });
+
+    return {
+      total: leads.length,
+      today: todayCount,
+      overdue: overdueCount,
+      upcoming: upcomingCount,
+      myLeads: myLeadsCount,
+    };
+  }, [leads, user?.id]);
+
   // Filtered Leads Client-side
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
+      // Follow-up agenda filter
+      if (followUpFilter === 'today') {
+        const info = getLeadFollowUpInfo(lead);
+        if (!info.isToday) return false;
+      } else if (followUpFilter === 'overdue') {
+        const info = getLeadFollowUpInfo(lead);
+        if (!info.isOverdue) return false;
+      } else if (followUpFilter === 'upcoming') {
+        const info = getLeadFollowUpInfo(lead);
+        if (info.type !== 'upcoming') return false;
+      } else if (followUpFilter === 'assigned_me') {
+        if (!user?.id || Number(lead.assigned_to) !== Number(user.id)) return false;
+      }
+
       if (statusFilter !== 'all') {
         const leadStatus = (lead.status || '').toLowerCase();
         if (statusFilter === 'in_progress') {
@@ -449,7 +560,7 @@ function LeadsContent() {
       }
       return true;
     });
-  }, [leads, statusFilter, sourceFilter, serviceFilter, staffFilter, searchQuery]);
+  }, [leads, followUpFilter, statusFilter, sourceFilter, serviceFilter, staffFilter, searchQuery, user?.id]);
 
   // Paginated Leads
   const totalPages = Math.ceil(filteredLeads.length / itemsPerPage) || 1;
@@ -909,6 +1020,102 @@ function LeadsContent() {
         </div>
       </div>
 
+      {/* --- Quick Follow-up Agenda Filter Pills --- */}
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
+        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap mr-1 flex items-center gap-1.5">
+          <RiCalendarCheckLine className="text-sm text-[#E91E63]" />
+          Follow-up Agenda:
+        </span>
+        <button
+          type="button"
+          onClick={() => setFollowUpFilter('all')}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            followUpFilter === 'all'
+              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+              : 'bg-white dark:bg-[#1a1a2e] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 hover:border-slate-300'
+          }`}
+        >
+          <span>All Leads</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-200/60 dark:bg-white/10">
+            {followUpCounts.total}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFollowUpFilter('today')}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            followUpFilter === 'today'
+              ? 'bg-amber-500 text-white shadow-[0_2px_10px_rgba(245,158,11,0.35)]'
+              : 'bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40 hover:bg-amber-100/70'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span>Today&apos;s Follow-ups</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+            followUpFilter === 'today' ? 'bg-black/20 text-white' : 'bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200'
+          }`}>
+            {followUpCounts.today}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFollowUpFilter('overdue')}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            followUpFilter === 'overdue'
+              ? 'bg-rose-500 text-white shadow-[0_2px_10px_rgba(244,63,94,0.35)]'
+              : 'bg-rose-50 dark:bg-rose-950/20 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40 hover:bg-rose-100/70'
+          }`}
+        >
+          <RiTimeLine className="text-xs" />
+          <span>Overdue Follow-ups</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+            followUpFilter === 'overdue' ? 'bg-black/20 text-white' : 'bg-rose-200 dark:bg-rose-900/60 text-rose-900 dark:text-rose-200'
+          }`}>
+            {followUpCounts.overdue}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFollowUpFilter('upcoming')}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            followUpFilter === 'upcoming'
+              ? 'bg-[#E91E63] text-white shadow-[0_2px_10px_rgba(233,30,99,0.35)]'
+              : 'bg-pink-50/60 dark:bg-pink-950/20 text-[#E91E63] dark:text-pink-300 border border-pink-200/80 dark:border-pink-900/40 hover:bg-pink-100/60'
+          }`}
+        >
+          <RiCalendarLine className="text-xs" />
+          <span>Upcoming</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+            followUpFilter === 'upcoming' ? 'bg-black/20 text-white' : 'bg-pink-200/70 dark:bg-pink-900/60 text-pink-900 dark:text-pink-200'
+          }`}>
+            {followUpCounts.upcoming}
+          </span>
+        </button>
+
+        {user?.id && (
+          <button
+            type="button"
+            onClick={() => setFollowUpFilter('assigned_me')}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              followUpFilter === 'assigned_me'
+                ? 'bg-purple-600 text-white shadow-[0_2px_10px_rgba(147,51,234,0.35)]'
+                : 'bg-purple-50 dark:bg-purple-950/20 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-900/40 hover:bg-purple-100/70'
+            }`}
+          >
+            <RiUserLine className="text-xs" />
+            <span>Assigned to Me</span>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              followUpFilter === 'assigned_me' ? 'bg-black/20 text-white' : 'bg-purple-200 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200'
+            }`}>
+              {followUpCounts.myLeads}
+            </span>
+          </button>
+        )}
+      </div>
+
       {/* --- Filter Toolbar (Exact 7-component Bar with Dark Mode Support) --- */}
       <div className="bg-white dark:bg-[#1a1a2e] rounded-2xl border border-slate-200/90 dark:border-white/10 p-3 sm:p-3.5 shadow-sm mb-5">
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
@@ -1029,6 +1236,7 @@ function LeadsContent() {
               setSourceFilter('all');
               setServiceFilter('all');
               setStaffFilter('all');
+              setFollowUpFilter('all');
               setSearchQuery('');
             }}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 font-semibold text-xs sm:text-sm shadow-sm transition-all"
@@ -1246,8 +1454,39 @@ function LeadsContent() {
                       </td>
 
                       {/* Next Follow-up */}
-                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs">
-                        {followUpFormatted}
+                      <td className="py-3 px-3 whitespace-nowrap text-xs">
+                        {(() => {
+                          const info = getLeadFollowUpInfo(lead);
+                          if (info.isToday) {
+                            return (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/80 dark:border-amber-700/50 shadow-2xs">
+                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                {info.label}
+                              </span>
+                            );
+                          }
+                          if (info.isOverdue) {
+                            return (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300/80 dark:border-rose-700/50 shadow-2xs">
+                                <RiTimeLine className="text-xs text-rose-600 dark:text-rose-400 shrink-0" />
+                                {info.label}
+                              </span>
+                            );
+                          }
+                          if (info.type === 'upcoming') {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-300 border border-slate-200 dark:border-white/10">
+                                <RiCalendarLine className="text-xs text-slate-400 shrink-0" />
+                                {info.label}
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="text-slate-400 dark:text-slate-500 font-medium">
+                              {info.label || '-'}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Created On */}
@@ -1436,158 +1675,7 @@ function LeadsContent() {
         </>
       )}
 
-      {/* --- Lead Details / Follow-up Slide Drawer --- */}
-      {viewingLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="bg-white dark:bg-[#1a1a2e] rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-white/10 p-6 sm:p-7 relative">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-white/10 mb-5">
-              <div className="flex items-center gap-3.5">
-                {viewingLead.avatar_url ? (
-                  <div className="w-13 h-13 rounded-full overflow-hidden relative ring-2 ring-pink-100 dark:ring-pink-900/40 shrink-0">
-                    <Image
-                      src={viewingLead.avatar_url}
-                      alt={viewingLead.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-13 h-13 rounded-full bg-gradient-to-tr from-[#E91E63] to-[#FB7185] flex items-center justify-center text-white font-extrabold text-base shadow-sm shrink-0">
-                    {getInitials(viewingLead.name, '')}
-                  </div>
-                )}
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">{viewingLead.name}</h3>
-                    {renderStatusBadge(viewingLead.status)}
-                  </div>
-                  <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                    Source: <span className="font-semibold text-slate-800 dark:text-slate-200">{viewingLead.source || 'Website'}</span>
-                  </div>
-                </div>
-              </div>
 
-              <button
-                type="button"
-                onClick={() => setViewingLead(null)}
-                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
-              >
-                <RiCloseLine className="text-xl" />
-              </button>
-            </div>
-
-            {/* Quick Action Contact Bar */}
-            <div className="flex items-center gap-3 mb-5">
-              {viewingLead.phone && (
-                <>
-                  <a
-                    href={`tel:${viewingLead.phone}`}
-                    className="flex-1 py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
-                  >
-                    <RiPhoneLine className="text-base text-blue-600 dark:text-blue-400" />
-                    <span>Call Lead</span>
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => handleWhatsApp(viewingLead.phone, viewingLead.name)}
-                    className="flex-1 py-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors border border-emerald-200/60 dark:border-emerald-800/40 shadow-sm"
-                  >
-                    <RiWhatsappLine className="text-lg text-emerald-600 dark:text-emerald-400" />
-                    <span>WhatsApp</span>
-                  </button>
-                </>
-              )}
-              {viewingLead.email && (
-                <a
-                  href={`mailto:${viewingLead.email}`}
-                  className="py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
-                >
-                  <RiMailLine className="text-base text-slate-600 dark:text-slate-400" />
-                  <span>Email</span>
-                </a>
-              )}
-            </div>
-
-            {/* Lead Details Grid */}
-            <div className="grid grid-cols-2 gap-3.5 p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/10 mb-5">
-              <div>
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 block">Phone Number</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white mt-1 block">{viewingLead.phone || '-'}</span>
-              </div>
-              <div>
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 block">Email Address</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white mt-1 block truncate">{viewingLead.email || '-'}</span>
-              </div>
-              <div>
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 block">Preferred Branch</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white mt-1 block">{viewingLead.preferred_branch || 'Downtown Branch'}</span>
-              </div>
-              <div>
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 block">Assigned Staff</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white mt-1 block">{viewingLead.assigned_first_name ? `${viewingLead.assigned_first_name} ${viewingLead.assigned_last_name || ''}` : viewingLead.assigned_to_name || '-'}</span>
-              </div>
-              <div className="col-span-2">
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 block">Location</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white mt-1 block">{viewingLead.location || 'Noida, Uttar Pradesh'}</span>
-              </div>
-            </div>
-
-            {/* Interested Services */}
-            <div className="mb-5">
-              <span className="text-xs sm:text-[13px] font-bold text-slate-700 dark:text-slate-300 block mb-2">Interested Services</span>
-              <div className="flex flex-wrap gap-2">
-                {(Array.isArray(viewingLead.interested_services)
-                  ? viewingLead.interested_services
-                  : ['Hair Spa', 'Hair Colour']
-                ).map((serv, i) => (
-                  <span
-                    key={i}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#E91E63]/10 text-[#E91E63] border border-[#E91E63]/20 dark:bg-[#E91E63]/20 dark:text-pink-300 dark:border-[#E91E63]/30"
-                  >
-                    {serv}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Notes / Follow-up activity */}
-            {viewingLead.notes && (
-              <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/30 mb-5">
-                <span className="text-xs sm:text-[13px] font-bold text-amber-800 dark:text-amber-400 block mb-1.5">Follow-up Notes</span>
-                <p className="text-xs sm:text-sm font-medium text-amber-900/90 dark:text-amber-200/90 whitespace-pre-wrap leading-relaxed">{viewingLead.notes}</p>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/10">
-              <button
-                type="button"
-                onClick={() => {
-                  const lead = viewingLead;
-                  setViewingLead(null);
-                  setAssigningLead(lead);
-                }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm text-center transition-colors"
-              >
-                Assign Staff
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const lead = viewingLead;
-                  setViewingLead(null);
-                  setConvertingLead(lead);
-                }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs sm:text-sm text-center shadow-md transition-all"
-              >
-                Convert to Customer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* --- Import Leads Modal Placeholder --- */}
       {isImportModalOpen && (

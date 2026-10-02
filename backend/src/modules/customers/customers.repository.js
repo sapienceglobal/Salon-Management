@@ -94,8 +94,9 @@ class CustomerRepository {
   async getActivePackages(customerId) {
     return db('customer_packages as cp')
       .join('packages as p', 'cp.package_id', 'p.id')
-      .where({ 'cp.customer_id': customerId, 'cp.status': 'active' })
-      .select('cp.*', 'p.name as package_name');
+      .where({ 'cp.customer_id': customerId })
+      .select('cp.*', 'p.name as package_name', 'p.image_url', 'p.validity_days as package_validity_days', 'p.max_uses as package_max_uses', 'p.total_price as package_price')
+      .orderBy('cp.purchased_at', 'desc');
   }
 
   async getActiveMemberships(customerId) {

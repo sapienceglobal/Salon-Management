@@ -27,6 +27,12 @@ export const updateProduct = asyncHandler(async (req, res) => {
       deleteUploadedFile(existing.image_url);
     }
     payload.image_url = `/uploads/${req.file.filename}`;
+  } else if (payload.image_url === null || payload.image_url === '' || payload.image_url === 'null') {
+    const existing = await productService.getById(req.params.id, req.user.business_id).catch(() => null);
+    if (existing?.image_url) {
+      deleteUploadedFile(existing.image_url);
+    }
+    payload.image_url = null;
   }
   const product = await productService.update(req.params.id, req.user.business_id, payload);
   ApiResponse.ok('Product updated', product).send(res);

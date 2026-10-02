@@ -42,7 +42,8 @@ export const toggleServiceActive = asyncHandler(async (req, res) => {
 });
 export const createService = asyncHandler(async (req, res) => {
   const data = { ...req.body };
-  if (data.existing_images) delete data.existing_images;
+  delete data.existing_images;
+  delete data.images;
   if (req.files && req.files.length > 0) {
     data.image_url = `/uploads/${req.files[0].filename}`;
   }
@@ -51,13 +52,26 @@ export const createService = asyncHandler(async (req, res) => {
 });
 export const updateService = asyncHandler(async (req, res) => {
   const data = { ...req.body };
-  if (data.existing_images) delete data.existing_images;
+  const existingImages = data.existing_images;
+  delete data.existing_images;
+  delete data.images;
   if (req.files && req.files.length > 0) {
     const existing = await serviceService.getById(req.params.id, req.user.business_id).catch(() => null);
     if (existing?.image_url) {
       deleteUploadedFile(existing.image_url);
     }
     data.image_url = `/uploads/${req.files[0].filename}`;
+  } else if (existingImages !== undefined) {
+    const trimmed = typeof existingImages === 'string' ? existingImages.trim() : '';
+    if (trimmed) {
+      data.image_url = trimmed.split(',')[0].trim();
+    } else {
+      const existing = await serviceService.getById(req.params.id, req.user.business_id).catch(() => null);
+      if (existing?.image_url) {
+        deleteUploadedFile(existing.image_url);
+      }
+      data.image_url = null;
+    }
   }
   const service = await serviceService.update(req.params.id, req.user.business_id, data);
   ApiResponse.ok('Service updated', service).send(res);

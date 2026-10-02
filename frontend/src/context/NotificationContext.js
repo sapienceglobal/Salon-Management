@@ -63,6 +63,48 @@ export function NotificationProvider({ children }) {
       );
     });
 
+    socketInstance.on('lead_assigned', (data) => {
+      const isAssignedToMe = user?.id && Number(user.id) === Number(data.staff_id);
+      const newNotification = {
+        id: `assign_${data.lead_id}_${Date.now()}`,
+        title: isAssignedToMe ? 'Lead Assigned to You!' : 'Lead Assigned to Staff',
+        message: `${data.lead_name} has been assigned ${isAssignedToMe ? 'to you' : 'to staff'} for follow-up.${data.notes ? ` Note: "${data.notes}"` : ''}`,
+        type: 'lead_assigned',
+        data,
+        isRead: false,
+        timestamp: new Date(),
+      };
+
+      setNotifications((prev) => [newNotification, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+
+      toast(
+        (t) => (
+          <div>
+            <b className="text-slate-900 font-bold">{newNotification.title}</b>
+            <p className="text-xs text-slate-600 mt-0.5">{newNotification.message}</p>
+          </div>
+        ),
+        { icon: '📋', duration: 5000, position: 'top-right' }
+      );
+    });
+
+    socketInstance.on('lead_updated', (updatedLead) => {
+      if (updatedLead?.next_follow_up || updatedLead?.follow_up_date) {
+        const notif = {
+          id: `followup_${updatedLead.id}_${Date.now()}`,
+          title: 'Follow-Up Scheduled',
+          message: `Follow-up for ${updatedLead.name} scheduled for ${updatedLead.next_follow_up || updatedLead.follow_up_date}.`,
+          type: 'follow_up_scheduled',
+          data: updatedLead,
+          isRead: false,
+          timestamp: new Date(),
+        };
+        setNotifications((prev) => [notif, ...prev]);
+        setUnreadCount((prev) => prev + 1);
+      }
+    });
+
     return () => {
       socketInstance.disconnect();
     };

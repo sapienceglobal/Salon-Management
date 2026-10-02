@@ -247,6 +247,7 @@ export const inventorySchema = z.object({
     z.number().min(0, 'Minimum stock alert must be 0 or greater')
   ], { message: 'Minimum stock alert quantity is required' }),
   is_active: z.boolean().optional(),
+  image_url: z.string().max(500).optional().nullable().or(z.literal('')),
 });
 
 export const leadSchema = z.object({
@@ -296,6 +297,8 @@ export const membershipSchema = z.object({
 export const packageSchema = z.object({
   name: z.string({ message: 'Package name is required' }).trim().min(1, 'Package name is required').max(100),
   description: z.string().max(1000).optional().or(z.literal('')),
+  image_url: z.string().optional().nullable().or(z.literal('')),
+  image: z.any().optional(),
   total_price: z.union([
     z.string().trim().min(1, 'Total price is required'),
     z.number().min(0, 'Total price must be 0 or greater')

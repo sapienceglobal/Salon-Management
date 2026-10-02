@@ -15,8 +15,13 @@ import {
   RiFileTextLine,
   RiWallet3Line,
   RiGiftLine,
-  RiVipCrownLine
+  RiVipCrownLine,
+  RiBox3Line,
+  RiCheckDoubleLine,
+  RiLoader4Line,
+  RiTimeLine
 } from 'react-icons/ri';
+import toast from 'react-hot-toast';
 import { useConfirm } from '@/context/ConfirmContext';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
@@ -61,6 +66,28 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [redeemingPkgId, setRedeemingPkgId] = useState(null);
+
+  const handleRedeemPackage = async (pkg) => {
+    const isConfirmed = await confirm({
+      title: 'Redeem Package Session',
+      message: `Are you sure you want to redeem 1 session from "${pkg.package_name || `Package #${pkg.package_id}`}"? Remaining sessions: ${pkg.remaining_uses}`,
+      confirmText: 'Redeem 1 Session',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      setRedeemingPkgId(pkg.id);
+      const res = await api.post(`/catalog/customer-packages/${pkg.id}/redeem`);
+      toast.success(res.data?.message || 'Package session redeemed successfully!');
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to redeem package session');
+    } finally {
+      setRedeemingPkgId(null);
     }
   };
 
@@ -353,18 +380,130 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
                 {activeTab === 'packages' && (
                   <div className="space-y-4">
                     {profileData?.active_packages?.length > 0 ? (
-                      profileData.active_packages.map((pkg, i) => (
-                        <div key={i} className="bg-gray-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 rounded-2xl p-5">
-                           <h4 className="font-bold text-base text-gray-900 dark:text-white mb-1">Package #{pkg.package_id}</h4>
-                           <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 mt-4">
-                             <span>Status: <strong className="text-emerald-600 dark:text-emerald-400">Active</strong></span>
-                             <span>Remaining Uses: <strong>{pkg.remaining_uses}</strong></span>
-                           </div>
-                        </div>
-                      ))
+                      profileData.active_packages.map((pkg, i) => {
+                        const isExhausted = pkg.status === 'used' || pkg.remaining_uses <= 0;
+                        const isExpired = pkg.status === 'expired' || (pkg.expires_at && new Date(pkg.expires_at) < new Date());
+                        const canRedeem = !isExhausted && !isExpired && pkg.status === 'active';
+                        const totalUses = pkg.package_max_uses || pkg.remaining_uses;
+                        const progressPercent = totalUses > 0 ? Math.min(100, Math.max(0, (pkg.remaining_uses / totalUses) * 100)) : 100;
+                        const imgUrl = pkg.image_url ? (
+                          pkg.image_url.startsWith('http') 
+                            ? pkg.image_url 
+                            : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:5000'}${pkg.image_url.startsWith('/') ? '' : '/'}${pkg.image_url}`
+                        ) : null;
+
+                        return (
+                          <div key={pkg.id || i} className="bg-white dark:bg-white/[0.03] border border-gray-200/80 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100 dark:border-white/5">
+                              <div className="flex items-center gap-3.5">
+                                {imgUrl ? (
+                                  /* eslint-disable-next-line @next/next/no-img-element */
+                                  <img
+                                    src={imgUrl}
+                                    alt={pkg.package_name || 'Package'}
+                                    className="w-14 h-14 rounded-xl object-cover border border-gray-200 dark:border-white/10 shrink-0 shadow-sm"
+                                  />
+                                ) : (
+                                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-brand/20 to-purple-500/20 text-brand flex items-center justify-center shrink-0 border border-brand/20">
+                                    <RiBox3Line className="text-2xl" />
+                                  </div>
+                                )}
+                                <div>
+                                  <h4 className="font-bold text-base text-gray-900 dark:text-white leading-tight">
+                                    {pkg.package_name || `Package #${pkg.package_id}`}
+                                  </h4>
+                                  <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    {pkg.package_price && (
+                                      <span className="font-semibold text-brand">
+                                        {formatCurrency(pkg.package_price)}
+                                      </span>
+                                    )}
+                                    <span>•</span>
+                                    <span>Purchased {pkg.purchased_at ? new Date(pkg.purchased_at).toLocaleDateString() : 'N/A'}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div>
+                                {isExpired ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
+                                    Expired
+                                  </span>
+                                ) : isExhausted ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300">
+                                    Fully Redeemed
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                                    Active
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Middle Section: Remaining Uses Progress & Expiry */}
+                            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div className="bg-gray-50 dark:bg-white/[0.02] p-3 rounded-xl border border-gray-100 dark:border-white/5">
+                                <div className="flex justify-between items-center mb-1.5">
+                                  <span className="text-gray-500 dark:text-gray-400 font-medium">Remaining Sessions</span>
+                                  <span className="font-bold text-gray-900 dark:text-white text-sm">
+                                    {pkg.remaining_uses} <span className="text-xs font-normal text-gray-400">/ {totalUses}</span>
+                                  </span>
+                                </div>
+                                <div className="w-full h-1.5 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-300 ${
+                                      pkg.remaining_uses > 1 ? 'bg-brand' : pkg.remaining_uses === 1 ? 'bg-amber-500' : 'bg-gray-400'
+                                    }`}
+                                    style={{ width: `${progressPercent}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="bg-gray-50 dark:bg-white/[0.02] p-3 rounded-xl border border-gray-100 dark:border-white/5 flex flex-col justify-center">
+                                <span className="text-gray-500 dark:text-gray-400 font-medium">Validity / Expiry</span>
+                                <span className="font-semibold text-gray-900 dark:text-white mt-1 flex items-center gap-1.5">
+                                  <RiTimeLine className="text-sm text-gray-400" />
+                                  {pkg.expires_at ? new Date(pkg.expires_at).toLocaleDateString() : 'Lifetime Validity'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Action Row */}
+                            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
+                              <span className="text-xs text-gray-400">
+                                {canRedeem ? 'Customer can redeem service sessions anytime' : 'No available sessions left to redeem'}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={!canRedeem || redeemingPkgId === pkg.id}
+                                onClick={() => handleRedeemPackage(pkg)}
+                                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                                  canRedeem
+                                    ? 'bg-brand hover:bg-brand/90 text-white shadow-brand/20 active:scale-95'
+                                    : 'bg-gray-100 dark:bg-white/5 text-gray-400 cursor-not-allowed border border-gray-200 dark:border-white/10'
+                                }`}
+                              >
+                                {redeemingPkgId === pkg.id ? (
+                                  <>
+                                    <RiLoader4Line className="animate-spin text-sm" />
+                                    <span>Redeeming...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <RiCheckDoubleLine className="text-sm" />
+                                    <span>Redeem 1 Session</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
                     ) : (
                       <div className="text-center py-12 rounded-2xl border-2 border-dashed border-gray-200 dark:border-white/10 text-gray-400 text-xs">
-                        No active packages subscribed.
+                        <RiBox3Line className="text-3xl mx-auto mb-2 opacity-30" />
+                        No active packages subscribed by this customer yet.
                       </div>
                     )}
                   </div>

@@ -150,14 +150,21 @@ export default function PackagesMembershipsPage() {
               {packages.map(pkg => (
                 <div key={pkg.id} className="bg-admin-card border border-admin-border rounded-2xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col">
                   
-                  {/* Image Placeholder (for future) */}
-                  <div className="w-full h-32 bg-admin-surface-light rounded-xl mb-4 flex items-center justify-center border border-admin-border-light text-admin-text-muted text-xs font-semibold overflow-hidden">
-                    {pkg.image ? (
-                      <img src={pkg.image} alt={pkg.name} className="w-full h-full object-cover" />
+                  {/* Package Cover Image Banner */}
+                  <div className="w-full h-36 bg-admin-surface-light rounded-xl mb-4 flex items-center justify-center border border-admin-border-light text-admin-text-muted text-xs font-semibold overflow-hidden relative shadow-inner">
+                    {pkg.image_url || pkg.image ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={(pkg.image_url || pkg.image).startsWith('http') || (pkg.image_url || pkg.image).startsWith('data:')
+                          ? (pkg.image_url || pkg.image)
+                          : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:5000'}${(pkg.image_url || pkg.image).startsWith('/') ? '' : '/'}${pkg.image_url || pkg.image}`}
+                        alt={pkg.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
                     ) : (
                       <div className="flex flex-col items-center gap-2 opacity-50">
                         <RiImageAddLine className="text-2xl" />
-                        <span>No Image</span>
+                        <span>No Cover Image</span>
                       </div>
                     )}
                   </div>
@@ -176,8 +183,24 @@ export default function PackagesMembershipsPage() {
                     <div className="text-2xl font-bold text-brand">{formatCurrency(pkg.total_price)}</div>
                     
                     <div className="flex flex-wrap gap-2 text-xs font-semibold text-admin-text-secondary">
-                      {pkg.validity_days && <span className="bg-admin-surface-light px-2 py-1 rounded-md border border-admin-border">Valid {pkg.validity_days} Days</span>}
-                      {pkg.max_uses && <span className="bg-admin-surface-light px-2 py-1 rounded-md border border-admin-border">Max {pkg.max_uses} Uses</span>}
+                      {pkg.validity_days ? (
+                        <span className="bg-admin-surface-light px-2.5 py-1 rounded-md border border-admin-border flex items-center gap-1">
+                          Valid {pkg.validity_days} Days
+                        </span>
+                      ) : (
+                        <span className="bg-admin-surface-light px-2.5 py-1 rounded-md border border-admin-border text-emerald-600 dark:text-emerald-400">
+                          Lifetime Validity
+                        </span>
+                      )}
+                      {pkg.max_uses ? (
+                        <span className="bg-admin-surface-light px-2.5 py-1 rounded-md border border-admin-border">
+                          Max {pkg.max_uses} Redemptions
+                        </span>
+                      ) : (
+                        <span className="bg-admin-surface-light px-2.5 py-1 rounded-md border border-admin-border text-emerald-600 dark:text-emerald-400">
+                          Unlimited Uses
+                        </span>
+                      )}
                     </div>
 
                     <div className="pt-3 border-t border-admin-border-light">
@@ -212,8 +235,15 @@ export default function PackagesMembershipsPage() {
                   
                   {/* VIP Image Placeholder */}
                   <div className="w-full h-32 bg-admin-surface-light rounded-2xl mb-5 flex items-center justify-center border border-admin-border-light text-admin-text-muted text-xs font-bold overflow-hidden shadow-sm">
-                    {mem.image ? (
-                      <img src={mem.image} alt={mem.name} className="w-full h-full object-cover" />
+                    {mem.image_url || mem.image ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={(mem.image_url || mem.image).startsWith('http') || (mem.image_url || mem.image).startsWith('data:')
+                          ? (mem.image_url || mem.image)
+                          : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:5000'}${(mem.image_url || mem.image).startsWith('/') ? '' : '/'}${mem.image_url || mem.image}`}
+                        alt={mem.name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="flex flex-col items-center gap-2 opacity-60">
                         <RiVipCrownLine className="text-3xl" />

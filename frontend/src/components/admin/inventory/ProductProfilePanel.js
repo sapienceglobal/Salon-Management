@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   RiCloseLine, 
@@ -11,17 +11,19 @@ import {
   RiAddLine, 
   RiSubtractLine, 
   RiArchiveLine, 
-  RiShoppingBag3Line 
+  RiShoppingBag3Line,
 } from 'react-icons/ri';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getImageUrl } from '@/lib/utils';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { useConfirm } from '@/context/ConfirmContext';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 
+const subscribe = () => () => {};
+
 export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, onUpdateSuccess }) {
   const { confirm } = useConfirm();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
   
   // Stock Adjustment State
   const [isAdjustingStock, setIsAdjustingStock] = useState(false);
@@ -31,18 +33,6 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
   const [stockError, setStockError] = useState(null);
 
   useScrollLock(isOpen);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsAdjustingStock(false);
-      setAdjustQty('');
-      setStockError(null);
-    }
-  }, [isOpen, product]);
 
   if (!isOpen || !mounted || !product) return null;
 
@@ -107,10 +97,20 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
-              <RiShoppingBag3Line />
-            </div>
+          <div className="flex items-center gap-4 min-w-0">
+            {product.image_url ? (
+              <div className="w-12 h-12 rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 relative shadow-sm shrink-0 bg-gray-100 dark:bg-white/5">
+                <img
+                  src={getImageUrl(product.image_url)}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-11 h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
+                <RiShoppingBag3Line />
+              </div>
+            )}
             <div className="min-w-0">
               <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate max-w-[280px] sm:max-w-md" title={product.name}>
                 {product.name}

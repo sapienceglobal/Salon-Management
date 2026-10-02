@@ -1,6 +1,7 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import api from '@/lib/api';
 import { formatCurrency, formatDate, getImageUrl } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -94,6 +95,41 @@ export default function CustomersPage() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState(null);
+
+  // Horizontal Table Scroll State & Ref (matching Leads page)
+  const tableScrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTableScroll = useCallback(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 10);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  }, []);
+
+  useEffect(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    const rafId = requestAnimationFrame(checkTableScroll);
+    el.addEventListener('scroll', checkTableScroll, { passive: true });
+    window.addEventListener('resize', checkTableScroll);
+    return () => {
+      cancelAnimationFrame(rafId);
+      el.removeEventListener('scroll', checkTableScroll);
+      window.removeEventListener('resize', checkTableScroll);
+    };
+  }, [checkTableScroll, customers]);
+
+  const handleScrollTable = (direction) => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    const scrollAmount = Math.max(280, Math.floor(el.clientWidth * 0.55));
+    el.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -580,133 +616,162 @@ export default function CustomersPage() {
       <div className="px-6 flex flex-col flex-1 pb-6">
         {/* ACTION & SEARCH BAR */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
-        {/* Import Button */}
-        <button
-          onClick={() => setIsImportModalOpen(true)}
-          className="border border-[#e91e63] text-[#e91e63] bg-white dark:bg-[#1a1a2e] hover:bg-pink-50 dark:hover:bg-pink-900/20 px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
-        >
-          <RiUpload2Line className="text-base" /> Import
-        </button>
+          {/* Import Button */}
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="border border-[#e91e63] text-[#e91e63] bg-white dark:bg-[#1a1a2e] hover:bg-pink-50 dark:hover:bg-pink-900/20 px-4 sm:px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-sm transition-colors cursor-pointer shrink-0"
+          >
+            <RiUpload2Line className="text-base" /> Import
+          </button>
 
-        {/* Download Button */}
-        <button
-          onClick={exportToCSV}
-          disabled={isExporting}
-          className="bg-[#e91e63] hover:bg-[#d81b60] text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-sm shadow-[#e91e63]/20 transition-colors disabled:opacity-60 cursor-pointer"
-        >
-          {isExporting ? <RiLoader2Line className="animate-spin text-base" /> : <RiDownload2Line className="text-base" />}
-          Download
-        </button>
+          {/* Download Button */}
+          <button
+            onClick={exportToCSV}
+            disabled={isExporting}
+            className="bg-[#e91e63] hover:bg-[#d81b60] text-white px-4 sm:px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-sm shadow-[#e91e63]/20 transition-colors disabled:opacity-60 cursor-pointer shrink-0"
+          >
+            {isExporting ? <RiLoader2Line className="animate-spin text-base" /> : <RiDownload2Line className="text-base" />}
+            Download
+          </button>
 
-        {/* Search Input Bar */}
-        <div className="relative flex-1 min-w-[260px] max-w-xl mx-auto">
-          <RiSearchLine className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
-          <input
-            type="text"
-            value={filters.search}
-            onChange={(e) => handleFilterChange('search', e.target.value)}
-            placeholder="Search customers by name, phone, email..."
-            className="w-full bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-full pl-11 pr-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:border-[#e91e63] focus:ring-1 focus:ring-[#e91e63] shadow-sm transition-all"
-          />
-        </div>
+          {/* Search Input Bar */}
+          <div className="relative flex-1 min-w-[240px] max-w-xl mx-auto">
+            <RiSearchLine className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
+            <input
+              type="text"
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              placeholder="Search customers by name, phone, email..."
+              className="w-full bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-full pl-11 pr-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:border-[#e91e63] focus:ring-1 focus:ring-[#e91e63] shadow-sm transition-all"
+            />
+          </div>
 
-        {/* Filter Button */}
-        <button
-          onClick={() => setIsFilterDrawerOpen(true)}
-          className={`border border-[#e91e63] text-[#e91e63] px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-sm transition-colors cursor-pointer ml-auto ${
-            filters.is_active || filters.gender || filters.source
-              ? 'bg-pink-50 dark:bg-pink-900/30'
-              : 'bg-white dark:bg-[#1a1a2e] hover:bg-pink-50 dark:hover:bg-pink-900/20'
-          }`}
-        >
-          Filter <RiFilter3Line className="text-base" />
-        </button>
-      </div>
+          <div className="flex items-center gap-2.5 ml-auto shrink-0">
+            {/* Horizontal Scroll Quick Buttons (Top Toolbar next to Filter) */}
+            <div className="flex items-center gap-1 bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 p-1 rounded-xl shadow-xs">
+              <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 pl-2 pr-1 select-none hidden sm:inline">
+                Scroll Table
+              </span>
+              <button
+                type="button"
+                onClick={() => handleScrollTable('left')}
+                disabled={!canScrollLeft}
+                className="w-7 h-7 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:text-white hover:bg-[#E91E63] disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shadow-2xs cursor-pointer"
+                title="Scroll table left (X-Axis)"
+                aria-label="Scroll table left"
+              >
+                <RiArrowLeftSLine className="text-base" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScrollTable('right')}
+                disabled={!canScrollRight}
+                className="w-7 h-7 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:text-white hover:bg-[#E91E63] disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shadow-2xs cursor-pointer"
+                title="Scroll table right (X-Axis)"
+                aria-label="Scroll table right"
+              >
+                <RiArrowRightSLine className="text-base" />
+              </button>
+            </div>
 
-      {/* ========================================================
-          4. ALPHABET FILTER & SORT / VIEW CONTROLS
-         ======================================================== */}
-      <div className="mb-4">
-        <p className="text-xs text-gray-500 font-medium mb-1.5">Filter by name</p>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          {/* Alphabet list */}
-          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+            {/* Filter Button */}
             <button
-              onClick={() => handleFilterChange('letter', '')}
-              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                !filters.letter
-                  ? 'bg-[#e91e63] text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-[#e91e63] hover:bg-pink-50 dark:hover:bg-white/5'
+              onClick={() => setIsFilterDrawerOpen(true)}
+              className={`border border-[#e91e63] text-[#e91e63] px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-sm transition-colors cursor-pointer ${
+                filters.is_active || filters.gender || filters.source
+                  ? 'bg-pink-50 dark:bg-pink-900/30'
+                  : 'bg-white dark:bg-[#1a1a2e] hover:bg-pink-50 dark:hover:bg-pink-900/20'
               }`}
             >
-              All
+              Filter <RiFilter3Line className="text-base" />
             </button>
-            {ALPHABETS.map((letter) => (
+          </div>
+        </div>
+
+        {/* ========================================================
+            4. ALPHABET FILTER & SORT / VIEW CONTROLS
+           ======================================================== */}
+        <div className="mb-4">
+          <p className="text-xs text-gray-500 font-medium mb-1.5">Filter by name</p>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Alphabet list */}
+            <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-1 max-w-full custom-scrollbar">
               <button
-                key={letter}
-                onClick={() => handleFilterChange('letter', letter)}
-                className={`px-2 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                  filters.letter === letter
+                onClick={() => handleFilterChange('letter', '')}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  !filters.letter
                     ? 'bg-[#e91e63] text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-[#e91e63] hover:bg-pink-50 dark:hover:bg-white/5'
                 }`}
               >
-                {letter}
+                All
               </button>
-            ))}
-          </div>
-
-          {/* Right: Sort by & View Toggle */}
-          <div className="flex items-center gap-3 ml-auto">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort by</span>
-              <select
-                value={filters.sortBy}
-                onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-                className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 outline-none focus:border-[#e91e63] shadow-sm cursor-pointer"
-              >
-                <option value="last_visit_at">Last Visited</option>
-                <option value="first_name">Name (A-Z)</option>
-                <option value="total_spent">Total Spent</option>
-                <option value="total_visits">Visits</option>
-              </select>
+              {ALPHABETS.map((letter) => (
+                <button
+                  key={letter}
+                  onClick={() => handleFilterChange('letter', letter)}
+                  className={`px-2 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                    filters.letter === letter
+                      ? 'bg-[#e91e63] text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-[#e91e63] hover:bg-pink-50 dark:hover:bg-white/5'
+                  }`}
+                >
+                  {letter}
+                </button>
+              ))}
             </div>
 
-            {/* List / Grid Switch */}
-            <div className="flex items-center gap-1 bg-white dark:bg-[#1a1a2e] p-1 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm">
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  viewMode === 'list'
-                    ? 'bg-[#e91e63] text-white shadow-sm'
-                    : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                }`}
-                title="List View"
-              >
-                <RiListUnordered className="text-base" />
-              </button>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  viewMode === 'grid'
-                    ? 'bg-[#e91e63] text-white shadow-sm'
-                    : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                }`}
-                title="Grid View"
-              >
-                <RiGridLine className="text-base" />
-              </button>
+            {/* Right: Sort by & View Toggle */}
+            <div className="flex items-center gap-3 ml-auto shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort by</span>
+                <select
+                  value={filters.sortBy}
+                  onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                  className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 outline-none focus:border-[#e91e63] shadow-sm cursor-pointer"
+                >
+                  <option value="last_visit_at">Last Visited</option>
+                  <option value="first_name">Name (A-Z)</option>
+                  <option value="total_spent">Total Spent</option>
+                  <option value="total_visits">Visits</option>
+                </select>
+              </div>
+
+              {/* List / Grid Switch */}
+              <div className="flex items-center gap-1 bg-white dark:bg-[#1a1a2e] p-1 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                    viewMode === 'list'
+                      ? 'bg-[#e91e63] text-white shadow-sm'
+                      : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                  title="List View"
+                >
+                  <RiListUnordered className="text-base" />
+                </button>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                    viewMode === 'grid'
+                      ? 'bg-[#e91e63] text-white shadow-sm'
+                      : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                  title="Grid View"
+                >
+                  <RiGridLine className="text-base" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
       {/* ========================================================
-          5. CUSTOMERS TABLE
+          5. CUSTOMERS TABLE (with middle floating circle scroll buttons, top quick controls, and bottom scroller)
          ======================================================== */}
       <div className="bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/10 rounded-2xl shadow-sm overflow-hidden flex flex-col mb-4">
-        <TableScrollContainer>
-          <table className="w-full text-left border-collapse whitespace-nowrap min-w-[950px]">
+        <TableScrollContainer ref={tableScrollRef}>
+          <table className="w-full text-left border-collapse whitespace-nowrap min-w-[1200px]">
             <thead>
               <tr className="border-b border-gray-100 dark:border-white/10 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider select-none bg-gray-50/50 dark:bg-white/[0.02]">
                 <th className="py-3.5 pl-5 pr-2 w-10 text-center">
@@ -724,53 +789,53 @@ export default function CustomersPage() {
                 </th>
                 <th
                   onClick={() => handleSortToggle('first_name')}
-                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white min-w-[220px]"
                 >
                   CUSTOMER <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
                 </th>
                 <th
                   onClick={() => handleSortToggle('phone')}
-                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white min-w-[140px]"
                 >
                   PHONE <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
                 </th>
                 <th
                   onClick={() => handleSortToggle('total_spent')}
-                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white min-w-[130px]"
                 >
                   TOTAL SPENT <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
                 </th>
                 <th
                   onClick={() => handleSortToggle('total_visits')}
-                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white min-w-[90px]"
                 >
                   VISITS <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
                 </th>
                 <th
                   onClick={() => handleSortToggle('wallet_balance')}
-                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white min-w-[140px]"
                 >
                   WALLET BALANCE <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
                 </th>
                 <th
                   onClick={() => handleSortToggle('last_visit_at')}
-                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white min-w-[130px]"
                 >
                   LAST VISIT <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
                 </th>
                 <th
                   onClick={() => handleSortToggle('is_active')}
-                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white min-w-[100px]"
                 >
                   STATUS <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
                 </th>
                 <th
                   onClick={() => handleSortToggle('source')}
-                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white"
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-gray-700 dark:hover:text-white min-w-[100px]"
                 >
                   SOURCE <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
                 </th>
-                <th className="py-3.5 px-4 font-semibold text-center">
+                <th className="py-3.5 px-4 font-semibold text-center min-w-[120px]">
                   ACTIONS <RiArrowUpDownLine className="inline text-xs text-gray-400 ml-1" />
                 </th>
               </tr>

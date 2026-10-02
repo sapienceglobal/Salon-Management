@@ -18,6 +18,7 @@ export const createProductSchema = {
     hsn_sac_code: z.string().max(20).optional(),
     tax_percentage: z.coerce.number().min(0).max(100).optional(),
     unit: z.string().max(20).optional(),
+    image_url: z.string().max(500).optional().nullable(),
   }),
 };
 
@@ -38,6 +39,7 @@ export const updateProductSchema = {
     hsn_sac_code: z.string().max(20).optional().nullable(),
     tax_percentage: z.coerce.number().min(0).max(100).optional(),
     unit: z.string().max(20).optional(),
+    image_url: z.string().max(500).optional().nullable(),
     is_active: z.union([z.boolean(), z.string().transform(v => v === 'true')]).optional(),
   }),
   params: idParam,

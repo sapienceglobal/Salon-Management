@@ -39,21 +39,49 @@ export default function LeadDetailsDrawer({
   onDeleteLead,
 }) {
   const [mounted, setMounted] = useState(false);
+  const [isRendered, setIsRendered] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
-  useScrollLock(isOpen);
+  useScrollLock(isRendered);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Smooth entrance & exit animations
+  useEffect(() => {
+    let timer;
+    if (isOpen && lead) {
+      setIsRendered(true);
+      // Double rAF / short timeout ensures the browser renders the initial translate-x-full state
+      // before transitioning to translate-x-0
+      timer = setTimeout(() => {
+        setIsVisible(true);
+      }, 25);
+    } else {
+      setIsVisible(false);
+      timer = setTimeout(() => {
+        setIsRendered(false);
+      }, 320);
+    }
+    return () => clearTimeout(timer);
+  }, [isOpen, lead]);
+
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 300);
+  };
+
   // Keyboard escape listener
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) onClose();
+      if (e.key === 'Escape' && isVisible) handleClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isVisible]);
 
   // Parse services
   const services = useMemo(() => {
@@ -70,7 +98,6 @@ export default function LeadDetailsDrawer({
   // Parse notes / history timeline
   const activityLogs = useMemo(() => {
     if (!lead?.notes) return [];
-    // Notes can contain multiple log entries separated by newline
     const lines = lead.notes.split('\n').filter((l) => l.trim().length > 0);
     return lines.map((line, idx) => {
       const isLog = line.startsWith('[Follow-Up') || line.startsWith('[Staff Assigned') || line.startsWith('[Lead Converted');
@@ -82,7 +109,7 @@ export default function LeadDetailsDrawer({
     });
   }, [lead]);
 
-  if (!isOpen || !mounted || !lead) return null;
+  if (!isRendered || !mounted || !lead) return null;
 
   // Find assigned staff
   const assignedStaff = staffList.find((s) => String(s.id) === String(lead.assigned_to));
@@ -160,14 +187,21 @@ export default function LeadDetailsDrawer({
     : '-';
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
-      {/* Drawer Panel */}
+    <div
+      className={`fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
+        isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}
+      onMouseDown={handleClose}
+    >
+      {/* Drawer Panel Sliding Smoothly from the Right */}
       <div
-        className="w-full max-w-xl bg-white dark:bg-[#151522] h-full shadow-2xl flex flex-col border-l border-slate-200 dark:border-white/10 animate-in slide-in-from-right duration-300"
-        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-xl bg-white dark:bg-[#151522] h-full shadow-2xl flex flex-col border-l border-slate-200 dark:border-white/10 transform transition-transform duration-300 ease-out ${
+          isVisible ? 'translate-x-0' : 'translate-x-full'
+        }`}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-white/[0.02]">
+        <div className="px-6 py-4.5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-white/[0.02]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#E91E63]/20 to-[#FB7185]/30 text-[#E91E63] flex items-center justify-center text-xl shrink-0 border border-[#E91E63]/30">
               <RiInformationLine />
@@ -184,7 +218,7 @@ export default function LeadDetailsDrawer({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 rounded-full bg-slate-200/70 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
           >
             <RiCloseLine className="text-xl" />
@@ -198,206 +232,197 @@ export default function LeadDetailsDrawer({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 {lead.avatar_url ? (
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden relative shrink-0 ring-2 ring-[#E91E63]/20 shadow-md">
+                  <div className="w-14 h-14 rounded-full overflow-hidden relative ring-2 ring-pink-200 dark:ring-pink-800/40 shadow-xs shrink-0">
                     <Image
                       src={lead.avatar_url}
                       alt={lead.name}
                       fill
-                      sizes="64px"
                       className="object-cover"
                     />
                   </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#E91E63] to-[#FB7185] flex items-center justify-center text-white font-black text-xl shrink-0 shadow-md">
-                    {getInitials(lead.name || 'Lead', '')}
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#E91E63] to-[#FB7185] flex items-center justify-center text-white font-extrabold text-lg shadow-sm shrink-0">
+                    {getInitials(lead.name, '')}
                   </div>
                 )}
+
                 <div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight">
-                    {lead.name}
-                  </h3>
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
+                      {lead.name}
+                    </h3>
+                  </div>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     {renderStatusBadge(lead.status)}
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300">
-                      via {lead.source || 'Website'}
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      Source: <span className="font-semibold text-slate-700 dark:text-slate-300 capitalize">{lead.source || 'Website'}</span>
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Quick Action Buttons */}
-              <div className="flex items-center gap-2 self-start sm:self-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    if (onEditLead) onEditLead(lead);
-                  }}
-                  className="p-2 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-[#E91E63] hover:border-[#E91E63] transition-colors"
-                  title="Edit Lead"
-                >
-                  <RiEditLine className="text-base" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    if (onDeleteLead) onDeleteLead(lead.id);
-                  }}
-                  className="p-2 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-rose-600 hover:border-rose-300 transition-colors"
-                  title="Delete Lead"
-                >
-                  <RiDeleteBinLine className="text-base" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Contact Action Bar */}
-          <div className="grid grid-cols-3 gap-2.5">
-            <a
-              href={`tel:${lead.phone}`}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold text-xs hover:bg-blue-100 transition-colors border border-blue-200/80 dark:border-blue-800/40"
-            >
-              <RiPhoneLine className="text-base" />
-              <span>Call</span>
-            </a>
-
-            <button
-              type="button"
-              onClick={() => handleWhatsApp(lead.phone, lead.name)}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold text-xs hover:bg-emerald-100 transition-colors border border-emerald-200/80 dark:border-emerald-800/40 cursor-pointer"
-            >
-              <RiWhatsappLine className="text-base" />
-              <span>WhatsApp</span>
-            </button>
-
-            {lead.email ? (
-              <a
-                href={`mailto:${lead.email}`}
-                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 transition-colors border border-slate-200/80 dark:border-white/10"
-              >
-                <RiMailLine className="text-base" />
-                <span>Email</span>
-              </a>
-            ) : (
-              <div className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl bg-slate-50 dark:bg-white/[0.02] text-slate-400 font-medium text-xs border border-slate-100 dark:border-white/5 opacity-60">
-                <RiMailLine className="text-base" />
-                <span>No Email</span>
-              </div>
-            )}
-          </div>
-
-          {/* Details Grid */}
-          <div className="bg-white dark:bg-[#1a1a2e] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 shadow-xs space-y-4">
-            <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
-              Contact & Preference Details
-            </h4>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <span className="text-slate-400 block mb-0.5">Phone Number</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">
-                  {lead.phone || '-'}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-slate-400 block mb-0.5">Email Address</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
-                  {lead.email || 'Not provided'}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-slate-400 block mb-0.5">Gender</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {lead.gender || 'Not specified'}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-slate-400 block mb-0.5">Location / City</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {lead.location || 'Not provided'}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-slate-400 block mb-0.5">Preferred Branch</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {lead.preferred_branch || 'Downtown Branch'}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-slate-400 block mb-0.5">Assigned Staff</span>
-                {assignedName ? (
-                  <span className="font-bold text-[#E91E63]">{assignedName}</span>
-                ) : (
+              {/* Quick Actions (Edit / Delete) */}
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                {onEditLead && (
                   <button
                     type="button"
                     onClick={() => {
-                      onClose();
-                      if (onAssignLead) onAssignLead(lead);
+                      handleClose();
+                      onEditLead(lead);
                     }}
-                    className="text-xs font-bold text-[#E91E63] hover:underline cursor-pointer"
+                    className="p-2 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-slate-300 text-base transition-colors cursor-pointer"
+                    title="Edit Lead"
                   >
-                    + Assign to Staff
+                    <RiEditLine />
+                  </button>
+                )}
+                {onDeleteLead && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleClose();
+                      onDeleteLead(lead);
+                    }}
+                    className="p-2 rounded-xl border border-rose-200 dark:border-rose-900/30 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-base transition-colors cursor-pointer"
+                    title="Delete Lead"
+                  >
+                    <RiDeleteBinLine />
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Interested Services */}
-            <div className="pt-3 border-t border-slate-100 dark:border-white/10">
-              <span className="text-slate-400 text-xs block mb-2 font-semibold">Interested Services</span>
-              <div className="flex flex-wrap gap-1.5">
-                {services.length > 0 ? (
-                  services.map((svc, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-pink-50 dark:bg-pink-950/40 text-[#E91E63] border border-pink-200/70 dark:border-pink-900/40"
-                    >
-                      <RiScissorsLine className="text-sm" />
-                      <span>{svc}</span>
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-xs text-slate-400 italic">No specific services selected</span>
+            {/* Quick Contact Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-5 pt-4 border-t border-pink-100/70 dark:border-pink-900/30">
+              {lead.phone && (
+                <>
+                  <a
+                    href={`tel:${lead.phone}`}
+                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 hover:border-blue-400 dark:hover:border-blue-500 text-slate-800 dark:text-slate-200 font-bold text-xs shadow-xs transition-all"
+                  >
+                    <RiPhoneLine className="text-blue-600 dark:text-blue-400 text-sm" />
+                    <span>Call</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleWhatsApp(lead.phone, lead.name)}
+                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 font-bold text-xs shadow-xs transition-all cursor-pointer"
+                  >
+                    <RiWhatsappLine className="text-emerald-600 dark:text-emerald-400 text-sm" />
+                    <span>WhatsApp</span>
+                  </button>
+                </>
+              )}
+              {lead.email && (
+                <a
+                  href={`mailto:${lead.email}`}
+                  className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 hover:border-slate-400 text-slate-800 dark:text-slate-200 font-bold text-xs shadow-xs transition-all col-span-2 sm:col-span-1"
+                >
+                  <RiMailLine className="text-slate-500 text-sm" />
+                  <span>Email</span>
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Details Section */}
+          <div className="space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Contact & Location Info
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5">
+                <span className="text-[11px] font-semibold text-slate-400 block">Phone Number</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 block">
+                  {lead.phone || '-'}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5">
+                <span className="text-[11px] font-semibold text-slate-400 block">Email Address</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 block truncate" title={lead.email}>
+                  {lead.email || '-'}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5">
+                <span className="text-[11px] font-semibold text-slate-400 block">Branch / Location</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 block">
+                  {lead.location || lead.preferred_branch || 'All Branches'}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-semibold text-slate-400 block">Assigned Staff</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 block">
+                    {assignedName || 'Unassigned'}
+                  </span>
+                </div>
+                {onAssignLead && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleClose();
+                      onAssignLead(lead);
+                    }}
+                    className="text-xs text-[#E91E63] font-bold hover:underline"
+                  >
+                    Change
+                  </button>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Follow-Up Schedule & Notes Timeline */}
-          <div className="bg-white dark:bg-[#1a1a2e] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <RiCalendarCheckLine className="text-[#E91E63] text-lg" />
-                <h4 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Follow-Up & Activity Timeline
-                </h4>
+          {/* Interested Services */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Interested Services
+            </h4>
+            {services.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {services.map((svc, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-50 dark:bg-pink-950/30 text-[#E91E63] dark:text-pink-300 border border-pink-200/80 dark:border-pink-900/40 text-xs font-bold"
+                  >
+                    <RiScissorsLine className="text-xs" />
+                    <span>{svc}</span>
+                  </span>
+                ))}
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  if (onFollowUp) onFollowUp(lead);
-                }}
-                className="text-xs font-bold text-[#E91E63] hover:underline cursor-pointer"
-              >
-                + Schedule Follow-Up
-              </button>
+            ) : (
+              <p className="text-xs text-slate-400 italic">No specific services marked.</p>
+            )}
+          </div>
+
+          {/* Follow-Up Schedule & Notes Timeline */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Follow-Up & Activity Timeline
+              </h4>
+              {onFollowUp && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleClose();
+                    onFollowUp(lead);
+                  }}
+                  className="text-xs font-bold text-[#E91E63] hover:underline"
+                >
+                  + Schedule Follow-Up
+                </button>
+              )}
             </div>
 
             {/* Scheduled Follow-Up Badge */}
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/5 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2.5">
-                <RiTimeLine className="text-slate-400 text-base" />
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/30 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg shrink-0">
+                  <RiCalendarCheckLine />
+                </div>
                 <div>
                   <span className="text-slate-400 block text-[11px]">Next Follow-Up</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">
                     {lead.follow_up_date
                       ? `${lead.follow_up_date} ${lead.follow_up_time || ''}`
                       : 'None scheduled'}
@@ -428,7 +453,7 @@ export default function LeadDetailsDrawer({
         <div className="p-5 border-t border-slate-100 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.02] flex items-center justify-end gap-3 shrink-0">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 font-bold text-xs sm:text-sm hover:bg-slate-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
           >
             Close
@@ -437,7 +462,7 @@ export default function LeadDetailsDrawer({
           <button
             type="button"
             onClick={() => {
-              onClose();
+              handleClose();
               if (onFollowUp) onFollowUp(lead);
             }}
             className="px-5 py-2.5 rounded-xl border border-[#E91E63] text-[#E91E63] font-bold text-xs sm:text-sm hover:bg-pink-50 dark:hover:bg-pink-950/30 transition-colors cursor-pointer"
@@ -448,7 +473,7 @@ export default function LeadDetailsDrawer({
           <button
             type="button"
             onClick={() => {
-              onClose();
+              handleClose();
               if (onConvertLead) onConvertLead(lead);
             }}
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center gap-1.5"

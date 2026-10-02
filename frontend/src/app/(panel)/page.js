@@ -142,6 +142,7 @@ export default function DashboardPage() {
   const [recentCustomers, setRecentCustomers] = useState([]);
   const [inventoryAlerts, setInventoryAlerts] = useState([]);
   const [staffPerformance, setStaffPerformance] = useState([]);
+  const [todayFollowups, setTodayFollowups] = useState([]);
 
   // Loading states
   const [loading, setLoading] = useState(true);
@@ -161,6 +162,7 @@ export default function DashboardPage() {
         recentCustRes,
         inventoryRes,
         staffPerfRes,
+        leadsRes,
       ] = await Promise.allSettled([
         api.get('/dashboard/summary'),
         // revenue chart fetched separately
@@ -170,6 +172,7 @@ export default function DashboardPage() {
         api.get('/dashboard/recent-customers'),
         api.get('/dashboard/inventory-alerts'),
         api.get('/dashboard/staff-performance'),
+        api.get('/leads', { params: { follow_up_date: 'today', limit: 10 } }),
       ]);
 
       if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value.data);
@@ -180,6 +183,10 @@ export default function DashboardPage() {
       if (recentCustRes.status === 'fulfilled') setRecentCustomers(recentCustRes.value.data || []);
       if (inventoryRes.status === 'fulfilled') setInventoryAlerts(inventoryRes.value.data || []);
       if (staffPerfRes.status === 'fulfilled') setStaffPerformance(staffPerfRes.value.data || []);
+      if (leadsRes.status === 'fulfilled') {
+        const rawLeads = leadsRes.value.data?.data || leadsRes.value.data?.leads || leadsRes.value.data || [];
+        setTodayFollowups(Array.isArray(rawLeads) ? rawLeads : []);
+      }
     } catch (err) {
       setError('Unable to load dashboard data. Please try again.');
     } finally {
@@ -320,6 +327,33 @@ export default function DashboardPage() {
             ))
           )}
         </div>
+
+        {/* ====== Today's Follow-up Agenda Alert ====== */}
+        {todayFollowups.length > 0 && (
+          <div className="relative z-10 mt-5 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-pink-500/10 to-purple-500/10 border border-amber-300/40 dark:border-amber-700/40 flex items-center justify-between gap-4 flex-wrap shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-300 flex items-center justify-center text-xl shrink-0">
+                <RiCalendarCheckLine />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Today&apos;s Follow-up Agenda: {todayFollowups.length} Lead{todayFollowups.length > 1 ? 's' : ''} Scheduled</span>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                </h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  {todayFollowups.map((l) => l.name).slice(0, 3).join(', ')}{todayFollowups.length > 3 ? ` +${todayFollowups.length - 3} more` : ''} scheduled for follow-up today.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/leads?follow_up=today"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#E91E63] to-[#F43F5E] text-white text-xs font-bold shadow-[0_2px_10px_rgba(233,30,99,0.3)] hover:shadow-md transition-all cursor-pointer"
+            >
+              <span>View &amp; Call Today&apos;s Leads</span>
+              <RiArrowRightSLine className="text-base" />
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* ====== Row 2: Appointments Table + Revenue Chart ====== */}

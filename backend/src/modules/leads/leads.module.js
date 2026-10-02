@@ -566,7 +566,21 @@ class LeadService {
       updatePayload.assigned_to = Number(assigned_to);
     }
 
-    await db('leads').where({ id, business_id: businessId }).update(updatePayload);
+    while (true) {
+      try {
+        await db('leads').where({ id, business_id: businessId }).update(updatePayload);
+        break;
+      } catch (err) {
+        if (err.message && err.message.includes('Unknown column')) {
+          const match = err.message.match(/Unknown column '([^']+)'/);
+          if (match && match[1] && updatePayload.hasOwnProperty(match[1])) {
+            delete updatePayload[match[1]];
+            continue;
+          }
+        }
+        throw err;
+      }
+    }
     const updatedLead = await this.getById(id, businessId);
 
     const io = getIo();

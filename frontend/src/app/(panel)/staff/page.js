@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect, useCallback } from 'react';
 import { 
@@ -14,7 +15,7 @@ import toast from 'react-hot-toast';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 
 export default function StaffPage() {
-  const confirm = useConfirm();
+  const { confirm } = useConfirm();
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
