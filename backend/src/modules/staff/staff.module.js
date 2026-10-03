@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorize, businessScope } from '../../middlewares/authorize.js';
 import { validate } from '../../middlewares/validate.js';
-import { singleImage, deleteUploadedFile } from '../../utils/fileUpload.js';
+import { singleImage, singleDocument, deleteUploadedFile } from '../../utils/fileUpload.js';
 
 const idParam = z.object({ id: z.string().regex(/^\d+$/).transform(Number) });
 
@@ -210,14 +210,20 @@ class StaffService {
   }
 
   async getPerformance(staffId, businessId, startDate, endDate) {
-    const [appointmentStats] = await db('appointment_services')
-      .join('appointments as a', 'appointment_services.appointment_id', 'a.id')
-      .where({ 'appointment_services.staff_member_id': staffId, 'a.business_id': businessId })
+    const [appointmentStats] = await db('appointments as a')
+      .leftJoin('appointment_services as aps', 'aps.appointment_id', 'a.id')
+      .where('a.business_id', businessId)
+      .where(function() {
+        this.where('a.staff_member_id', staffId).orWhere('aps.staff_member_id', staffId);
+      })
       .whereBetween('a.appointment_date', [startDate, endDate])
       .select(
-        db.raw('COUNT(*) as total_services'),
-        db.raw("SUM(CASE WHEN appointment_services.status = 'completed' THEN 1 ELSE 0 END) as completed_services"),
-        db.raw('SUM(appointment_services.price) as total_revenue')
+        db.raw('COUNT(DISTINCT a.id) as total_appointments'),
+        db.raw("COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.id END) as completed_appointments"),
+        db.raw("COUNT(DISTINCT CASE WHEN a.status = 'cancelled' THEN a.id END) as cancelled_appointments"),
+        db.raw("COUNT(DISTINCT CASE WHEN a.status = 'no_show' THEN a.id END) as noshow_appointments"),
+        db.raw("COUNT(DISTINCT CASE WHEN a.status IN ('planned', 'ongoing') THEN a.id END) as upcoming_appointments"),
+        db.raw('COALESCE(SUM(aps.price), 0) as total_revenue')
       );
 
     const [commissionStats] = await db('staff_commissions')
@@ -235,11 +241,31 @@ class StaffService {
         db.raw("SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_days"),
         db.raw("SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent_days"),
         db.raw("SUM(CASE WHEN status = 'half_day' THEN 1 ELSE 0 END) as half_days"),
+        db.raw("SUM(CASE WHEN status = 'leave' THEN 1 ELSE 0 END) as leave_days"),
         db.raw('COALESCE(SUM(total_hours), 0) as total_hours')
       )
       .first();
 
-    return { ...appointmentStats, ...commissionStats, ...attendanceStats };
+    let feedbackStats = null;
+    try {
+      feedbackStats = await db('customer_feedback')
+        .where({ staff_member_id: staffId, business_id: businessId })
+        .select(
+          db.raw('AVG(rating) as avg_rating'),
+          db.raw('COUNT(id) as total_reviews')
+        )
+        .first();
+    } catch {
+      // feedback table might be empty or null
+    }
+
+    return {
+      ...appointmentStats,
+      ...commissionStats,
+      ...attendanceStats,
+      avg_rating: feedbackStats?.avg_rating ? parseFloat(feedbackStats.avg_rating).toFixed(1) : null,
+      total_reviews: parseInt(feedbackStats?.total_reviews || 0, 10),
+    };
   }
 
   // Profile - Services
@@ -271,13 +297,20 @@ class StaffService {
   }
 
   async updateServices(staffId, businessId, data) {
-    // data is array of { service_id, is_assigned, duration_mins, price }
-    await db('staff_services').where({ staff_id: staffId }).del();
-    const rows = data.filter(d => d.is_assigned).map(d => ({
-      staff_id: staffId,
+    const staff = await db('staff_members').where({ id: staffId, business_id: businessId }).first();
+    const targetUserId = staff ? staff.user_id : staffId;
+    await db('staff_services')
+      .where(function() {
+        this.where('staff_id', staffId).orWhere('staff_id', targetUserId);
+      })
+      .del();
+
+    const rows = (data || []).filter(d => d.is_assigned).map(d => ({
+      staff_id: targetUserId,
       service_id: d.service_id,
-      duration_mins: d.duration_mins,
-      price: d.price
+      duration_mins: d.duration_mins || null,
+      price: d.price || null,
+      is_assigned: true
     }));
     if (rows.length > 0) {
       await db('staff_services').insert(rows);
@@ -287,13 +320,35 @@ class StaffService {
 
   // Profile - Schedule
   async getSchedule(staffId, businessId) {
-    return db('staff_schedules').where({ staff_id: staffId }).orderBy('day_of_week');
+    const staff = await db('staff_members').where({ id: staffId, business_id: businessId }).first();
+    const targetUserId = staff ? staff.user_id : staffId;
+    const list = await db('staff_schedules')
+      .where(function() {
+        this.where('staff_id', staffId).orWhere('staff_id', targetUserId);
+      })
+      .orderBy('day_of_week');
+    if (list.length > 0) return list;
+    return db('staff_working_hours').where({ staff_member_id: staffId }).orderBy('day_of_week');
   }
 
   async updateSchedule(staffId, businessId, schedules) {
-    await db('staff_schedules').where({ staff_id: staffId }).del();
-    if (schedules.length > 0) {
-      const rows = schedules.map(s => ({ staff_id: staffId, ...s }));
+    const staff = await db('staff_members').where({ id: staffId, business_id: businessId }).first();
+    const targetUserId = staff ? staff.user_id : staffId;
+    await db('staff_schedules')
+      .where(function() {
+        this.where('staff_id', staffId).orWhere('staff_id', targetUserId);
+      })
+      .del();
+    if (schedules && schedules.length > 0) {
+      const rows = schedules.map(s => ({
+        staff_id: targetUserId,
+        day_of_week: s.day_of_week,
+        is_working: !!s.is_working,
+        start_time: s.start_time || null,
+        end_time: s.end_time || null,
+        break_start: s.break_start || null,
+        break_end: s.break_end || null,
+      }));
       await db('staff_schedules').insert(rows);
     }
     return this.getSchedule(staffId, businessId);
@@ -321,6 +376,90 @@ class StaffService {
     const newStatus = !staff.is_active;
     await db('users').where({ id: staff.user_id }).update({ is_active: newStatus, updated_at: db.fn.now() });
     return this.getById(id, businessId);
+  }
+
+  async bulkUpdateStatus(ids, businessId, isActive) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    const staffList = await db('staff_members')
+      .where('business_id', businessId)
+      .whereIn('id', ids)
+      .select('id', 'user_id');
+    const userIds = staffList.map(s => s.user_id).filter(Boolean);
+    if (userIds.length > 0) {
+      await db('users')
+        .whereIn('id', userIds)
+        .update({ is_active: Boolean(isActive), updated_at: db.fn.now() });
+    }
+    return staffList.length;
+  }
+
+  async bulkDelete(ids, businessId) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    const staffList = await db('staff_members')
+      .where('business_id', businessId)
+      .whereIn('id', ids)
+      .select('id', 'user_id');
+
+    let count = 0;
+    for (const staff of staffList) {
+      try {
+        await db('staff_working_hours').where({ staff_member_id: staff.id }).del();
+        await db('staff_leaves').where({ staff_id: staff.user_id }).del();
+        await db('staff_schedules').where({ staff_id: staff.user_id }).del();
+        await db('staff_services').where({ staff_id: staff.user_id }).del();
+        await db('staff_members').where({ id: staff.id, business_id: businessId }).del();
+        await db('users').where({ id: staff.user_id, business_id: businessId }).del();
+        count++;
+      } catch (err) {
+        // If historical appointment/attendance records exist, gracefully soft delete (deactivate)
+        await db('users').where({ id: staff.user_id }).update({ is_active: false, updated_at: db.fn.now() });
+        await db('staff_members').where({ id: staff.id, business_id: businessId }).update({ is_available: false, updated_at: db.fn.now() });
+        count++;
+      }
+    }
+    return count;
+  }
+
+  async getDocuments(staffId, businessId) {
+    await this.getById(staffId, businessId);
+    return db('staff_documents')
+      .where({ staff_member_id: staffId, business_id: businessId })
+      .orderBy('created_at', 'desc');
+  }
+
+  async addDocument(staffId, businessId, file, data) {
+    await this.getById(staffId, businessId);
+    if (!file) throw ApiError.badRequest('Please upload a document file (PDF, PNG, JPG, WebP)');
+
+    const fileUrl = `/uploads/${file.filename}`;
+    const fileSizeMb = (file.size / (1024 * 1024)).toFixed(2);
+    const fileSizeStr = file.size > 1024 * 1024 ? `${fileSizeMb} MB` : `${Math.round(file.size / 1024)} KB`;
+
+    const [id] = await db('staff_documents').insert({
+      staff_member_id: staffId,
+      business_id: businessId,
+      document_name: data.document_name || file.originalname,
+      document_type: data.document_type || 'Identity Proof',
+      file_url: fileUrl,
+      file_size: fileSizeStr,
+      file_type: file.mimetype,
+    });
+
+    return db('staff_documents').where({ id }).first();
+  }
+
+  async deleteDocument(staffId, docId, businessId) {
+    await this.getById(staffId, businessId);
+    const doc = await db('staff_documents')
+      .where({ id: docId, staff_member_id: staffId, business_id: businessId })
+      .first();
+    if (!doc) throw ApiError.notFound('Document not found');
+
+    if (doc.file_url) {
+      deleteUploadedFile(doc.file_url);
+    }
+    await db('staff_documents').where({ id: docId }).del();
+    return { success: true };
   }
 }
 
@@ -368,6 +507,22 @@ const toggleStaffActive = asyncHandler(async (req, res) => {
   const staff = await staffService.toggleActive(req.params.id, req.user.business_id);
   ApiResponse.ok('Staff status updated', staff).send(res);
 });
+const bulkStatusStaff = asyncHandler(async (req, res) => {
+  const { ids, is_active } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw ApiError.badRequest('No staff IDs provided');
+  }
+  const count = await staffService.bulkUpdateStatus(ids, req.user.business_id, is_active);
+  ApiResponse.ok(`${count} staff member(s) status updated`, { count }).send(res);
+});
+const bulkDeleteStaff = asyncHandler(async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw ApiError.badRequest('No staff IDs provided');
+  }
+  const count = await staffService.bulkDelete(ids, req.user.business_id);
+  ApiResponse.ok(`${count} staff member(s) deleted`, { count }).send(res);
+});
 const markAttendance = asyncHandler(async (req, res) => {
   const record = await staffService.markAttendance(req.user.business_id, req.user.id, req.body);
   ApiResponse.ok('Attendance marked', record).send(res);
@@ -410,6 +565,27 @@ const addStaffLeave = asyncHandler(async (req, res) => {
   const data = await staffService.addLeave(req.params.id, req.user.business_id, req.body);
   ApiResponse.created('Leave added', data).send(res);
 });
+const getStaffDocuments = asyncHandler(async (req, res) => {
+  const docs = await staffService.getDocuments(req.params.id, req.user.business_id);
+  ApiResponse.ok('Staff documents fetched', docs).send(res);
+});
+const uploadStaffDocument = asyncHandler(async (req, res) => {
+  const doc = await staffService.addDocument(
+    req.params.id,
+    req.user.business_id,
+    req.file,
+    req.body
+  );
+  ApiResponse.created('Document uploaded successfully', doc).send(res);
+});
+const deleteStaffDocument = asyncHandler(async (req, res) => {
+  const result = await staffService.deleteDocument(
+    req.params.id,
+    req.params.docId,
+    req.user.business_id
+  );
+  ApiResponse.ok('Document deleted successfully', result).send(res);
+});
 
 // ===== ROUTES =====
 const router = Router();
@@ -418,6 +594,8 @@ router.use(authenticate, businessScope());
 router.get('/', getStaff);
 router.get('/attendance', getAttendance);
 router.get('/commissions', authorize('super_admin', 'admin', 'manager'), getCommissions);
+router.post('/bulk-status', authorize('super_admin', 'admin', 'manager'), bulkStatusStaff);
+router.post('/bulk-delete', authorize('super_admin', 'admin'), bulkDeleteStaff);
 router.get('/:id', validate({ params: idParam }), getStaffMember);
 router.get('/:id/performance', validate({ params: idParam }), getPerformance);
 router.get('/:id/services', validate({ params: idParam }), getStaffServices);
@@ -426,6 +604,9 @@ router.get('/:id/schedule', validate({ params: idParam }), getStaffSchedule);
 router.post('/:id/schedule', validate({ params: idParam }), updateStaffSchedule);
 router.get('/:id/leaves', validate({ params: idParam }), getStaffLeaves);
 router.post('/:id/leaves', validate({ params: idParam }), addStaffLeave);
+router.get('/:id/documents', validate({ params: idParam }), getStaffDocuments);
+router.post('/:id/documents', authorize('super_admin', 'admin', 'manager'), singleDocument('document'), validate({ params: idParam }), uploadStaffDocument);
+router.delete('/:id/documents/:docId', authorize('super_admin', 'admin'), deleteStaffDocument);
 router.post('/', authorize('super_admin', 'admin'), singleImage('image'), validate(createStaffSchema), createStaffMember);
 router.put('/:id', authorize('super_admin', 'admin', 'manager'), singleImage('image'), validate(updateStaffSchema), updateStaffMember);
 router.delete('/:id', authorize('super_admin', 'admin'), validate({ params: idParam }), deleteStaffMember);

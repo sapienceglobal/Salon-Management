@@ -66,8 +66,8 @@ class AppointmentRepository {
 
     if (query.date) base.where('a.appointment_date', query.date);
     if (query.from_date) base.where('a.appointment_date', '>=', query.from_date);
-    if (query.start_date && query.end_date) base.whereBetween('a.appointment_date', [query.start_date, query.end_date]);
-    if (query.staff_id) base.where('a.staff_member_id', query.staff_id);
+    const staffFilterId = query.staff_id || query.staff_member_id;
+    if (staffFilterId) base.where('a.staff_member_id', staffFilterId);
     if (query.customer_id) base.where('a.customer_id', query.customer_id);
     if (query.status) base.whereIn('a.status', query.status.split(','));
     if (query.service_id) {
@@ -82,7 +82,7 @@ class AppointmentRepository {
     if (query.date) countQuery.where('a.appointment_date', query.date);
     if (query.from_date) countQuery.where('a.appointment_date', '>=', query.from_date);
     if (query.start_date && query.end_date) countQuery.whereBetween('a.appointment_date', [query.start_date, query.end_date]);
-    if (query.staff_id) countQuery.where('a.staff_member_id', query.staff_id);
+    if (staffFilterId) countQuery.where('a.staff_member_id', staffFilterId);
     if (query.customer_id) countQuery.where('a.customer_id', query.customer_id);
     if (query.status) countQuery.whereIn('a.status', query.status.split(','));
     if (query.service_id) {

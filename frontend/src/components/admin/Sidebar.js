@@ -52,16 +52,8 @@ const NAV_GROUPS = [
   {
     title: 'SALON OPERATIONS',
     items: [
-      {
-        label: 'Staff',
-        href: '/staff',
-        icon: RiUserStarLine,
-      },
-      {
-        label: 'Attendance',
-        href: '/attendance',
-        icon: RiCalendarCheckLine,
-      },
+      { label: 'Staff Management', href: '/staff', icon: RiUserStarLine },
+
       { label: 'Services', href: '/services', icon: RiScissorsCutLine },
       {
         label: 'Packages',
