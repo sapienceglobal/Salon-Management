@@ -36,6 +36,7 @@ import ImportCustomersModal from '@/components/admin/customers/ImportCustomersMo
 import CustomerFilterDrawer from '@/components/admin/customers/CustomerFilterDrawer';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import BulkActionBar from '@/components/admin/common/BulkActionBar';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import { useConfirm } from '@/context/ConfirmContext';
 import toast from 'react-hot-toast';
 
@@ -887,17 +888,12 @@ export default function CustomersPage() {
                       {/* Customer: Avatar + Name */}
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          {c.profile_image_url ? (
-                            <img
-                              src={getImageUrl(c.profile_image_url)}
-                              alt={fullName}
-                              className="w-8 h-8 rounded-full object-cover shrink-0 border border-gray-100 dark:border-white/10"
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-[#e91e63] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
-                              {getInitials(c)}
-                            </div>
-                          )}
+                          <VisualAvatar
+                            type="customer"
+                            image={c.profile_image_url}
+                            name={fullName}
+                            size="sm"
+                          />
                           <span className="font-bold text-gray-900 dark:text-white group-hover:text-[#e91e63] transition-colors">
                             {fullName}
                           </span>

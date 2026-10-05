@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { formatCurrency, getImageUrl } from '@/lib/utils';
@@ -39,6 +40,7 @@ import CategoryFormModal, { CATEGORY_ICONS_MAP } from '@/components/admin/Catego
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import ServiceFormModal from '@/components/admin/ServiceFormModal';
 import BulkActionBar from '@/components/admin/common/BulkActionBar';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import { useConfirm } from '@/context/ConfirmContext';
 import toast from 'react-hot-toast';
 
@@ -785,24 +787,16 @@ export default function ServicesPage() {
                           {/* Service Name & Avatar/Icon */}
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-3.5">
-                              {svc.icon && !svc.image_url ? (
-                                <div
-                                  style={{
-                                    backgroundColor: `${svc.service_color || '#EC4899'}18`,
-                                    color: svc.service_color || '#EC4899',
-                                    borderColor: `${svc.service_color || '#EC4899'}35`,
-                                  }}
-                                  className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 border shadow-xs"
-                                >
-                                  {getServiceIcon(svc.icon)}
-                                </div>
-                              ) : (
-                                <img
-                                  src={getServiceAvatar(svc)}
-                                  alt={svc.name}
-                                  className="w-11 h-11 rounded-xl object-cover shadow-xs border border-gray-100 dark:border-white/10 shrink-0"
-                                />
-                              )}
+                              <VisualAvatar
+                                type="service"
+                                image={svc.image_url}
+                                icon={svc.icon}
+                                color={svc.service_color}
+                                name={svc.name}
+                                shape="rounded"
+                                size="xl"
+                                className="w-11 h-11 text-xl"
+                              />
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                   <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate">
@@ -983,24 +977,16 @@ export default function ServicesPage() {
                             onChange={() => handleToggleSelect(svc.id)}
                             className="w-4 h-4 rounded text-[#e91e63] border-gray-300 focus:ring-[#e91e63] cursor-pointer shrink-0"
                           />
-                          {svc.icon && !svc.image_url ? (
-                            <div
-                              style={{
-                                backgroundColor: `${svc.service_color || '#EC4899'}18`,
-                                color: svc.service_color || '#EC4899',
-                                borderColor: `${svc.service_color || '#EC4899'}35`,
-                              }}
-                              className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 border shadow-xs"
-                            >
-                              {getServiceIcon(svc.icon)}
-                            </div>
-                          ) : (
-                            <img
-                              src={getServiceAvatar(svc)}
-                              alt={svc.name}
-                              className="w-14 h-14 rounded-2xl object-cover shadow-xs border border-gray-100 dark:border-white/10"
+                            <VisualAvatar
+                              type="service"
+                              image={svc.image_url}
+                              icon={svc.icon}
+                              color={svc.service_color}
+                              name={svc.name}
+                              shape="rounded"
+                              size="xl"
+                              className="w-14 h-14 text-2xl"
                             />
-                          )}
                         </div>
                         <span
                           className={`text-xs font-bold px-2.5 py-1 rounded-md ${

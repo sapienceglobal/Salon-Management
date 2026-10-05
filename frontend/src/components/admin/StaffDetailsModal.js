@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -15,6 +16,7 @@ import {
   RiEdit2Line
 } from 'react-icons/ri';
 import { formatCurrency, parseSpecializations, getImageUrl } from '@/lib/utils';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import api from '@/lib/api';
 import { useConfirm } from '@/context/ConfirmContext';
 import toast from 'react-hot-toast';
@@ -95,17 +97,15 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
             {/* Modal Header / Profile Card */}
             <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
               <div className="flex items-center gap-4">
-                {staff.avatar_url ? (
-                  <img
-                    src={getImageUrl(staff.avatar_url)}
-                    alt={`${staff.first_name} ${staff.last_name}`}
-                    className="w-14 h-14 rounded-2xl object-cover shadow-sm border border-gray-200 dark:border-white/10 ring-2 ring-[#E91E63]/30 shrink-0"
-                  />
-                ) : (
-                  <div className="w-14 h-14 rounded-2xl bg-[#E91E63]/10 text-[#E91E63] flex items-center justify-center text-xl shrink-0 font-bold border border-[#E91E63]/20">
-                    {staff.first_name ? staff.first_name.charAt(0) : ''}{staff.last_name ? staff.last_name.charAt(0) : ''}
-                  </div>
-                )}
+                <VisualAvatar
+                  type="staff"
+                  image={staff.avatar_url}
+                  color={staff.color_code}
+                  name={`${staff.first_name} ${staff.last_name || ''}`}
+                  size="xl"
+                  shape="rounded"
+                  className="shadow-sm border border-gray-200 dark:border-white/10 ring-2 ring-[#E91E63]/30"
+                />
                 <div>
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">

@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
@@ -22,6 +23,7 @@ import ViewInvoicesDrawer from '@/components/admin/billing/ViewInvoicesDrawer';
 import { formatCurrency, getImageUrl } from '@/lib/utils';
 import { useConfirm } from '@/context/ConfirmContext';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 
 const getShiftLabel = (shift) => {
   switch (shift) {
@@ -208,7 +210,9 @@ export default function POSPage() {
           subtitle: `${appt.duration_minutes || 45} mins`,
           qty: 1,
           cart_price: parseFloat(appt.service_price) || 500,
-          image: appt.image_url || '/pos/svc_women_haircut.png',
+          image: appt.service_image_url || appt.image_url,
+          icon: appt.service_icon,
+          color: appt.service_color,
           staff_member_id: appt.staff_member_id || (quickAssignStaffId ? parseInt(quickAssignStaffId) : null)
         }]);
       }
@@ -357,7 +361,7 @@ export default function POSPage() {
       if (type === 'service') {
         subtitle = `${item.duration_minutes || 45} mins`;
         price = parseFloat(item.price) || 0;
-        img = getImageUrl(item.image_url) || (item.gender_target === 'male' ? '/pos/svc_men_haircut.png' : '/pos/svc_women_haircut.png');
+        img = item.image_url;
       } else if (type === 'product') {
         subtitle = item.unit || '1 pc';
         price = parseFloat(item.selling_price || item.price) || 0;
@@ -377,7 +381,9 @@ export default function POSPage() {
           subtitle,
           qty: 1,
           cart_price: price,
-          image: img,
+          image: type === 'service' ? (item.image_url || img) : img,
+          icon: item.icon,
+          color: item.service_color,
           staff_member_id: quickAssignStaffId ? parseInt(quickAssignStaffId) : null
         }
       ]);
@@ -647,9 +653,13 @@ export default function POSPage() {
             <div className="flex flex-col gap-3 transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-500 to-[#E91E63] text-white flex items-center justify-center font-bold text-lg shadow-sm transition-transform duration-200 hover:scale-105">
-                    {(selectedCustomer.first_name?.[0] || 'C') + (selectedCustomer.last_name?.[0] || '')}
-                  </div>
+                  <VisualAvatar
+                    type="customer"
+                    image={selectedCustomer.profile_image_url}
+                    name={`${selectedCustomer.first_name || ''} ${selectedCustomer.last_name || ''}`}
+                    size="lg"
+                    className="w-12 h-12 rounded-2xl shadow-sm transition-transform duration-200 hover:scale-105 shrink-0"
+                  />
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-base text-slate-900 dark:text-white">
@@ -739,9 +749,12 @@ export default function POSPage() {
                         className="px-4 py-3 hover:bg-pink-50 dark:hover:bg-white/5 flex items-center justify-between cursor-pointer border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors duration-150"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/30 text-[#E91E63] flex items-center justify-center font-bold text-xs">
-                            {cust.first_name?.[0] || 'C'}
-                          </div>
+                          <VisualAvatar
+                            type="customer"
+                            image={cust.profile_image_url}
+                            name={`${cust.first_name || ''} ${cust.last_name || ''}`}
+                            size="sm"
+                          />
                           <div>
                             <span className="text-sm font-bold text-slate-800 dark:text-white block">
                               {cust.first_name} {cust.last_name || ''}
@@ -951,7 +964,6 @@ export default function POSPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5">
                   {filteredServices.map((service) => {
                     const isInCart = cart.some(c => String(c.id) === String(service.id) && c.type === 'service');
-                    const imgUrl = getImageUrl(service.image_url) || (service.gender_target === 'male' ? '/pos/svc_men_haircut.png' : '/pos/svc_women_haircut.png');
 
                     return (
                       <div
@@ -962,15 +974,17 @@ export default function POSPage() {
                             : 'border-slate-100 dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10'
                         }`}
                       >
-                        {/* Image Thumbnail */}
-                        <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
-                          <Image
-                            src={imgUrl}
-                            alt={service.name}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
+                        {/* Image Thumbnail / Icon Avatar */}
+                        <VisualAvatar
+                          type="service"
+                          image={service.image_url}
+                          icon={service.icon}
+                          color={service.service_color}
+                          name={service.name}
+                          shape="rounded"
+                          size="xl"
+                          className="w-14 h-14 rounded-xl shrink-0 group-hover:scale-105 transition-transform duration-300"
+                        />
 
                         {/* Service Details */}
                         <div className="flex-1 min-w-0 pr-1">
@@ -1321,14 +1335,16 @@ export default function POSPage() {
               >
                 {/* Top Row: Thumbnail, Name, Subtitle, Price with Inline Edit */}
                 <div className="flex items-start gap-3">
-                  <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
-                    <Image
-                      src={item.image || '/pos/svc_women_haircut.png'}
-                      alt={item.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
+                  <VisualAvatar
+                    type={item.type === 'service' ? 'service' : 'service'}
+                    image={item.image}
+                    icon={item.icon}
+                    color={item.color}
+                    name={item.name}
+                    shape="rounded"
+                    size="md"
+                    className="w-12 h-12 rounded-xl shrink-0"
+                  />
 
                   <div className="flex-1 min-w-0 pt-0.5">
                     <h5 className="text-xs font-bold text-slate-900 dark:text-white truncate">

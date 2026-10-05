@@ -44,6 +44,7 @@ import {
   RiDeleteBin6Line,
 } from 'react-icons/ri';
 import { formatCurrency, getImageUrl } from '@/lib/utils';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useConfirm } from '@/context/ConfirmContext';
@@ -90,6 +91,7 @@ export default function StaffProfileView({
   onBack,
   onEditStaff,
   onToggleStatus,
+  onDeleteStaff,
   initialTab = 'overview',
 }) {
   const { confirm } = useConfirm();
@@ -621,15 +623,28 @@ export default function StaffProfileView({
               <button
                 type="button"
                 onClick={(e) => onToggleStatus(staff, e)}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md transition-all cursor-pointer ${
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   staff.is_active
-                    ? 'bg-[#FA2D65] hover:bg-[#E02456] shadow-[#FA2D65]/20'
-                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                    ? 'border border-amber-300 dark:border-amber-700/50 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
                 }`}
               >
                 <RiShutDownLine className="text-sm" />
-                <span>{staff.is_active ? 'Deactivate' : 'Activate'}</span>
+                <span>{staff.is_active ? 'Mark Inactive' : 'Mark Active'}</span>
               </button>
+
+              {/* Delete Staff Button */}
+              {onDeleteStaff && (
+                <button
+                  type="button"
+                  onClick={(e) => onDeleteStaff(e, staff.id)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-rose-200 dark:border-rose-900/30 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 text-xs font-bold text-rose-600 dark:text-rose-400 shadow-xs transition-all cursor-pointer"
+                  title="Permanently Delete Staff Member"
+                >
+                  <RiDeleteBinLine className="text-sm" />
+                  <span>Delete</span>
+                </button>
+              )}
             </>
           )}
         </div>
@@ -671,18 +686,14 @@ export default function StaffProfileView({
         <div className="lg:col-span-4 xl:col-span-3.5 bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/10 rounded-3xl p-6 shadow-sm flex flex-col items-center text-center">
           {/* Avatar with Active Dot */}
           <div className="relative mb-3">
-            {staff.avatar_url ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={getImageUrl(staff.avatar_url)}
-                alt={fullName}
-                className="w-28 h-28 rounded-full object-cover ring-4 ring-white dark:ring-[#1a1a2e] shadow-lg"
-              />
-            ) : (
-              <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-pink-400 to-[#FA2D65] text-white flex items-center justify-center font-bold text-3xl shadow-lg">
-                {staff.first_name?.[0] || 'S'}
-              </div>
-            )}
+            <VisualAvatar
+              type="staff"
+              image={staff.avatar_url}
+              color={staff.color_code}
+              name={fullName}
+              size="2xl"
+              className="w-28 h-28 text-5xl ring-4 ring-white dark:ring-[#1a1a2e] shadow-lg"
+            />
             <span
               className={`w-4 h-4 rounded-full border-2 border-white dark:border-[#1a1a2e] absolute top-1 right-1 shadow-sm ${
                 staff.is_active ? 'bg-emerald-500' : 'bg-gray-400'

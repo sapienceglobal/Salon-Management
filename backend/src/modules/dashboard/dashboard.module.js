@@ -427,6 +427,8 @@ class DashboardService {
       .select(
         'sm.id',
         'u.first_name as name',
+        'u.avatar_url',
+        'sm.color_code',
         'sm.designation as role',
         db.raw('COALESCE(a.total_appointments, 0) as count'),
         db.raw('CASE WHEN COALESCE(a.total_appointments, 0) > 0 THEN ROUND((COALESCE(a.completed_appointments, 0) / a.total_appointments) * 100) ELSE 0 END as perf')
@@ -448,7 +450,7 @@ class DashboardService {
   async getRecentCustomers(businessId) {
     const rows = await db('customers')
       .where({ business_id: businessId, is_active: true })
-      .select('id', 'first_name', 'last_name', 'phone', 'email', 'created_at')
+      .select('id', 'first_name', 'last_name', 'phone', 'email', 'profile_image_url', 'created_at')
       .orderBy('created_at', 'desc')
       .limit(5);
 

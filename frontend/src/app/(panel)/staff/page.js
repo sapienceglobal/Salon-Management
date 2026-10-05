@@ -45,9 +45,9 @@ export default function StaffPage() {
       const rawList = res.data || [];
 
       // Decorate staff with clean fallbacks for any missing attributes
-      const decorated = rawList.map((item, idx) => ({
+      const decorated = rawList.map((item) => ({
         ...item,
-        avatar_url: item.avatar_url || FALLBACK_AVATARS[idx % FALLBACK_AVATARS.length],
+        avatar_url: item.avatar_url || null,
         designation: item.designation || item.role || 'Staff Member',
         status: !item.is_active ? 'Inactive' : (item.is_on_leave ? 'On Leave' : 'Active'),
       }));
@@ -159,14 +159,15 @@ export default function StaffPage() {
     if (e && e.stopPropagation) e.stopPropagation();
     const isConfirmed = await confirm({
       title: 'Delete Staff Member',
-      message: 'Are you sure you want to delete this staff member? This cannot be undone.',
-      confirmText: 'Delete',
+      message: 'Are you sure you want to permanently delete this staff member? This will remove them completely from the salon staff directory and cannot be undone.',
+      confirmText: 'Delete Permanently',
+      type: 'danger',
     });
     if (!isConfirmed) return;
 
     try {
       await api.delete(`/staff/${id}`);
-      toast.success('Staff member deleted successfully');
+      toast.success('Staff member permanently deleted');
       if (selectedStaff?.id === id) {
         handleBackToList();
       }
@@ -186,6 +187,7 @@ export default function StaffPage() {
           onBack={handleBackToList}
           onEditStaff={openEditForm}
           onToggleStatus={handleToggleStaffStatus}
+          onDeleteStaff={handleDeleteStaff}
         />
       ) : (
         /* Image 1: Complete Staff List Table & KPI Cards View */

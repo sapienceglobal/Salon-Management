@@ -371,6 +371,8 @@ function SidebarInner({ collapsed, onToggle }) {
 
                 const hasBadge = count > 0;
                 const badgeText = count > 99 ? '99+' : count.toString();
+                const hasSubItems = Boolean(item.subItems && item.subItems.length > 0);
+                const isExpanded = hasSubItems && Boolean(expandedMenus[item.label]);
 
                 if (collapsed) {
                   if (hasSubItems) {
@@ -438,9 +440,6 @@ function SidebarInner({ collapsed, onToggle }) {
                     </Link>
                   );
                 }
-
-                const hasSubItems = Boolean(item.subItems && item.subItems.length > 0);
-                const isExpanded = hasSubItems && Boolean(expandedMenus[item.label]);
 
                 return (
                   <div key={item.label} className="flex flex-col">

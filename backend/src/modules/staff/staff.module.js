@@ -365,10 +365,50 @@ class StaffService {
   }
   async deleteStaff(id, businessId) {
     const staff = await this.getById(id, businessId);
-    // Soft delete by deactivating the user account
-    await db('users').where({ id: staff.user_id }).update({ is_active: false, updated_at: db.fn.now() });
-    await db('staff_members').where({ id, business_id: businessId }).update({ updated_at: db.fn.now() });
-    return { success: true };
+
+    // 1. Clean up documents files & records
+    try {
+      const docs = await db('staff_documents').where({ staff_member_id: id, business_id: businessId });
+      for (const doc of docs) {
+        if (doc.file_url) deleteUploadedFile(doc.file_url);
+      }
+      await db('staff_documents').where({ staff_member_id: id, business_id: businessId }).del();
+    } catch {
+      // ignore if documents table not populated
+    }
+
+    // 2. Delete schedule, working hours, leaves, assigned services, attendance, commissions
+    await db('staff_working_hours').where({ staff_member_id: id }).del();
+    await db('staff_leaves').where({ staff_id: staff.user_id }).del();
+    await db('staff_schedules').where({ staff_id: staff.user_id }).del();
+    await db('staff_services').where({ staff_id: staff.user_id }).del();
+    await db('staff_attendance').where({ staff_member_id: id, business_id: businessId }).del();
+    await db('staff_commissions').where({ staff_member_id: id, business_id: businessId }).del();
+
+    // 3. Gracefully dissociate references in appointments, invoice items, feedback, leads
+    await db('appointments').where({ staff_member_id: id }).update({ staff_member_id: null });
+    await db('appointment_services').where({ staff_member_id: id }).update({ staff_member_id: null });
+    await db('invoice_items').where({ staff_member_id: id }).update({ staff_member_id: null });
+    await db('customer_feedback').where({ staff_member_id: id }).update({ staff_member_id: null });
+    await db('leads').where({ assigned_to: id }).update({ assigned_to: null });
+
+    // 4. Delete staff profile row
+    await db('staff_members').where({ id, business_id: businessId }).del();
+
+    // 5. Clean up user references & remove user account
+    if (staff.avatar_url && !staff.avatar_url.startsWith('http') && !staff.avatar_url.startsWith('icon:')) {
+      deleteUploadedFile(staff.avatar_url);
+    }
+    await db('audit_logs').where({ user_id: staff.user_id }).update({ user_id: null });
+    await db('expenses').where({ created_by: staff.user_id }).update({ created_by: null });
+    await db('invoices').where({ created_by: staff.user_id }).update({ created_by: null });
+    await db('appointments').where({ created_by: staff.user_id }).update({ created_by: null });
+    await db('staff_attendance').where({ marked_by: staff.user_id }).update({ marked_by: null });
+    await db('campaigns').where({ created_by: staff.user_id }).update({ created_by: null });
+    await db('refresh_tokens').where({ user_id: staff.user_id }).del();
+    await db('users').where({ id: staff.user_id, business_id: businessId }).del();
+
+    return { success: true, id };
   }
 
   async toggleActive(id, businessId) {
@@ -395,26 +435,13 @@ class StaffService {
 
   async bulkDelete(ids, businessId) {
     if (!Array.isArray(ids) || ids.length === 0) return 0;
-    const staffList = await db('staff_members')
-      .where('business_id', businessId)
-      .whereIn('id', ids)
-      .select('id', 'user_id');
-
     let count = 0;
-    for (const staff of staffList) {
+    for (const id of ids) {
       try {
-        await db('staff_working_hours').where({ staff_member_id: staff.id }).del();
-        await db('staff_leaves').where({ staff_id: staff.user_id }).del();
-        await db('staff_schedules').where({ staff_id: staff.user_id }).del();
-        await db('staff_services').where({ staff_id: staff.user_id }).del();
-        await db('staff_members').where({ id: staff.id, business_id: businessId }).del();
-        await db('users').where({ id: staff.user_id, business_id: businessId }).del();
+        await this.deleteStaff(id, businessId);
         count++;
       } catch (err) {
-        // If historical appointment/attendance records exist, gracefully soft delete (deactivate)
-        await db('users').where({ id: staff.user_id }).update({ is_active: false, updated_at: db.fn.now() });
-        await db('staff_members').where({ id: staff.id, business_id: businessId }).update({ is_available: false, updated_at: db.fn.now() });
-        count++;
+        console.error(`Failed to delete staff id ${id}:`, err);
       }
     }
     return count;
@@ -501,7 +528,7 @@ const updateStaffMember = asyncHandler(async (req, res) => {
 });
 const deleteStaffMember = asyncHandler(async (req, res) => {
   const result = await staffService.deleteStaff(req.params.id, req.user.business_id);
-  ApiResponse.ok('Staff member deactivated', result).send(res);
+  ApiResponse.ok('Staff member deleted successfully', result).send(res);
 });
 const toggleStaffActive = asyncHandler(async (req, res) => {
   const staff = await staffService.toggleActive(req.params.id, req.user.business_id);

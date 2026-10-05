@@ -50,12 +50,12 @@ export const updateCustomer = asyncHandler(async (req, res) => {
       deleteUploadedFile(existing.profile_image_url);
     }
     data.profile_image_url = `/uploads/${req.file.filename}`;
-  } else if (data.profile_image_url === null || data.profile_image_url === '') {
+  } else if (data.profile_image_url !== undefined) {
+    if (data.profile_image_url === '') data.profile_image_url = null;
     const existing = await customerService.getById(req.params.id, req.user.business_id).catch(() => null);
-    if (existing?.profile_image_url) {
+    if (existing?.profile_image_url && existing.profile_image_url !== data.profile_image_url) {
       deleteUploadedFile(existing.profile_image_url);
     }
-    data.profile_image_url = null;
   }
   if (data.source) data.source = mapSource(data.source);
   const customer = await customerService.update(req.params.id, req.user.business_id, data);

@@ -40,7 +40,7 @@ export const updateAppointmentSchema = {
 
 export const updateAppointmentStatusSchema = {
   body: z.object({
-    status: z.enum(['planned', 'ongoing', 'completed', 'cancelled', 'no_show']),
+    status: z.enum(['pending', 'planned', 'ongoing', 'completed', 'cancelled', 'no_show']),
     notes: z.string().max(2000).optional(),
   }),
   params: idParam,
@@ -51,10 +51,14 @@ export const listAppointmentsSchema = {
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     staff_member_id: z.string().regex(/^\d+$/).transform(Number).optional(),
     staff_id: z.string().regex(/^\d+$/).transform(Number).optional(),
     customer_id: z.string().regex(/^\d+$/).transform(Number).optional(),
-    status: z.enum(['planned', 'ongoing', 'completed', 'cancelled', 'no_show']).optional(),
+    service_id: z.string().regex(/^\d+$/).transform(Number).optional(),
+    status: z.string().optional(),
+    upcoming: z.string().optional(),
     page: z.string().optional().default('1'),
     limit: z.string().optional().default('50'),
   }),

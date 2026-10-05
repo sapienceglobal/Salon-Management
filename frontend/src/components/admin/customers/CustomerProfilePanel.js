@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
@@ -25,6 +26,7 @@ import toast from 'react-hot-toast';
 import { useConfirm } from '@/context/ConfirmContext';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import ReceiptModal from '../billing/ReceiptModal';
 import AppointmentDetailsDrawer from '../appointments/AppointmentDetailsDrawer';
 
@@ -161,9 +163,14 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
             {/* Profile Info Card */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-[#151522] border border-gray-100 dark:border-white/5 shadow-sm">
               <div className="flex items-center gap-4">
-                <div className="w-13 h-13 rounded-2xl bg-[#E91E63]/10 text-[#E91E63] border border-[#E91E63]/20 flex items-center justify-center text-xl font-bold shrink-0">
-                  {customer.first_name?.[0]?.toUpperCase()}
-                </div>
+                <VisualAvatar
+                  type="customer"
+                  image={customer.profile_image_url}
+                  name={`${customer.first_name} ${customer.last_name || ''}`}
+                  size="xl"
+                  shape="rounded"
+                  className="w-13 h-13 shadow-xs"
+                />
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">

@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -24,11 +25,14 @@ import {
   RiDeleteBinLine,
   RiShieldCheckLine,
   RiDownload2Line,
+  RiUserUnfollowLine,
+  RiFilter3Line,
 } from 'react-icons/ri';
 import AddAppointmentModal from '@/components/admin/appointments/AddAppointmentModal';
 import AppointmentDetailsDrawer from '@/components/admin/appointments/AppointmentDetailsDrawer';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import BulkActionBar from '@/components/admin/common/BulkActionBar';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import { useConfirm } from '@/context/ConfirmContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import toast from 'react-hot-toast';
@@ -55,7 +59,7 @@ const TOP_SERVICES = [
   { rank: 5, name: 'Keratin Treatment', percentage: 12, count: 5 },
 ];
 
-const TABS = ['Today', 'Upcoming', 'Pending', 'Cancelled'];
+const TABS = ['Today', 'Upcoming', 'Pending', 'Unassigned', 'Cancelled'];
 
 const STATUS_STYLES = {
   confirmed: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
@@ -66,6 +70,7 @@ const STATUS_STYLES = {
   completed: 'bg-purple-500/15 text-purple-600 border-purple-300',
   cancelled: 'bg-red-500/15 text-red-500 border-red-500/30',
   no_show: 'bg-red-500/15 text-red-500 border-red-500/30',
+  unassigned: 'bg-amber-500/15 text-amber-600 border-amber-500/30',
 };
 
 const PAYMENT_STYLES = {
@@ -105,6 +110,9 @@ export default function AppointmentsPage() {
   const [preselectedCustomerId, setPreselectedCustomerId] = useState('');
   const [backendStats, setBackendStats] = useState(null);
   const [businessSettings, setBusinessSettings] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showCancelled, setShowCancelled] = useState(true);
+  const [prefilledSlot, setPrefilledSlot] = useState(null);
 
   // Top-level stats
   const stats = {
@@ -118,6 +126,7 @@ export default function AppointmentsPage() {
     cancelled:
       appointments.filter((a) => a.status === 'cancelled' || a.status === 'no_show').length || 1,
     pending: appointments.filter((a) => a.status === 'pending').length || 0,
+    unassigned: appointments.filter((a) => !a.staff_member_id && !a.staff_id).length || 0,
     walkIns: appointments.filter((a) => a.source === 'walk_in').length || 4,
   };
 
@@ -258,6 +267,7 @@ export default function AppointmentsPage() {
     setIsAddModalOpen(false);
     setEditData(null);
     setPreselectedCustomerId('');
+    setPrefilledSlot(null);
     const url = new URL(window.location);
     if (url.searchParams.has('customer_id')) {
       url.searchParams.delete('customer_id');
@@ -305,14 +315,16 @@ export default function AppointmentsPage() {
       (a) =>
         (a.customer_first_name || '').toLowerCase().includes(q) ||
         (a.customer_last_name || '').toLowerCase().includes(q) ||
-        (a.service_name || '').toLowerCase().includes(q)
+        (a.service_name || '').toLowerCase().includes(q) ||
+        (a.staff_first_name || '').toLowerCase().includes(q)
     );
   }, [appointments, searchQuery]);
 
   const tabAppointments = {
-    Today: appointments.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show'),
+    Today: appointments.filter((a) => showCancelled ? true : (a.status !== 'cancelled' && a.status !== 'no_show')),
     Upcoming: upcomingAppointments,
     Pending: appointments.filter((a) => a.status === 'pending'),
+    Unassigned: appointments.filter((a) => !a.staff_member_id && !a.staff_id),
     Cancelled: appointments.filter((a) => a.status === 'cancelled' || a.status === 'no_show'),
   };
 
@@ -717,6 +729,56 @@ export default function AppointmentsPage() {
       </div>
 
       {/* ========================================================
+          2.5 STATUS FILTER PILLS & TIMELINE CONTROLS BAR
+         ======================================================== */}
+      <div className="px-6 flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mr-1 flex items-center gap-1">
+            <RiFilter3Line className="text-xs" /> Timeline:
+          </span>
+          {[
+            { key: 'all', label: 'All', count: appointments.length, color: 'bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white' },
+            { key: 'confirmed', label: 'Confirmed', count: appointments.filter(a => a.status === 'confirmed' || a.status === 'planned').length, color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' },
+            { key: 'in-progress', label: 'In Progress', count: appointments.filter(a => a.status === 'ongoing' || a.status === 'in-progress').length, color: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' },
+            { key: 'pending', label: 'Pending', count: appointments.filter(a => a.status === 'pending').length, color: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' },
+            { key: 'unassigned', label: 'Unassigned (Open)', count: appointments.filter(a => !a.staff_member_id && !a.staff_id).length, color: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' },
+            { key: 'cancelled', label: 'Cancelled', count: appointments.filter(a => a.status === 'cancelled' || a.status === 'no_show').length, color: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300' },
+          ].map((pill) => (
+            <button
+              key={pill.key}
+              onClick={() => setStatusFilter(pill.key)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                statusFilter === pill.key
+                  ? 'bg-[#E91E63] text-white border-[#E91E63] shadow-xs font-bold'
+                  : 'bg-white dark:bg-[#1a1a2e] border-gray-200/80 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              <span>{pill.label}</span>
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                  statusFilter === pill.key ? 'bg-white/20 text-white' : pill.color
+                }`}
+              >
+                {pill.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-4 text-xs font-medium text-gray-600 dark:text-gray-400">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showCancelled}
+              onChange={(e) => setShowCancelled(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-gray-300 dark:border-white/20 text-[#E91E63] focus:ring-[#E91E63]"
+            />
+            <span className="text-[11px] font-semibold">Show Cancelled Slots</span>
+          </label>
+        </div>
+      </div>
+
+      {/* ========================================================
           3. SPLIT MAIN CONTENT (Schedule Timeline + Right Sidebar)
              (items-stretch ensures ScheduleGrid extends to the bottom of Top Services)
          ======================================================== */}
@@ -727,7 +789,20 @@ export default function AppointmentsPage() {
             staff={staffList}
             appointments={filteredAppointments}
             businessSettings={businessSettings}
+            statusFilter={statusFilter}
+            showCancelled={showCancelled}
             onAppointmentClick={(appt) => setSelectedViewAppointment(appt)}
+            onSlotClick={({ staff, hour }) => {
+              const hourStr = String(hour).padStart(2, '0') + ':00:00';
+              setEditData(null);
+              setPreselectedCustomerId('');
+              setPrefilledSlot({
+                staff_id: staff?.id || '',
+                start_time: hourStr,
+                appointment_date: format(currentDate, 'yyyy-MM-dd')
+              });
+              setIsAddModalOpen(true);
+            }}
           />
         </div>
 
@@ -884,6 +959,7 @@ export default function AppointmentsPage() {
         initialDate={currentDate}
         editData={editData}
         preselectedCustomerId={preselectedCustomerId}
+        initialSlot={prefilledSlot}
       />
 
       {/* Appointment Details Drawer */}
@@ -1041,16 +1117,58 @@ function AppointmentsTable({ appointments, selectedIds = [], onSelectAll, onTogg
                   />
                 </td>
                 <td className="py-3.5 px-4">
-                  <div className="font-bold text-gray-900 dark:text-white">
-                    {appt.customer_first_name} {appt.customer_last_name || ''}
+                  <div className="flex items-center gap-3">
+                    <VisualAvatar
+                      type="customer"
+                      image={appt.customer_avatar_url}
+                      name={`${appt.customer_first_name} ${appt.customer_last_name || ''}`}
+                      size="sm"
+                    />
+                    <div>
+                      <div className="font-bold text-gray-900 dark:text-white">
+                        {appt.customer_first_name} {appt.customer_last_name || ''}
+                      </div>
+                      <div className="text-[11px] text-gray-400 mt-0.5">{appt.customer_phone || ''}</div>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-gray-400 mt-0.5">{appt.customer_phone || ''}</div>
                 </td>
-                <td className="py-3.5 px-4 font-semibold text-gray-800 dark:text-gray-200">
-                  {appt.service_name}
+                <td className="py-3.5 px-4">
+                  <div className="flex items-center gap-2.5">
+                    <VisualAvatar
+                      type="service"
+                      image={appt.service_image_url}
+                      icon={appt.service_icon}
+                      color={appt.service_color}
+                      name={appt.service_name}
+                      shape="rounded"
+                      size="xs"
+                      className="w-7 h-7 text-xs"
+                    />
+                    <span className="font-semibold text-gray-800 dark:text-gray-200">
+                      {appt.service_name}
+                    </span>
+                  </div>
                 </td>
-                <td className="py-3.5 px-4 text-gray-600 dark:text-gray-400">
-                  {appt.staff_first_name ? `${appt.staff_first_name} ${appt.staff_last_name || ''}` : 'Any Staff'}
+                <td className="py-3.5 px-4">
+                  {appt.staff_member_id || appt.staff_first_name ? (
+                    <div className="flex items-center gap-2">
+                      <VisualAvatar
+                        type="staff"
+                        image={appt.staff_avatar_url}
+                        color={appt.staff_color}
+                        name={`${appt.staff_first_name || ''} ${appt.staff_last_name || ''}`}
+                        size="xs"
+                        className="w-6 h-6 text-[10px]"
+                      />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        {appt.staff_first_name} {appt.staff_last_name || ''}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/50">
+                      <RiUserUnfollowLine className="text-[11px]" /> Unassigned (Nobody)
+                    </span>
+                  )}
                 </td>
                 <td className="py-3.5 px-4 text-gray-600 dark:text-gray-400 font-medium">
                   {appt.start_time?.substring(0, 5)} - {appt.end_time?.substring(0, 5)}

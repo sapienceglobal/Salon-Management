@@ -1,4 +1,6 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState, useRef } from 'react';
 import { useScrollLock } from '@/hooks/useScrollLock';
@@ -6,6 +8,7 @@ import { createPortal } from 'react-dom';
 import api from '@/lib/api';
 import { customerSchema, formatZodErrors } from '@/lib/validations';
 import { getImageUrl } from '@/lib/utils';
+import { PRESET_CUSTOMER_ICONS } from '@/components/admin/common/VisualAvatar';
 import toast from 'react-hot-toast';
 import {
   RiCloseLine,
@@ -34,6 +37,7 @@ import {
   RiUpload2Line,
   RiDeleteBinLine,
   RiImageAddLine,
+  RiCheckLine,
 } from 'react-icons/ri';
 
 export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialData }) {
@@ -60,6 +64,8 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
   const fileInputRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
+  const [profileVisual, setProfileVisual] = useState(''); // url or 'icon:<id>'
+  const [visualTab, setVisualTab] = useState('upload'); // 'upload' | 'preset' | 'icon'
   const [isDragging, setIsDragging] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -93,14 +99,27 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
           email_opt_in: initialData.email_opt_in ?? false,
           whatsapp_opt_in: initialData.whatsapp_opt_in ?? false,
         });
-        setImagePreview(initialData.profile_image_url ? getImageUrl(initialData.profile_image_url) : '');
+        const pUrl = initialData.profile_image_url || '';
+        setProfileVisual(pUrl);
+        if (pUrl.startsWith('icon:')) {
+          setVisualTab('icon');
+          setImagePreview('');
+        } else if (pUrl) {
+          setVisualTab('upload');
+          setImagePreview(getImageUrl(pUrl));
+        } else {
+          setVisualTab('upload');
+          setImagePreview('');
+        }
       } else {
         setFormData({
           first_name: '', last_name: '', phone: '', email: '', gender: 'female',
           gst_number: '', date_of_birth: '', anniversary: '', location: '', source: '',
           address: '', notes: '', sms_opt_in: false, email_opt_in: false, whatsapp_opt_in: false,
         });
+        setProfileVisual('');
         setImagePreview('');
+        setVisualTab('upload');
       }
       setSelectedFile(null);
       setIsDragging(false);
@@ -133,6 +152,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
 
     setSelectedFile(file);
     setImagePreview(URL.createObjectURL(file));
+    setProfileVisual('');
   };
 
   const handleDrop = (e) => {
@@ -152,11 +172,22 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
 
     setSelectedFile(file);
     setImagePreview(URL.createObjectURL(file));
+    setProfileVisual('');
+  };
+
+
+
+  const handleSelectIcon = (iconId) => {
+    setSelectedFile(null);
+    setImagePreview('');
+    setProfileVisual(`icon:${iconId}`);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleRemoveImage = () => {
     setSelectedFile(null);
     setImagePreview('');
+    setProfileVisual('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -241,7 +272,9 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
           });
         }
       } else {
-        if (isEditing && !imagePreview && initialData?.profile_image_url) {
+        if (profileVisual) {
+          payload.profile_image_url = profileVisual;
+        } else if (isEditing && !imagePreview && !profileVisual && initialData?.profile_image_url) {
           payload.profile_image_url = null;
         }
         if (isEditing) {
@@ -330,74 +363,127 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
                 <h3 className="text-[14px] font-bold text-gray-800 dark:text-white">Basic Information</h3>
               </div>
 
-              {/* Profile Photo Uploader */}
-              <div className="mb-5 p-4 rounded-2xl bg-gray-50/80 dark:bg-white/[0.03] border border-dashed border-gray-200 dark:border-white/10">
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-                  {/* Avatar Preview */}
-                  <div className="relative group shrink-0">
-                    <div className="w-20 h-20 rounded-full ring-4 ring-pink-100 dark:ring-pink-950/40 overflow-hidden bg-gradient-to-br from-pink-50 to-pink-100 dark:from-white/5 dark:to-white/10 flex items-center justify-center shadow-inner">
-                      {imagePreview ? (
-                        <img
-                          src={imagePreview}
-                          alt="Customer Preview"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <RiUserLine className="text-3xl text-gray-400 dark:text-gray-500" />
-                      )}
-                    </div>
+              {/* Profile Visual Selector (Upload / Preset / Persona Icons) */}
+              <div className="mb-6 p-4 rounded-2xl bg-gray-50/80 dark:bg-white/[0.02] border border-gray-200/80 dark:border-white/10 space-y-4">
+                {/* Visual Tabs */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200/60 dark:border-white/5 pb-3">
+                  <div className="flex items-center gap-1.5 p-1 bg-gray-200/60 dark:bg-white/5 rounded-xl text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setVisualTab('upload')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        visualTab === 'upload'
+                          ? 'bg-white dark:bg-[#1a1a2e] text-[#E91E63] shadow-xs'
+                          : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <RiImageAddLine className="text-sm" />
+                      <span>Upload Photo</span>
+                    </button>
 
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[#E91E63] text-white flex items-center justify-center shadow-md hover:bg-[#D81B60] transition-transform active:scale-95 cursor-pointer"
-                      title="Upload photo"
+                      onClick={() => setVisualTab('icon')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        visualTab === 'icon'
+                          ? 'bg-white dark:bg-[#1a1a2e] text-[#E91E63] shadow-xs'
+                          : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                      }`}
                     >
-                      <RiCameraLine className="text-sm" />
+                      <RiUserSmileLine className="text-sm" />
+                      <span>Persona Badges</span>
                     </button>
                   </div>
 
-                  {/* Details & Action Controls */}
-                  <div
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={handleDrop}
-                    className={`flex-1 w-full flex flex-col justify-center rounded-xl p-2.5 sm:p-3 text-center sm:text-left transition-colors ${
-                      isDragging ? 'bg-pink-50/50 dark:bg-pink-900/20 border border-[#E91E63]' : ''
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  {(imagePreview || profileVisual) && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="text-xs text-red-500 hover:underline px-2 py-1 font-medium cursor-pointer"
+                    >
+                      Remove Visual
+                    </button>
+                  )}
+                </div>
+
+                {/* Current Visual Preview Box */}
+                {imagePreview ? (
+                  <div className="flex items-center justify-between p-3 bg-white dark:bg-[#151522] rounded-xl border border-gray-200/80 dark:border-white/10 shadow-xs">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={imagePreview}
+                        alt="Customer Avatar"
+                        className="w-14 h-14 rounded-full object-cover border-2 border-pink-100 dark:border-pink-900/40 shadow-xs"
+                      />
                       <div>
-                        <h4 className="text-[13px] font-bold text-gray-800 dark:text-gray-200">Customer Profile Photo</h4>
-                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
-                          Upload customer photo for quick recognition at reception & invoices. (PNG, JPG up to 5MB)
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">Photo Selected</p>
+                        <p className="text-xs text-gray-400">
+                          {selectedFile ? `${selectedFile.name} (${(selectedFile.size / 1024).toFixed(0)} KB)` : 'Portrait avatar'}
                         </p>
                       </div>
-
-                      <div className="flex items-center gap-2 self-center sm:self-auto shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#E91E63] text-white hover:bg-[#D81B60] transition-colors shadow-sm cursor-pointer"
-                        >
-                          <RiUpload2Line className="text-sm" />
-                          {imagePreview ? 'Change Photo' : 'Upload Photo'}
-                        </button>
-
-                        {imagePreview && (
-                          <button
-                            type="button"
-                            onClick={handleRemoveImage}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/30 transition-colors cursor-pointer"
-                          >
-                            <RiDeleteBinLine className="text-sm" />
-                            Remove
-                          </button>
-                        )}
-                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs font-semibold text-[#E91E63] hover:underline px-2 py-1 cursor-pointer"
+                    >
+                      Change
+                    </button>
                   </div>
-                </div>
+                ) : profileVisual?.startsWith('icon:') ? (
+                  (() => {
+                    const iconId = profileVisual.replace('icon:', '');
+                    const matched = PRESET_CUSTOMER_ICONS.find(i => i.id === iconId)
+                      || (iconId === 'icon_female' ? PRESET_CUSTOMER_ICONS[0] : null)
+                      || (iconId === 'icon_male' ? PRESET_CUSTOMER_ICONS[1] : null)
+                      || PRESET_CUSTOMER_ICONS[0];
+                    const IconC = matched.icon;
+                    return (
+                      <div className="flex items-center justify-between p-3 bg-white dark:bg-[#151522] rounded-xl border border-gray-200/80 dark:border-white/10 shadow-xs">
+                        <div className="flex items-center gap-3">
+                          <div
+                            style={{
+                              backgroundColor: `${matched.color}20`,
+                              color: matched.color,
+                              borderColor: `${matched.color}40`,
+                            }}
+                            className="w-14 h-14 rounded-full flex items-center justify-center text-2xl border shadow-xs"
+                          >
+                            <IconC />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">{matched.name}</p>
+                            <p className="text-xs text-gray-400">Persona Badge Icon</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  visualTab === 'upload' && (
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={handleDrop}
+                      className={`border-2 border-dashed rounded-xl py-6 px-4 text-center transition-all bg-white dark:bg-[#151522] flex flex-col items-center justify-center gap-2 ${
+                        isDragging ? 'border-[#E91E63] bg-pink-50/20' : 'border-gray-200 dark:border-white/10'
+                      }`}
+                    >
+                      <RiImageAddLine className="text-3xl text-pink-400 dark:text-pink-500/70" />
+                      <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">
+                        Drag & drop a customer photo here
+                      </p>
+                      <span className="text-xs text-gray-400">or</span>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border border-[#E91E63] text-[#E91E63] hover:bg-pink-50 dark:hover:bg-pink-950/30 px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                      >
+                        Choose Photo
+                      </button>
+                    </div>
+                  )
+                )}
 
                 <input
                   ref={fileInputRef}
@@ -406,6 +492,39 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
                   onChange={handleFileChange}
                   className="hidden"
                 />
+
+
+
+                {/* Persona Badges Grid */}
+                {visualTab === 'icon' && (
+                  <div className="pt-2 border-t border-gray-100 dark:border-white/5">
+                    <span className="text-xs font-bold text-gray-600 dark:text-gray-400 block mb-2">
+                      Select a customer persona badge:
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {PRESET_CUSTOMER_ICONS.map((item) => {
+                        const IconC = item.icon;
+                        const isSelected = profileVisual === `icon:${item.id}`;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => handleSelectIcon(item.id)}
+                            className={`h-16 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                              isSelected
+                                ? 'bg-[#E91E63] text-white border-[#E91E63] shadow-md shadow-[#E91E63]/25 scale-105'
+                                : 'bg-white dark:bg-[#151522] text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-pink-300 hover:text-[#E91E63]'
+                            }`}
+                            title={item.name}
+                          >
+                            <IconC className="text-2xl" />
+                            <span className="text-[10px] font-semibold truncate px-1 text-center w-full">{item.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

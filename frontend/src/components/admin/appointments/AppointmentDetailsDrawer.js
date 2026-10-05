@@ -1,6 +1,8 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { formatCurrency } from '@/lib/utils';
@@ -10,15 +12,19 @@ import {
   RiInformationLine
 } from 'react-icons/ri';
 import api from '@/lib/api';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 
 const STATUS_CONFIG = {
   planned: { label: 'Planned', color: 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20', dotColor: 'bg-blue-500' },
-  ongoing: { label: 'In Progress', color: 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20', dotColor: 'bg-amber-500' },
-  completed: { label: 'Completed', color: 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20', dotColor: 'bg-emerald-500' },
+  confirmed: { label: 'Confirmed', color: 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20', dotColor: 'bg-emerald-500' },
+  pending: { label: 'Pending', color: 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20', dotColor: 'bg-amber-500' },
+  ongoing: { label: 'In Progress', color: 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20', dotColor: 'bg-blue-500' },
+  completed: { label: 'Completed', color: 'bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20', dotColor: 'bg-purple-500' },
   cancelled: { label: 'Cancelled', color: 'bg-red-50 text-red-600 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20', dotColor: 'bg-red-500' },
 };
 
 export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment, onEdit, onStatusUpdate }) {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [error, setError] = useState(null);
@@ -110,30 +116,38 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
               <h3 className="text-[13px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer Info</h3>
             </div>
             
-            <div className="space-y-2.5">
-              <div>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
-                  {appointment.customer_first_name || 'Walk-in'} {appointment.customer_last_name || ''}
-                </p>
-                {isWalkIn && (
-                  <span className="inline-block mt-1 px-2 py-0.5 text-[10px] uppercase font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 rounded">
-                    Walk-In Customer
-                  </span>
-                )}
-              </div>
-              
-              <div className="flex flex-wrap gap-4">
-                {appointment.customer_phone && (
-                  <a href={`tel:${appointment.customer_phone}`} className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-300 hover:text-[#E91E63] transition-colors">
-                    <RiPhoneLine className="text-gray-400 dark:text-gray-500" /> {appointment.customer_phone}
-                  </a>
-                )}
+            <div className="flex items-center gap-4">
+              <VisualAvatar
+                type="customer"
+                image={appointment.customer_avatar_url}
+                name={`${appointment.customer_first_name || ''} ${appointment.customer_last_name || ''}`}
+                size="lg"
+              />
+              <div className="space-y-1">
+                <div>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
+                    {appointment.customer_first_name || 'Walk-in'} {appointment.customer_last_name || ''}
+                  </p>
+                  {isWalkIn && (
+                    <span className="inline-block mt-1 px-2 py-0.5 text-[10px] uppercase font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 rounded">
+                      Walk-In Customer
+                    </span>
+                  )}
+                </div>
                 
-                {appointment.customer_email && (
-                  <a href={`mailto:${appointment.customer_email}`} className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-300 hover:text-[#E91E63] transition-colors truncate">
-                    <RiMailLine className="text-gray-400 dark:text-gray-500 shrink-0" /> {appointment.customer_email}
-                  </a>
-                )}
+                <div className="flex flex-wrap gap-4 pt-1">
+                  {appointment.customer_phone && (
+                    <a href={`tel:${appointment.customer_phone}`} className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-300 hover:text-[#E91E63] transition-colors">
+                      <RiPhoneLine className="text-gray-400 dark:text-gray-500" /> {appointment.customer_phone}
+                    </a>
+                  )}
+                  
+                  {appointment.customer_email && (
+                    <a href={`mailto:${appointment.customer_email}`} className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-300 hover:text-[#E91E63] transition-colors truncate">
+                      <RiMailLine className="text-gray-400 dark:text-gray-500 shrink-0" /> {appointment.customer_email}
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -146,10 +160,21 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
             </div>
             
             <div className="space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-1 flex items-center gap-1.5"><RiScissorsLine className="text-[11px]" /> Service</p>
-                  <p className="font-bold text-[15px] text-gray-900 dark:text-white">{appointment.service_name}</p>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <VisualAvatar
+                    type="service"
+                    image={appointment.service_image_url}
+                    icon={appointment.service_icon}
+                    color={appointment.service_color}
+                    name={appointment.service_name}
+                    shape="rounded"
+                    size="md"
+                  />
+                  <div>
+                    <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-0.5 flex items-center gap-1.5"><RiScissorsLine className="text-[11px]" /> Service</p>
+                    <p className="font-bold text-[15px] text-gray-900 dark:text-white">{appointment.service_name}</p>
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-1">Price</p>
@@ -172,12 +197,42 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
 
               <div className="pt-3 border-t border-gray-200/60 dark:border-white/5">
                 <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-1.5">Assigned Staff</p>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-[#E91E63]/15 flex items-center justify-center text-[0.65rem] font-bold text-[#E91E63] uppercase">
-                    {appointment.staff_first_name?.charAt(0) || 'N'}{appointment.staff_last_name?.charAt(0) || 'A'}
+                {appointment.staff_member_id || appointment.staff_first_name ? (
+                  <div className="flex items-center gap-2.5">
+                    <VisualAvatar
+                      type="staff"
+                      image={appointment.staff_avatar_url}
+                      color={appointment.staff_color}
+                      name={`${appointment.staff_first_name || ''} ${appointment.staff_last_name || ''}`}
+                      size="sm"
+                    />
+                    <p className="font-semibold text-[14px] text-gray-900 dark:text-white">
+                      {appointment.staff_first_name} {appointment.staff_last_name || ''}
+                    </p>
                   </div>
-                  <p className="font-semibold text-[14px] text-gray-900 dark:text-white">{appointment.staff_first_name} {appointment.staff_last_name}</p>
-                </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs">
+                        ?
+                      </div>
+                      <div>
+                        <p className="font-bold text-[13px] text-amber-600 dark:text-amber-400">Unassigned (Nobody Assigned)</p>
+                        <p className="text-[11px] text-gray-400">Needs staff assignment</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        setTimeout(() => onEdit(appointment), 250);
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#E91E63] text-white hover:bg-[#D81B60] transition-colors cursor-pointer shadow-xs"
+                    >
+                      Assign Staff Now
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -235,7 +290,7 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
             onClick={() => {
               onClose();
               setTimeout(() => {
-                window.location.href = `/billing?appointment_id=${appointment.id}`;
+                router.push(`/billing?appointment_id=${appointment.id}`);
               }, 250);
             }}
           >

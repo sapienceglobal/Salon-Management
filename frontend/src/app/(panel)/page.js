@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -19,6 +20,7 @@ import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 
 /* =============================================
    STATUS BADGE STYLES
@@ -611,9 +613,12 @@ export default function DashboardPage() {
             ) : (
               recentCustomers.map((cust, index) => (
                 <div key={cust.id ? `cust-${cust.id}-${index}` : `cust-${index}`} onClick={() => router.push(`/customers?customer_id=${cust.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-[0.7rem] font-bold text-white shrink-0">
-                    {getInitials(cust.first_name, cust.last_name)}
-                  </div>
+                  <VisualAvatar
+                    type="customer"
+                    image={cust.profile_image_url}
+                    name={`${cust.first_name} ${cust.last_name || ''}`}
+                    size="sm"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{cust.first_name} {cust.last_name || ''}</div>
                     <div className="text-xs text-admin-text-muted">{cust.phone || cust.email || '—'}</div>
@@ -667,9 +672,13 @@ export default function DashboardPage() {
             ) : (
               staffPerformance.map((staff) => (
                 <div key={staff.id} onClick={() => router.push(`/staff?staff_id=${staff.id}`)} className="flex items-center gap-3 py-2.5 px-2 -mx-2 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer rounded-lg">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-[0.75rem] font-bold text-white shrink-0">
-                    {staff.name?.[0] || '?'}
-                  </div>
+                  <VisualAvatar
+                    type="staff"
+                    image={staff.avatar_url}
+                    color={staff.color_code}
+                    name={staff.name}
+                    size="sm"
+                  />
                   <div className="min-w-[80px]">
                     <div className="text-sm font-medium">{staff.name}</div>
                     <div className="text-xs text-admin-text-muted">{staff.role}</div>

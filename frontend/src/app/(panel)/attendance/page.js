@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/preserve-manual-memoization */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -27,6 +28,7 @@ import {
 } from 'react-icons/ri';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -276,38 +278,14 @@ export default function AttendancePage() {
       const apiStaff = res.data || [];
 
       if (apiStaff.length > 0) {
-        // Merge API data with fallback details
-        const merged = INITIAL_FALLBACK_STAFF.map((fallback) => {
-          const found = apiStaff.find((s) => s.id === fallback.id || s.first_name.toLowerCase() === fallback.first_name.toLowerCase());
-          if (found) {
-            return {
-              ...fallback,
-              ...found,
-              designation: found.designation || fallback.designation,
-              avatar_url: found.avatar_url || fallback.avatar_url,
-              attendance: {
-                ...fallback.attendance,
-                ...(found.attendance || {}),
-              },
-            };
-          }
-          return fallback;
-        });
-
-        // Add any additional staff from DB not in fallback
-        apiStaff.forEach((s) => {
-          if (!merged.some((m) => m.id === s.id)) {
-            merged.push({
-              ...s,
-              designation: s.designation || s.role || 'Staff Member',
-              avatar_url: s.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.first_name + ' ' + (s.last_name || ''))}&background=E91E63&color=fff`,
-              branch: 'Downtown Branch',
-              attendance: s.attendance || {},
-            });
-          }
-        });
-
-        setStaffData(merged);
+        const list = apiStaff.map((s) => ({
+          ...s,
+          designation: s.designation || s.role || 'Staff Member',
+          avatar_url: s.avatar_url || null,
+          branch: s.branch || 'Downtown Branch',
+          attendance: s.attendance || {},
+        }));
+        setStaffData(list);
       }
     } catch {
       // In case of network/auth error or initial development, fall back gracefully
@@ -833,22 +811,20 @@ export default function AttendancePage() {
                       {/* 1. Staff Name & Avatar */}
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-3">
-                          <div className="relative shrink-0">
-                            <img
-                              src={staff.avatar_url}
-                              alt={fullName}
-                              onError={(e) => {
-                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=E91E63&color=fff`;
-                              }}
-                              className="w-10 h-10 rounded-full object-cover shadow-xs border-2 shrink-0"
-                              style={{ borderColor: staff.color_code || '#E91E63' }}
-                            />
-                            <span
-                              className="w-3 h-3 rounded-full ring-2 ring-white dark:ring-[#1a1a2e] absolute -bottom-0.5 -right-0.5 shadow-xs"
-                              style={{ backgroundColor: staff.color_code || '#E91E63' }}
-                              title={`Staff Color: ${staff.color_code || '#E91E63'}`}
-                            />
-                          </div>
+                          <VisualAvatar
+                            type="staff"
+                            image={staff.avatar_url}
+                            color={staff.color_code}
+                            name={fullName}
+                            size="md"
+                            badge={
+                              <span
+                                className="w-3 h-3 rounded-full ring-2 ring-white dark:ring-[#1a1a2e] absolute -bottom-0.5 -right-0.5 shadow-xs"
+                                style={{ backgroundColor: staff.color_code || '#E91E63' }}
+                                title={`Staff Color: ${staff.color_code || '#E91E63'}`}
+                              />
+                            }
+                          />
                           <div className="min-w-0">
                             <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-tight truncate">{fullName}</h4>
                             <div className="flex items-center gap-1.5 mt-0.5">
@@ -1326,21 +1302,19 @@ function MarkAttendanceModal({ staffList, defaultDate, onClose, onSuccess }) {
                     className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-2xl border border-gray-100 dark:border-white/5 bg-white dark:bg-white/[0.01] gap-2"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="relative shrink-0">
-                        <img
-                          src={staff.avatar_url}
-                          alt={staff.first_name}
-                          onError={(e) => {
-                            e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.first_name)}&background=E91E63&color=fff`;
-                          }}
-                          className="w-8 h-8 rounded-full object-cover border"
-                          style={{ borderColor: staff.color_code || '#E91E63' }}
-                        />
-                        <span
-                          className="w-2.5 h-2.5 rounded-full absolute -bottom-0.5 -right-0.5 ring-1 ring-white"
-                          style={{ backgroundColor: staff.color_code || '#E91E63' }}
-                        />
-                      </div>
+                      <VisualAvatar
+                        type="staff"
+                        image={staff.avatar_url}
+                        color={staff.color_code}
+                        name={staff.first_name}
+                        size="sm"
+                        badge={
+                          <span
+                            className="w-2.5 h-2.5 rounded-full absolute -bottom-0.5 -right-0.5 ring-1 ring-white"
+                            style={{ backgroundColor: staff.color_code || '#E91E63' }}
+                          />
+                        }
+                      />
                       <div>
                         <p className="text-xs font-bold text-gray-900 dark:text-white leading-none">
                           {staff.first_name} {staff.last_name || ''}
@@ -1511,21 +1485,19 @@ function AddAttendanceModal({ staffList, defaultDate, onClose, onSuccess }) {
             {selectedStaff && (
               <div className="mt-2 p-2 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200/70 dark:border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="relative shrink-0">
-                    <img
-                      src={selectedStaff.avatar_url}
-                      alt=""
-                      onError={(e) => {
-                        e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedStaff.first_name)}&background=E91E63&color=fff`;
-                      }}
-                      className="w-7 h-7 rounded-full object-cover border"
-                      style={{ borderColor: selectedStaff.color_code || '#E91E63' }}
-                    />
-                    <span
-                      className="w-2 h-2 rounded-full absolute -bottom-0.5 -right-0.5 ring-1 ring-white"
-                      style={{ backgroundColor: selectedStaff.color_code || '#E91E63' }}
-                    />
-                  </div>
+                  <VisualAvatar
+                    type="staff"
+                    image={selectedStaff.avatar_url}
+                    color={selectedStaff.color_code}
+                    name={selectedStaff.first_name}
+                    size="sm"
+                    badge={
+                      <span
+                        className="w-2 h-2 rounded-full absolute -bottom-0.5 -right-0.5 ring-1 ring-white"
+                        style={{ backgroundColor: selectedStaff.color_code || '#E91E63' }}
+                      />
+                    }
+                  />
                   <div>
                     <span className="text-xs font-bold text-gray-900 dark:text-white block">
                       {selectedStaff.first_name} {selectedStaff.last_name || ''}
@@ -1847,13 +1819,13 @@ function EditStaffAttendanceModal({ staff, dates, onClose, onSuccess }) {
         {/* Header */}
         <div className="p-6 border-b border-gray-100 dark:border-white/10 flex justify-between items-center bg-gray-50/50 dark:bg-white/[0.02]">
           <div className="flex items-center gap-3">
-            <img
-              src={staff.avatar_url}
-              alt={staff.first_name}
-              onError={(e) => {
-                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.first_name)}&background=E91E63&color=fff`;
-              }}
-              className="w-10 h-10 rounded-full object-cover ring-2 ring-pink-100"
+            <VisualAvatar
+              type="staff"
+              image={staff.avatar_url}
+              color={staff.color_code}
+              name={`${staff.first_name} ${staff.last_name || ''}`}
+              size="md"
+              className="ring-2 ring-pink-100"
             />
             <div>
               <h2 className="text-base font-bold text-gray-900 dark:text-white">

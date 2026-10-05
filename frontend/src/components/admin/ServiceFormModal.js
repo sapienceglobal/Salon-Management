@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect, useRef } from 'react';
 import { useScrollLock } from '@/hooks/useScrollLock';
@@ -119,13 +120,17 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
           sort_order: initialData.sort_order || 0,
           tax_applicable: (initialData.tax_percentage > 0 || initialData.tax_percentage === undefined) ? 'yes' : 'no',
           service_color: initialData.service_color || '#EC4899',
-          image_url: initialData.image_url || '',
-          icon: initialData.icon || '',
+          image_url: initialData.image_url?.startsWith('icon:') ? '' : (initialData.image_url || ''),
+          icon: initialData.icon || (initialData.image_url?.startsWith('icon:') ? initialData.image_url.replace('icon:', '') : ''),
         });
-        setImagePreview(initialData.image_url || '');
-        if (initialData.icon && !initialData.image_url) {
+        const imgVal = initialData.image_url || '';
+        const isIconInImg = imgVal.startsWith('icon:');
+        const iconVal = initialData.icon || (isIconInImg ? imgVal.replace('icon:', '') : '');
+        const finalImg = isIconInImg ? '' : imgVal;
+        setImagePreview(finalImg);
+        if (iconVal) {
           setVisualTab('icon');
-        } else if (initialData.image_url?.startsWith('/service_')) {
+        } else if (finalImg.startsWith('/service_')) {
           setVisualTab('preset');
         } else {
           setVisualTab('upload');
@@ -200,7 +205,7 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
   const handleSelectIcon = (iconId) => {
     setSelectedFile(null);
     setImagePreview('');
-    setFormData((prev) => ({ ...prev, icon: iconId, image_url: '' }));
+    setFormData((prev) => ({ ...prev, icon: iconId, image_url: `icon:${iconId}` }));
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -227,6 +232,8 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
         ? Number(formData.category_id)
         : (categories.length > 0 ? Number(categories[0].id) : null);
 
+      const effectiveIcon = formData.icon || (formData.image_url?.startsWith('icon:') ? formData.image_url.replace('icon:', '') : null);
+
       const payload = {
         name: formData.name.trim(),
         category_id: categoryIdVal,
@@ -243,8 +250,8 @@ export default function ServiceFormModal({ isOpen, onClose, onSuccess, initialDa
         sort_order: Number(formData.sort_order) || 0,
         service_color: formData.service_color || '#EC4899',
         service_staff: formData.service_staff || null,
-        icon: formData.icon || null,
-        image_url: formData.image_url || null,
+        icon: effectiveIcon,
+        image_url: effectiveIcon ? `icon:${effectiveIcon}` : (formData.image_url || null),
       };
 
       const result = serviceSchema.safeParse(payload);

@@ -1,6 +1,8 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable @next/next/no-img-element */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
 import {
@@ -23,25 +25,19 @@ import {
   RiStarSmileLine,
   RiCalendarLine,
 } from 'react-icons/ri';
+import { MdFace2, MdFace6 } from 'react-icons/md';
 import api from '@/lib/api';
 import { parseSpecializations, getImageUrl } from '@/lib/utils';
 import { staffSchema, formatZodErrors } from '@/lib/validations';
 import toast from 'react-hot-toast';
 
-// Curated high-resolution salon staff avatar presets
-export const PRESET_STAFF_AVATARS = [
-  { id: 'staff_1', name: 'Female Stylist', url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&h=300&fit=crop&crop=face' },
-  { id: 'staff_2', name: 'Male Groomer', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop&crop=face' },
-  { id: 'staff_3', name: 'Hair Specialist', url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&h=300&fit=crop&crop=face' },
-  { id: 'staff_4', name: 'Master Barber', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face' },
-  { id: 'staff_5', name: 'Makeup Artist', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&h=300&fit=crop&crop=face' },
-  { id: 'staff_6', name: 'Color Specialist', url: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=300&h=300&fit=crop&crop=face' },
-  { id: 'staff_7', name: 'Spa Therapist', url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&h=300&fit=crop&crop=face' },
-  { id: 'staff_8', name: 'Senior Stylist', url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&h=300&fit=crop&crop=face' },
-];
+// Curated high-resolution salon staff avatar presets (deprecated in favor of clean stylized avatars)
+export const PRESET_STAFF_AVATARS = [];
 
 // Specialist icon badges for fallback visual representation
 export const PRESET_STAFF_ICONS = [
+  { id: 'icon_female', name: 'Female (DP)', icon: MdFace2, color: '#EC4899' },
+  { id: 'icon_male', name: 'Male (DP)', icon: MdFace6, color: '#3B82F6' },
   { id: 'icon_scissors', name: 'Hair Specialist', icon: RiScissors2Line, color: '#E91E63' },
   { id: 'icon_brush', name: 'Makeup Artist', icon: RiBrushLine, color: '#9C27B0' },
   { id: 'icon_magic', name: 'Color Expert', icon: RiMagicLine, color: '#3F51B5' },
@@ -96,19 +92,19 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
 
   useScrollLock(isOpen);
 
-  useEffect(() => {
-    setMounted(true);
-    fetchCommissionProfiles();
-  }, []);
-
-  const fetchCommissionProfiles = async () => {
+  const fetchCommissionProfiles = useCallback(async () => {
     try {
       const res = await api.get('/settings/commission-profiles');
       setCommissionProfiles(res.data || []);
     } catch (err) {
       console.error('Failed to load commission profiles', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
+    fetchCommissionProfiles();
+  }, [fetchCommissionProfiles]);
 
   // Generate a random secure password for new users
   const generatePassword = () => {
@@ -139,13 +135,15 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
           can_take_walkins: true,
           display_on_team: true,
           avatar_url: initialData.avatar_url || '',
-          icon: '',
+          icon: initialData.avatar_url?.startsWith('icon:') ? initialData.avatar_url.replace('icon:', '') : '',
           staff_color: initialData.color_code || '#E91E63',
           shift_schedule: 'full_time',
         });
-        setImagePreview(initialData.avatar_url || '');
-        if (initialData.avatar_url?.startsWith('https://images.unsplash.com')) {
-          setVisualTab('preset');
+        const av = initialData.avatar_url || '';
+        const isIcon = av.startsWith('icon:');
+        setImagePreview(isIcon ? '' : av);
+        if (isIcon) {
+          setVisualTab('avatar');
         } else {
           setVisualTab('upload');
         }
@@ -232,12 +230,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
     setFormData((prev) => ({ ...prev, avatar_url: '', icon: '' }));
   };
 
-  const handleSelectPreset = (url) => {
-    setSelectedFile(null);
-    setImagePreview(url);
-    setFormData((prev) => ({ ...prev, avatar_url: url, icon: '' }));
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+
 
   const handleSelectIcon = (iconId, color) => {
     setSelectedFile(null);
@@ -245,7 +238,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
     setFormData((prev) => ({
       ...prev,
       icon: iconId,
-      avatar_url: '',
+      avatar_url: `icon:${iconId}`,
       staff_color: color || prev.staff_color,
     }));
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -381,7 +374,8 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
     }
   };
 
-  const SelectedIconComp = PRESET_STAFF_ICONS.find((i) => i.id === formData.icon)?.icon;
+  const effectiveStaffIcon = formData.icon || (formData.avatar_url?.startsWith('icon:') ? formData.avatar_url.replace('icon:', '') : '');
+  const SelectedIconComp = PRESET_STAFF_ICONS.find((i) => i.id === effectiveStaffIcon)?.icon;
 
   return createPortal(
     <div
@@ -800,40 +794,29 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                       </div>
                     </div>
 
-                    {/* Mode Selector Tabs (Upload / Presets / Avatars) */}
+                    {/* Mode Selector Tabs (Upload Photo / Avatars) */}
                     <div className="flex items-center bg-gray-200/70 dark:bg-white/10 p-1 rounded-xl text-xs font-semibold">
                       <button
                         type="button"
                         onClick={() => setVisualTab('upload')}
-                        className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                        className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                           visualTab === 'upload'
                             ? 'bg-white dark:bg-[#121224] text-gray-900 dark:text-white shadow-xs'
                             : 'text-gray-500 hover:text-gray-800 dark:hover:text-white'
                         }`}
                       >
-                        Upload
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setVisualTab('preset')}
-                        className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                          visualTab === 'preset'
-                            ? 'bg-white dark:bg-[#121224] text-gray-900 dark:text-white shadow-xs'
-                            : 'text-gray-500 hover:text-gray-800 dark:hover:text-white'
-                        }`}
-                      >
-                        Presets
+                        Upload Photo
                       </button>
                       <button
                         type="button"
                         onClick={() => setVisualTab('avatar')}
-                        className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                        className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                           visualTab === 'avatar'
                             ? 'bg-white dark:bg-[#121224] text-gray-900 dark:text-white shadow-xs'
                             : 'text-gray-500 hover:text-gray-800 dark:hover:text-white'
                         }`}
                       >
-                        Avatars
+                        Stylized Avatars
                       </button>
                     </div>
                   </div>
@@ -874,7 +857,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                         </button>
                       </div>
                     </div>
-                  ) : formData.icon ? (
+                  ) : (formData.icon || formData.avatar_url?.startsWith('icon:')) ? (
                     <div className="border border-gray-200 dark:border-white/10 rounded-xl p-3.5 bg-white dark:bg-[#121224] flex items-center justify-between gap-3 shadow-xs">
                       <div className="flex items-center gap-3 min-w-0">
                         <div
@@ -889,7 +872,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-gray-900 dark:text-white capitalize">
-                            {PRESET_STAFF_ICONS.find((i) => i.id === formData.icon)?.name || 'Role Avatar'}
+                            {PRESET_STAFF_ICONS.find((i) => i.id === effectiveStaffIcon)?.name || 'Role Avatar'}
                           </p>
                           <p className="text-xs text-gray-400 mt-0.5">Stylized Avatar Icon</p>
                         </div>
@@ -945,68 +928,32 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                     </p>
                   )}
 
-                  {/* Preset Stylist Photos Grid */}
-                  {visualTab === 'preset' && (
-                    <div className="pt-2 border-t border-gray-100 dark:border-white/5">
-                      <span className="text-xs font-bold text-gray-600 dark:text-gray-400 block mb-2">
-                        Select a curated staff portrait:
-                      </span>
-                      <div className="grid grid-cols-4 gap-2">
-                        {PRESET_STAFF_AVATARS.map((preset) => {
-                          const isSelected = formData.avatar_url === preset.url;
-                          return (
-                            <button
-                              key={preset.id}
-                              type="button"
-                              onClick={() => handleSelectPreset(preset.url)}
-                              className={`relative rounded-2xl overflow-hidden border-2 p-0.5 transition-all cursor-pointer group ${
-                                isSelected
-                                  ? 'border-[#E91E63] shadow-md shadow-[#E91E63]/25 scale-105'
-                                  : 'border-gray-200 dark:border-white/10 hover:border-pink-300'
-                              }`}
-                              title={preset.name}
-                            >
-                              <img
-                                src={preset.url}
-                                alt={preset.name}
-                                className="w-full h-14 object-cover rounded-xl"
-                              />
-                              {isSelected && (
-                                <div className="absolute inset-0 bg-[#E91E63]/40 flex items-center justify-center text-white rounded-xl">
-                                  <RiCheckLine className="text-lg font-bold" />
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+
 
                   {/* Stylized Avatars Grid */}
                   {visualTab === 'avatar' && (
                     <div className="pt-2 border-t border-gray-100 dark:border-white/5">
                       <span className="text-xs font-bold text-gray-600 dark:text-gray-400 block mb-2">
-                        Select a specialist role avatar:
+                        Select a staff avatar or specialist role icon:
                       </span>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                         {PRESET_STAFF_ICONS.map((item) => {
                           const IconC = item.icon;
-                          const isSelected = formData.icon === item.id;
+                          const isSelected = (formData.icon === item.id) || (formData.avatar_url === `icon:${item.id}`);
                           return (
                             <button
                               key={item.id}
                               type="button"
                               onClick={() => handleSelectIcon(item.id, item.color)}
-                              className={`h-14 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                              className={`h-16 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
                                 isSelected
                                   ? 'bg-[#E91E63] text-white border-[#E91E63] shadow-md shadow-[#E91E63]/25 scale-105'
                                   : 'bg-white dark:bg-[#121224] text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-pink-300 hover:text-[#E91E63]'
                               }`}
                               title={item.name}
                             >
-                              <IconC className="text-xl" />
-                              <span className="text-[10px] font-semibold truncate px-1">{item.name}</span>
+                              <IconC className="text-2xl" />
+                              <span className="text-[10px] font-semibold truncate px-1 text-center w-full">{item.name}</span>
                             </button>
                           );
                         })}

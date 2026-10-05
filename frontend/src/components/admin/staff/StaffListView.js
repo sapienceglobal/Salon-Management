@@ -24,6 +24,7 @@ import {
   RiArrowRightLine
 } from 'react-icons/ri';
 import { getImageUrl } from '@/lib/utils';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import BulkActionBar from '@/components/admin/common/BulkActionBar';
 import { useConfirm } from '@/context/ConfirmContext';
 import api from '@/lib/api';
@@ -488,18 +489,13 @@ export default function StaffListView({
                       {/* Staff Avatar + Name */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          {staff.avatar_url ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={getImageUrl(staff.avatar_url)}
-                              alt={fullName}
-                              className="w-9 h-9 rounded-full object-cover border border-gray-200 dark:border-white/10 shrink-0"
-                            />
-                          ) : (
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-pink-400 to-[#FA2D65] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-                              {staff.first_name?.[0] || 'S'}
-                            </div>
-                          )}
+                          <VisualAvatar
+                            type="staff"
+                            image={staff.avatar_url}
+                            color={staff.color_code}
+                            name={fullName}
+                            size="sm"
+                          />
                           <span className="font-bold text-gray-900 dark:text-white group-hover:text-[#FA2D65] transition-colors">
                             {fullName}
                           </span>
@@ -623,6 +619,15 @@ export default function StaffListView({
                                 >
                                   <span className={`w-2 h-2 rounded-full ${staff.is_active ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
                                   <span>{staff.is_active ? 'Mark Inactive' : 'Mark Active'}</span>
+                                </button>
+                                <div className="my-1 border-t border-gray-100 dark:border-white/5" />
+                                <button
+                                  type="button"
+                                  onClick={(e) => { setActiveMenuId(null); onDeleteStaff(e, staff.id); }}
+                                  className="w-full text-left px-3.5 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600 dark:text-rose-400 flex items-center gap-2 font-medium"
+                                >
+                                  <RiDeleteBinLine className="text-sm" />
+                                  <span>Delete Staff</span>
                                 </button>
                               </div>
                             )}

@@ -13,6 +13,8 @@ const ALLOWED_SERVICE_FIELDS = [
   'tax_percentage',
   'is_active',
   'image_url',
+  'icon',
+  'service_color',
   'gender_target',
   'sort_order',
 ];
@@ -76,7 +78,10 @@ class ServiceService {
   async update(id, businessId, data) {
     await this.getById(id, businessId);
     const payload = filterServiceData(data);
-    return serviceRepository.update(id, businessId, cleanObject(payload));
+    const cleaned = cleanObject(payload);
+    if (payload.image_url === null) cleaned.image_url = null;
+    if (payload.icon === null) cleaned.icon = null;
+    return serviceRepository.update(id, businessId, cleaned);
   }
   async delete(id, businessId) { await this.getById(id, businessId); await serviceRepository.delete(id, businessId); }
   async bulkDelete(ids, businessId) {

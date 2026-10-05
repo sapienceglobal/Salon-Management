@@ -29,6 +29,7 @@ import { formatCurrency } from '@/lib/utils';
 import { appointmentSchema, formatZodErrors } from '@/lib/validations';
 import AddCustomerModal from '../customers/AddCustomerModal';
 import toast from 'react-hot-toast';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 
 const DURATION_OPTIONS = [
   { label: '15 Minutes', value: 15 },
@@ -103,7 +104,7 @@ const getEndTimeFormatted = (startTimeStr, durationMinutes) => {
 
 const subscribe = () => () => {};
 
-export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffList, customersList, servicesList, initialDate, editData, preselectedCustomerId }) {
+export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffList, customersList, servicesList, initialDate, editData, preselectedCustomerId, initialSlot }) {
   const [formData, setFormData] = useState({
     customer_id: '',
     service_id: '',
@@ -308,12 +309,12 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
         setFormData(prev => ({ 
           ...prev, 
           customer_id: preselectedCustomerId || '',
-          appointment_date: initialDate ? initialDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          start_time: '10:00:00',
+          appointment_date: initialSlot?.appointment_date || (initialDate ? initialDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+          start_time: initialSlot?.start_time || '10:00:00',
           duration_minutes: 60,
           service_id: '',
           service_ids: [],
-          staff_id: '',
+          staff_id: initialSlot?.staff_id ? String(initialSlot.staff_id) : '',
           room_id: '',
           notes: ''
         }));
@@ -329,7 +330,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
       setError('');
       setFieldErrors({});
     }
-  }, [isOpen, initialDate, editData, preselectedCustomerId, customersList]);
+  }, [isOpen, initialDate, editData, preselectedCustomerId, customersList, initialSlot]);
 
   if (!isOpen || !mounted) return null;
 
@@ -500,15 +501,23 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                           .map(c => (
                             <div
                               key={c.id}
-                              className="px-4 py-2.5 text-[13px] hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer text-gray-900 dark:text-white border-b border-gray-100 dark:border-white/5 last:border-0"
+                              className="px-4 py-2.5 text-[13px] hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer text-gray-900 dark:text-white border-b border-gray-100 dark:border-white/5 last:border-0 flex items-center gap-3"
                               onClick={() => {
                                 setFormData(prev => ({ ...prev, customer_id: c.id }));
                                 setCustomerSearch(`${c.first_name} ${c.last_name || ''} ${c.phone ? `(${c.phone})` : ''}`);
                                 setShowCustomerDropdown(false);
                               }}
                             >
-                              <div className="font-semibold">{c.first_name} {c.last_name || ''}</div>
-                              {c.phone && <div className="text-xs text-gray-500 dark:text-gray-400">{c.phone}</div>}
+                              <VisualAvatar
+                                type="customer"
+                                image={c.profile_image_url}
+                                name={`${c.first_name} ${c.last_name || ''}`}
+                                size="sm"
+                              />
+                              <div>
+                                <div className="font-semibold">{c.first_name} {c.last_name || ''}</div>
+                                {c.phone && <div className="text-xs text-gray-500 dark:text-gray-400">{c.phone}</div>}
+                              </div>
                             </div>
                         ))}
                         {customersList.filter(c => `${c.first_name} ${c.last_name || ''} ${c.phone || ''}`.toLowerCase().includes(customerSearch.toLowerCase())).length === 0 && (
@@ -680,20 +689,13 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <div className="relative">
-                        {selectedStaffMember.avatar_url ? (
-                          <img
-                            src={selectedStaffMember.avatar_url}
-                            alt={selectedStaffMember.first_name}
-                            className="w-9 h-9 rounded-full object-cover border-2 border-white dark:border-white/10 shadow-sm"
-                          />
-                        ) : (
-                          <div
-                            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm"
-                            style={{ backgroundColor: selectedStaffMember.color_code || '#E91E63' }}
-                          >
-                            {selectedStaffMember.first_name?.[0]}
-                          </div>
-                        )}
+                        <VisualAvatar
+                          type="staff"
+                          image={selectedStaffMember.avatar_url}
+                          color={selectedStaffMember.color_code}
+                          name={`${selectedStaffMember.first_name || ''} ${selectedStaffMember.last_name || ''}`}
+                          size="md"
+                        />
                         <span
                           className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-[#1a1a2e]"
                           style={{ backgroundColor: selectedStaffMember.color_code || '#E91E63' }}
