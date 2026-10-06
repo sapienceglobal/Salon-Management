@@ -7,13 +7,17 @@ import { useNotification } from '@/context/NotificationContext';
 import GlobalSearch from '@/components/admin/GlobalSearch';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Header({ onToggleSidebar }) {
+  const { user } = useAuth();
   const today = format(new Date(), 'EEE, d MMM yyyy');
   const { isDark, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotification();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
+
+  const branchName = user?.business_name || user?.branch_name || 'Main Salon';
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -135,10 +139,10 @@ export default function Header({ onToggleSidebar }) {
           📅 {today}
         </div>
 
-        <button className="hidden lg:flex items-center gap-2 text-sm text-admin-text-secondary px-3.5 py-1.5 bg-admin-surface-light rounded-full border border-admin-border hover:border-brand transition-colors duration-150 cursor-pointer">
-          <RiMapPinLine />
-          Downtown Branch
-        </button>
+        <Link href="/settings" className="hidden lg:flex items-center gap-2 text-sm text-admin-text-secondary px-3.5 py-1.5 bg-admin-surface-light rounded-full border border-admin-border hover:border-brand transition-colors duration-150 cursor-pointer">
+          <RiMapPinLine className="text-[#E91E63]" />
+          <span>{branchName}</span>
+        </Link>
 
         <Link href="/settings" className="text-xl text-admin-text-secondary p-2 rounded-full hover:text-admin-text hover:bg-admin-surface-light hover:rotate-45 transition-all duration-150" aria-label="Settings">
           <RiSettings4Line />

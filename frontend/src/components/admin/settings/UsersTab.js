@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '@/lib/api';
 import { RiAddLine, RiUserSettingsLine, RiShieldStarLine, RiUserLine, RiCloseLine, RiLockPasswordLine, RiMailLine, RiPhoneLine } from 'react-icons/ri';
 import { createPortal } from 'react-dom';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
+
+const emptySubscribe = () => () => {};
 
 export default function UsersTab() {
   const [users, setUsers] = useState([]);
@@ -20,16 +22,13 @@ export default function UsersTab() {
     role: 'receptionist' 
   });
   const [submitting, setSubmitting] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   const closeModal = () => {
     setIsAdding(false);
   };
 
   const fetchUsers = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await api.get('/settings/users');
       setUsers(res.data || []);
@@ -42,8 +41,22 @@ export default function UsersTab() {
   }, []);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    let ignore = false;
+    api.get('/settings/users')
+      .then((res) => {
+        if (!ignore) setUsers(res.data || []);
+      })
+      .catch((err) => {
+        console.error(err);
+        toast.error('Failed to load users');
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,6 +72,18 @@ export default function UsersTab() {
       toast.error(err.response?.data?.message || 'Failed to create user');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleToggleUserStatus = async (targetUser) => {
+    const newStatus = targetUser.is_active === false;
+    try {
+      await api.put(`/settings/users/${targetUser.id}`, { is_active: newStatus });
+      toast.success(`User ${newStatus ? 'activated' : 'disabled'} successfully`);
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to update user status');
     }
   };
 
@@ -243,11 +268,12 @@ export default function UsersTab() {
               <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
               <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
               <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-white/5">
             {users.length === 0 ? (
-              <tr><td colSpan="4" className="p-8 text-center text-gray-500">No users found.</td></tr>
+              <tr><td colSpan="5" className="p-8 text-center text-gray-500">No users found.</td></tr>
             ) : (
               users.map(user => (
                 <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
@@ -274,9 +300,26 @@ export default function UsersTab() {
                     {user.phone || 'N/A'}
                   </td>
                   <td className="p-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400">
-                      Active
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                      user.is_active !== false 
+                        ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400'
+                        : 'bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
+                    }`}>
+                      {user.is_active !== false ? 'Active' : 'Disabled'}
                     </span>
+                  </td>
+                  <td className="p-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleUserStatus(user)}
+                      className={`text-xs font-semibold px-3 py-1 rounded-lg border transition-colors cursor-pointer ${
+                        user.is_active !== false
+                          ? 'text-red-600 hover:bg-red-50 border-red-200 dark:border-red-900/40'
+                          : 'text-green-600 hover:bg-green-50 border-green-200 dark:border-green-900/40'
+                      }`}
+                    >
+                      {user.is_active !== false ? 'Disable' : 'Enable'}
+                    </button>
                   </td>
                 </tr>
               ))

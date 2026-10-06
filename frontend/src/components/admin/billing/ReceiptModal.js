@@ -1,28 +1,46 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { formatCurrency } from '@/lib/utils';
 import { 
   RiCloseLine, RiPrinterLine, RiCheckDoubleLine, 
   RiDownload2Line, RiShareForwardLine, RiFileList3Line, 
-  RiSparkling2Line, RiUserLine, RiBankCardLine 
+  RiSparkling2Line, RiUserLine, RiBankCardLine, RiVipCrownLine
 } from 'react-icons/ri';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import api from '@/lib/api';
 
-export default function ReceiptModal({ isOpen, onClose, invoice }) {
-  const [mounted, setMounted] = useState(false);
+const subscribe = () => () => {};
+
+export default function ReceiptModal({ isOpen, onClose, invoice, business: propBusiness, businessSettings: propSettings }) {
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
   const [isClosing, setIsClosing] = useState(false);
+  const [fetchedSettings, setFetchedSettings] = useState(null);
   
   useScrollLock(isOpen);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (isOpen && (!propBusiness || !propSettings)) {
+      api.get('/settings').then(res => {
+        setFetchedSettings(res.data?.data || res.data || null);
+      }).catch(err => console.error('Failed to load settings in ReceiptModal', err));
+    }
+  }, [isOpen, propBusiness, propSettings]);
+
+  const business = propBusiness || fetchedSettings?.business || null;
+  const settings = propSettings || fetchedSettings?.settings || null;
 
   if (!mounted || !isOpen || !invoice) return null;
+
+  const salonName = business?.name || 'Salon Time';
+  const salonAddress = business?.address 
+    ? `${business.address}${business.city ? `, ${business.city}` : ''}${business.state ? `, ${business.state}` : ''}${business.pincode ? ` - ${business.pincode}` : ''}`
+    : '123 Main Street, Downtown, New Delhi - 110001';
+  const salonPhone = business?.phone ? `Phone: ${business.phone}` : 'Phone: +91 98765 43210';
+  const salonGst = business?.gst_number ? `GSTIN: ${business.gst_number}` : '';
 
   const handleClose = () => {
     setIsClosing(true);
@@ -49,7 +67,7 @@ export default function ReceiptModal({ isOpen, onClose, invoice }) {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Invoice #${invNumber} - Salon Time</title>
+          <title>Invoice #${invNumber} - ${salonName}</title>
           <meta charset="utf-8">
           <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -83,12 +101,12 @@ export default function ReceiptModal({ isOpen, onClose, invoice }) {
     const invNum = invoice.invoice_number || `INV-${invoice.id || '001'}`;
     const custName = `${invoice.customer_first_name || invoice.customer?.first_name || 'Walk-in'} ${invoice.customer_last_name || invoice.customer?.last_name || ''}`.trim();
     const total = formatCurrency(invoice.total_amount || invoice.paid_amount || 0);
-    const shareText = `*Salon Time - Invoice Receipt*\nInvoice: #${invNum}\nCustomer: ${custName}\nTotal Amount: ${total}\nStatus: Paid\nThank you for choosing Salon Time!`;
+    const shareText = `*${salonName} - Invoice Receipt*\nInvoice: #${invNum}\nCustomer: ${custName}\nTotal Amount: ${total}\nStatus: Paid\n${salonAddress}\n${salonPhone}\nThank you for choosing ${salonName}!`;
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Invoice #${invNum} - Salon Time`,
+          title: `Invoice #${invNum} - ${salonName}`,
           text: shareText,
         });
         return;
@@ -121,9 +139,11 @@ export default function ReceiptModal({ isOpen, onClose, invoice }) {
   
   // Format Date
   let dateStr = 'Today';
-  try {
-    dateStr = format(new Date(invoice.created_at || Date.now()), 'dd MMM yyyy, hh:mm a');
-  } catch (_) {}
+  if (invoice.created_at) {
+    try {
+      dateStr = format(new Date(invoice.created_at), 'dd MMM yyyy, hh:mm a');
+    } catch (_) {}
+  }
 
   // Determine payment method and transaction ID
   let paymentMethod = 'Cash';
@@ -196,12 +216,11 @@ export default function ReceiptModal({ isOpen, onClose, invoice }) {
                 <RiSparkling2Line className="text-2xl" />
               </div>
               <div>
-                <div className="text-2xl font-black tracking-tight leading-none">
-                  <span className="text-slate-900">Salon</span>
-                  <span className="text-[#E91E63]">Time</span>
+                <div className="text-2xl font-black tracking-tight leading-none text-slate-900">
+                  {salonName}
                 </div>
                 <p className="text-[9px] font-bold text-slate-500 tracking-wider mt-1.5 uppercase">
-                  APPOINTMENTS &nbsp;|&nbsp; <span className="text-[#E91E63]">CRM</span> &nbsp;|&nbsp; SALON
+                  PREMIUM SALON &amp; WELLNESS EXPERIENCE
                 </p>
               </div>
             </div>
@@ -215,9 +234,10 @@ export default function ReceiptModal({ isOpen, onClose, invoice }) {
           {/* Branch & Timestamp */}
           <div className="flex justify-between items-start text-xs pt-3 pb-3 border-b border-slate-100">
             <div>
-              <p className="font-bold text-slate-900 text-xs">Downtown Branch</p>
-              <p className="text-slate-500 text-[11px] mt-0.5">123 Main Street, Downtown, New Delhi - 110001</p>
-              <p className="text-slate-500 text-[11px]">Phone: +91 98765 43210</p>
+              <p className="font-bold text-slate-900 text-xs">{salonName}</p>
+              <p className="text-slate-500 text-[11px] mt-0.5">{salonAddress}</p>
+              <p className="text-slate-500 text-[11px]">{salonPhone}</p>
+              {salonGst && <p className="text-[#E91E63] text-[11px] font-semibold mt-0.5">{salonGst}</p>}
             </div>
             <div className="text-right">
               <p className="text-slate-400 text-[10px] uppercase font-bold">Date & Time</p>
@@ -234,7 +254,7 @@ export default function ReceiptModal({ isOpen, onClose, invoice }) {
               <div className="flex items-center gap-2">
                 <p className="font-bold text-slate-900 text-sm truncate">{customerName}</p>
                 <span className="bg-[#FFF0F5] text-[#E91E63] text-[9px] font-bold px-2 py-0.5 rounded-md border border-[#E91E63]/20">
-                  Gold Member
+                  Valued Customer
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">{customerPhone}</p>
@@ -288,15 +308,39 @@ export default function ReceiptModal({ isOpen, onClose, invoice }) {
             
             {Number(invoice.discount_amount) > 0 && (
               <div className="flex justify-between text-emerald-600 font-medium">
-                <span>Discount (WELCOME20)</span>
+                <span>Discount ({invoice.discount_type === 'percentage' ? 'Applied' : 'Coupon'})</span>
                 <span>-{formatCurrency(invoice.discount_amount)}</span>
               </div>
             )}
             
-            <div className="flex justify-between text-slate-500">
-              <span>GST (18%)</span>
-              <span className="font-semibold text-slate-900">{formatCurrency(invoice.tax_amount || 0)}</span>
-            </div>
+            {settings?.tax_enabled !== false ? (
+              <>
+                <div className="flex justify-between text-slate-500">
+                  <span>CGST ({settings?.default_cgst ?? 9}%)</span>
+                  <span className="font-semibold text-slate-900">
+                    {formatCurrency(invoice.cgst_amount ?? ((invoice.tax_amount || 0) / 2))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-500">
+                  <span>SGST ({settings?.default_sgst ?? 9}%)</span>
+                  <span className="font-semibold text-slate-900">
+                    {formatCurrency(invoice.sgst_amount ?? ((invoice.tax_amount || 0) / 2))}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between text-slate-500">
+                <span>Tax (GST Exempt)</span>
+                <span className="font-semibold text-slate-900">₹0.00</span>
+              </div>
+            )}
+
+            {settings?.reward_points_per_100 > 0 && (
+              <div className="flex justify-between items-center bg-amber-50 px-2.5 py-1.5 rounded-xl border border-amber-200/60 text-amber-800 font-semibold text-[11px] mt-1">
+                <span className="flex items-center gap-1.5"><RiVipCrownLine className="text-amber-500 text-sm" /> Reward Points Earned</span>
+                <span>+{Math.floor((invoice.total_amount || invoice.paid_amount || 0) / 100) * settings.reward_points_per_100} pts</span>
+              </div>
+            )}
             
             <div className="bg-[#FFF0F5] border border-[#E91E63]/25 p-3 rounded-2xl flex justify-between items-center mt-2.5">
               <span className="font-bold text-[#E91E63] text-sm">Total Amount</span>
@@ -341,7 +385,7 @@ export default function ReceiptModal({ isOpen, onClose, invoice }) {
               Thank You!
             </p>
             <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-              We look forward to seeing you again at Salon Time!
+              We look forward to seeing you again at {salonName}!
             </p>
           </div>
         </div>

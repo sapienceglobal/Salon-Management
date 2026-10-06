@@ -23,7 +23,7 @@ const STATUS_CONFIG = {
   cancelled: { label: 'Cancelled', color: 'bg-red-50 text-red-600 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20', dotColor: 'bg-red-500' },
 };
 
-export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment, onEdit, onStatusUpdate }) {
+export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment, onEdit, onStatusUpdate, businessSettings }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
@@ -234,8 +234,35 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
                   </div>
                 )}
               </div>
+
+              {/* Room / Station Info */}
+              <div className="pt-3 border-t border-gray-200/60 dark:border-white/5 flex items-center justify-between">
+                <div>
+                  <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-0.5">Service Room / Station</p>
+                  <p className="font-semibold text-[13px] text-gray-800 dark:text-gray-200">
+                    {appointment.room_number || 'General Salon Floor / Any Station'}
+                  </p>
+                </div>
+                {appointment.room_number && (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-pink-50 text-[#E91E63] dark:bg-pink-900/30 border border-pink-200/60">
+                    Reserved
+                  </span>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* ─── Cancellation Policy ─── */}
+          {businessSettings?.cancellation_policy && (
+            <div className="bg-amber-50/70 dark:bg-amber-950/20 rounded-2xl p-4 border border-amber-200/50 dark:border-amber-900/30 text-xs text-amber-800 dark:text-amber-300">
+              <p className="font-bold uppercase tracking-wider text-[10px] text-amber-600 dark:text-amber-400 mb-1">
+                Salon Cancellation Policy
+              </p>
+              <p className="leading-relaxed">
+                {businessSettings.cancellation_policy}
+              </p>
+            </div>
+          )}
 
           {/* ─── Notes ─── */}
           {appointment.notes && (

@@ -13,18 +13,18 @@ export default function OperationsTab({ settings, onUpdate }) {
   });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (settings) {
-      setFormData({
-        working_hours_start: settings.working_hours_start || '09:00:00',
-        working_hours_end: settings.working_hours_end || '21:00:00',
-        weekly_off_day: settings.weekly_off_day ?? 1,
-        appointment_slot_duration: settings.appointment_slot_duration || 30,
-        booking_advance_days: settings.booking_advance_days || 30,
-        cancellation_policy: settings.cancellation_policy || '',
-      });
-    }
-  }, [settings]);
+  const [prevSettings, setPrevSettings] = useState(settings);
+  if (settings !== prevSettings) {
+    setPrevSettings(settings);
+    setFormData({
+      working_hours_start: settings?.working_hours_start || '09:00:00',
+      working_hours_end: settings?.working_hours_end || '21:00:00',
+      weekly_off_day: settings?.weekly_off_day ?? 1,
+      appointment_slot_duration: settings?.appointment_slot_duration || 30,
+      booking_advance_days: settings?.booking_advance_days || 30,
+      cancellation_policy: settings?.cancellation_policy || '',
+    });
+  }
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;

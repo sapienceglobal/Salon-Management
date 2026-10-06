@@ -7,6 +7,7 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
     name: '',
     email: '',
     phone: '',
+    gst_number: '',
     address: '',
     city: '',
     state: '',
@@ -16,21 +17,22 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
   });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (business) {
-      setFormData({
-        name: business.name || '',
-        email: business.email || '',
-        phone: business.phone || '',
-        address: business.address || '',
-        city: business.city || '',
-        state: business.state || '',
-        pincode: business.pincode || '',
-        currency: business.currency || 'INR',
-        timezone: business.timezone || 'Asia/Kolkata',
-      });
-    }
-  }, [business]);
+  const [prevBusiness, setPrevBusiness] = useState(business);
+  if (business !== prevBusiness) {
+    setPrevBusiness(business);
+    setFormData({
+      name: business?.name || '',
+      email: business?.email || '',
+      phone: business?.phone || '',
+      gst_number: business?.gst_number || '',
+      address: business?.address || '',
+      city: business?.city || '',
+      state: business?.state || '',
+      pincode: business?.pincode || '',
+      currency: business?.currency || 'INR',
+      timezone: business?.timezone || 'Asia/Kolkata',
+    });
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -93,6 +95,19 @@ export default function GeneralSettingsTab({ business, onUpdate }) {
             onChange={handleChange}
             className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white"
             required
+          />
+        </div>
+
+        {/* GST Number */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GSTIN / Tax ID</label>
+          <input
+            type="text"
+            name="gst_number"
+            value={formData.gst_number}
+            onChange={handleChange}
+            placeholder="e.g. 07AAAAA0000A1Z5"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-gray-900 dark:text-white uppercase"
           />
         </div>
 

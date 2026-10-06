@@ -104,7 +104,7 @@ const getEndTimeFormatted = (startTimeStr, durationMinutes) => {
 
 const subscribe = () => () => {};
 
-export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffList, customersList, servicesList, initialDate, editData, preselectedCustomerId, initialSlot }) {
+export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffList, customersList, servicesList, initialDate, editData, preselectedCustomerId, initialSlot, businessSettings }) {
   const [formData, setFormData] = useState({
     customer_id: '',
     service_id: '',
@@ -133,6 +133,69 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
 
   useScrollLock(isOpen);
 
+  // Dynamic slots generated from business settings (working hours + slot duration)
+  const activeSlots = useMemo(() => {
+    let startHour = 9;
+    let endHour = 21;
+    if (businessSettings?.working_hours_start) {
+      const [sh] = businessSettings.working_hours_start.split(':').map(Number);
+      if (!isNaN(sh)) startHour = sh;
+    }
+    if (businessSettings?.working_hours_end) {
+      const [eh] = businessSettings.working_hours_end.split(':').map(Number);
+      if (!isNaN(eh)) endHour = eh;
+    }
+    const step = Number(businessSettings?.appointment_slot_duration) || 30;
+
+    const slots = [];
+    let currentMins = startHour * 60;
+    const maxMins = endHour * 60;
+
+    while (currentMins < maxMins) {
+      const h = Math.floor(currentMins / 60);
+      const m = currentMins % 60;
+      const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const displayH = h % 12 === 0 ? 12 : h % 12;
+      const label = `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+      
+      let period = 'morning';
+      if (h >= 12 && h < 16) period = 'afternoon';
+      else if (h >= 16) period = 'evening';
+
+      slots.push({
+        time: timeStr,
+        label,
+        period,
+        startMinutes: currentMins
+      });
+
+      currentMins += step;
+    }
+
+    return slots.length > 0 ? slots : ALL_TIME_SLOTS;
+  }, [businessSettings]);
+
+  // Advance booking restriction
+  const maxBookingDate = useMemo(() => {
+    if (!businessSettings?.booking_advance_days) return undefined;
+    const d = new Date();
+    d.setDate(d.getDate() + Number(businessSettings.booking_advance_days));
+    return d.toISOString().split('T')[0];
+  }, [businessSettings]);
+
+  // Weekly off day detection
+  const isWeeklyOff = useMemo(() => {
+    if (!formData.appointment_date || businessSettings?.weekly_off_day === undefined || businessSettings?.weekly_off_day === null) return false;
+    const dayOfWeek = new Date(formData.appointment_date + 'T00:00:00').getDay();
+    return dayOfWeek === Number(businessSettings.weekly_off_day);
+  }, [formData.appointment_date, businessSettings]);
+
+  const weeklyOffDayName = useMemo(() => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[Number(businessSettings?.weekly_off_day)] || 'Scheduled Off';
+  }, [businessSettings]);
+
   const selectedStaffMember = useMemo(() => {
     return (staffList || []).find((s) => String(s.id) === String(formData.staff_id));
   }, [staffList, formData.staff_id]);
@@ -158,7 +221,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
     }
   }, [isOpen, formData.appointment_date, fetchDayAppointments]);
 
-  // Calculate live availability for each standard 30-min slot
+  // Calculate live availability for each dynamic slot
   const slotAvailabilityList = useMemo(() => {
     const duration = Number(formData.duration_minutes || 60);
     const todayStr = new Date().toISOString().split('T')[0];
@@ -170,7 +233,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
       ? getShiftInfo(selectedStaffMember.shift_schedule || 'full_time')
       : null;
 
-    return ALL_TIME_SLOTS.map((slot) => {
+    return activeSlots.map((slot) => {
       const startMins = slot.startMinutes;
       const endMins = startMins + duration;
 
@@ -214,7 +277,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
 
       return { ...slot, status: 'available', reason: 'Available' };
     });
-  }, [formData.duration_minutes, formData.appointment_date, formData.staff_id, selectedStaffMember, dayAppointments, editData]);
+  }, [formData.duration_minutes, formData.appointment_date, formData.staff_id, selectedStaffMember, dayAppointments, editData, activeSlots]);
 
   // Real-time conflict evaluator for the currently selected start_time
   const activeConflict = useMemo(() => {
@@ -766,12 +829,19 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                     <RiCalendarLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-base pointer-events-none" />
                     <input
                       type="date"
+                      max={maxBookingDate}
                       className={`${inputClass('appointment_date')} pl-10 dark:[color-scheme:dark]`}
                       value={formData.appointment_date}
                       onChange={e => setFormData({ ...formData, appointment_date: e.target.value })}
                     />
                   </div>
                   {fieldErrors.appointment_date && <p className="text-red-500 text-xs mt-1">{fieldErrors.appointment_date}</p>}
+                  {isWeeklyOff && (
+                    <div className="mt-1.5 p-2 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 flex items-center gap-1.5 text-amber-700 dark:text-amber-400 text-xs">
+                      <RiAlertLine className="text-sm shrink-0" />
+                      <span>Note: <strong>{weeklyOffDayName}</strong> is salon weekly off.</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Duration */}

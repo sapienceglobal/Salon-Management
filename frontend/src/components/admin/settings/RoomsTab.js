@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '@/lib/api';
-import { RiAddLine, RiDoorOpenLine, RiCloseLine } from 'react-icons/ri';
+import { RiAddLine, RiDoorOpenLine, RiCloseLine, RiDeleteBin6Line } from 'react-icons/ri';
 import { createPortal } from 'react-dom';
+
+const emptySubscribe = () => () => {};
 
 export default function RoomsTab() {
   const [rooms, setRooms] = useState([]);
@@ -12,16 +14,13 @@ export default function RoomsTab() {
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState({ name: '', capacity: 1 });
   const [submitting, setSubmitting] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   const closeModal = () => {
     setIsAdding(false);
   };
 
   const fetchRooms = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await api.get('/settings/rooms');
       setRooms(res.data || []);
@@ -34,8 +33,22 @@ export default function RoomsTab() {
   }, []);
 
   useEffect(() => {
-    fetchRooms();
-  }, [fetchRooms]);
+    let ignore = false;
+    api.get('/settings/rooms')
+      .then((res) => {
+        if (!ignore) setRooms(res.data || []);
+      })
+      .catch((err) => {
+        console.error(err);
+        toast.error('Failed to load rooms');
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,6 +67,18 @@ export default function RoomsTab() {
     }
   };
 
+  const handleDeleteRoom = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to remove "${name}"?`)) return;
+    try {
+      await api.delete(`/settings/rooms/${id}`);
+      toast.success('Room removed successfully');
+      fetchRooms();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to delete room');
+    }
+  };
+
   const inputClass = "w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-[#E91E63] rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none transition-colors";
   const labelClass = "block text-[13px] font-semibold text-gray-600 dark:text-gray-400 mb-1.5";
 
@@ -65,8 +90,8 @@ export default function RoomsTab() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Service Rooms</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Manage rooms, stations, or chairs where services are performed.</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Service Rooms & Stations</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Manage rooms, stations, or chairs where services are performed (synced with appointment bookings).</p>
         </div>
         {!isAdding && (
           <button
@@ -170,14 +195,24 @@ export default function RoomsTab() {
           </div>
         ) : (
           rooms.map(room => (
-            <div key={room.id} className="flex items-center p-4 border border-gray-100 dark:border-white/10 rounded-2xl bg-white dark:bg-[#1a1a2e] shadow-sm hover:shadow-md transition-shadow">
-              <div className="h-11 w-11 rounded-xl bg-[#E91E63]/10 flex items-center justify-center text-[#E91E63] mr-4 text-xl">
-                <RiDoorOpenLine />
+            <div key={room.id} className="flex items-center justify-between p-4 border border-gray-100 dark:border-white/10 rounded-2xl bg-white dark:bg-[#1a1a2e] shadow-sm hover:shadow-md transition-shadow group">
+              <div className="flex items-center min-w-0 mr-2">
+                <div className="h-11 w-11 rounded-xl bg-[#E91E63]/10 flex items-center justify-center text-[#E91E63] mr-4 text-xl shrink-0">
+                  <RiDoorOpenLine />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{room.name}</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Capacity: {room.capacity} Client(s)</p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{room.name}</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Capacity: {room.capacity} Client(s)</p>
-              </div>
+              <button
+                type="button"
+                onClick={() => handleDeleteRoom(room.id, room.name)}
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors cursor-pointer opacity-70 group-hover:opacity-100"
+                title={`Delete ${room.name}`}
+              >
+                <RiDeleteBin6Line className="text-base" />
+              </button>
             </div>
           ))
         )}

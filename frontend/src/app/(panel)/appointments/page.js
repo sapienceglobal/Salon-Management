@@ -791,6 +791,7 @@ export default function AppointmentsPage() {
             businessSettings={businessSettings}
             statusFilter={statusFilter}
             showCancelled={showCancelled}
+            currentDate={currentDate}
             onAppointmentClick={(appt) => setSelectedViewAppointment(appt)}
             onSlotClick={({ staff, hour }) => {
               const hourStr = String(hour).padStart(2, '0') + ':00:00';
@@ -960,6 +961,7 @@ export default function AppointmentsPage() {
         editData={editData}
         preselectedCustomerId={preselectedCustomerId}
         initialSlot={prefilledSlot}
+        businessSettings={businessSettings}
       />
 
       {/* Appointment Details Drawer */}
@@ -967,6 +969,7 @@ export default function AppointmentsPage() {
         isOpen={!!selectedViewAppointment}
         onClose={handleCloseDrawer}
         appointment={selectedViewAppointment}
+        businessSettings={businessSettings}
         onEdit={(appt) => {
           setEditData(appt);
           setIsAddModalOpen(true);

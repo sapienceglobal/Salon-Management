@@ -74,7 +74,10 @@ class StaffService {
       query = query.where('u.is_active', true);
     }
 
-    const list = await query.select('sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role', 'u.avatar_url', 'u.is_active', 'cp.name as commission_profile_name');
+    const list = await query.select(
+      'sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role', 'u.avatar_url', 'u.is_active',
+      'cp.name as commission_profile_name', 'cp.type as commission_profile_type', 'cp.value as commission_profile_value'
+    );
 
     return list.map(item => ({
       ...item,
@@ -85,8 +88,12 @@ class StaffService {
   async getById(id, businessId) {
     const staff = await db('staff_members as sm')
       .join('users as u', 'sm.user_id', 'u.id')
+      .leftJoin('commission_profiles as cp', 'sm.commission_profile_id', 'cp.id')
       .where({ 'sm.id': id, 'sm.business_id': businessId })
-      .select('sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role', 'u.avatar_url', 'u.is_active')
+      .select(
+        'sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role', 'u.avatar_url', 'u.is_active',
+        'cp.name as commission_profile_name', 'cp.type as commission_profile_type', 'cp.value as commission_profile_value'
+      )
       .first();
     if (!staff) throw ApiError.notFound('Staff member not found');
 

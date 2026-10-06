@@ -15,20 +15,20 @@ export default function BillingTaxTab({ settings, onUpdate }) {
   });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (settings) {
-      setFormData({
-        tax_enabled: settings.tax_enabled ?? true,
-        default_cgst: settings.default_cgst || 9.00,
-        default_sgst: settings.default_sgst || 9.00,
-        invoice_prefix: settings.invoice_prefix || 'INV',
-        reward_points_per_100: settings.reward_points_per_100 || 10,
-        reward_points_value: settings.reward_points_value || 1.00,
-        feedback_enabled: settings.feedback_enabled ?? true,
-        auto_feedback_after_visit: settings.auto_feedback_after_visit ?? true,
-      });
-    }
-  }, [settings]);
+  const [prevSettings, setPrevSettings] = useState(settings);
+  if (settings !== prevSettings) {
+    setPrevSettings(settings);
+    setFormData({
+      tax_enabled: settings?.tax_enabled ?? true,
+      default_cgst: settings?.default_cgst || 9.00,
+      default_sgst: settings?.default_sgst || 9.00,
+      invoice_prefix: settings?.invoice_prefix || 'INV',
+      reward_points_per_100: settings?.reward_points_per_100 || 10,
+      reward_points_value: settings?.reward_points_value || 1.00,
+      feedback_enabled: settings?.feedback_enabled ?? true,
+      auto_feedback_after_visit: settings?.auto_feedback_after_visit ?? true,
+    });
+  }
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

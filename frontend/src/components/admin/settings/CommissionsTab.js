@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '@/lib/api';
-import { RiAddLine, RiPercentLine, RiMoneyRupeeCircleLine, RiBarChartHorizontalLine, RiCloseLine } from 'react-icons/ri';
+import { RiAddLine, RiPercentLine, RiMoneyRupeeCircleLine, RiBarChartHorizontalLine, RiCloseLine, RiDeleteBin6Line } from 'react-icons/ri';
 import { formatCurrency } from '@/lib/utils';
 import { createPortal } from 'react-dom';
+
+const emptySubscribe = () => () => {};
 
 export default function CommissionsTab() {
   const [profiles, setProfiles] = useState([]);
@@ -18,16 +20,13 @@ export default function CommissionsTab() {
     rules: {}
   });
   const [submitting, setSubmitting] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   const closeModal = () => {
     setIsAdding(false);
   };
 
   const fetchProfiles = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await api.get('/settings/commission-profiles');
       setProfiles(res.data || []);
@@ -40,8 +39,22 @@ export default function CommissionsTab() {
   }, []);
 
   useEffect(() => {
-    fetchProfiles();
-  }, [fetchProfiles]);
+    let ignore = false;
+    api.get('/settings/commission-profiles')
+      .then((res) => {
+        if (!ignore) setProfiles(res.data || []);
+      })
+      .catch((err) => {
+        console.error(err);
+        toast.error('Failed to load commission profiles');
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,6 +70,18 @@ export default function CommissionsTab() {
       toast.error(err.response?.data?.message || 'Failed to create profile');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteProfile = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete commission profile "${name}"?`)) return;
+    try {
+      await api.delete(`/settings/commission-profiles/${id}`);
+      toast.success('Commission profile deleted');
+      fetchProfiles();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to delete commission profile');
     }
   };
 
@@ -217,6 +242,15 @@ export default function CommissionsTab() {
                     </span>
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteProfile(profile.id, profile.name)}
+                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors cursor-pointer opacity-70 group-hover:opacity-100"
+                  title={`Delete ${profile.name}`}
+                >
+                  <RiDeleteBin6Line className="text-base" />
+                </button>
               </div>
               
               <div className="pt-4 border-t border-gray-100 dark:border-white/5 flex justify-between items-end">

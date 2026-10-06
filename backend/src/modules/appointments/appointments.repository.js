@@ -152,6 +152,7 @@ class AppointmentRepository {
         appt.service_price = sList.reduce((sum, s) => sum + parseFloat(s.price || 0), 0);
         appt.service_id = sList[0]?.service_id || null;
         appt.service_ids = sList.map(s => s.service_id);
+        appt.room_number = sList[0]?.room_number || null;
         appt.service_image_url = sList[0]?.service_image_url || null;
         appt.service_icon = sList[0]?.service_icon || null;
         appt.service_color = sList[0]?.service_color || null;
@@ -203,6 +204,7 @@ class AppointmentRepository {
     appointment.service_price = services.reduce((sum, s) => sum + parseFloat(s.price || 0), 0);
     appointment.service_id = services[0]?.service_id || null;
     appointment.service_ids = services.map(s => s.service_id);
+    appointment.room_number = services[0]?.room_number || null;
     appointment.service_image_url = services[0]?.service_image_url || null;
     appointment.service_icon = services[0]?.service_icon || null;
     appointment.service_color = services[0]?.service_color || null;

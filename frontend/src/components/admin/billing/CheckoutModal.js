@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { formatCurrency } from '@/lib/utils';
@@ -15,6 +15,8 @@ import {
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
+const subscribe = () => () => {};
+
 const PAYMENT_METHODS = [
   { id: 'cash', label: 'Cash', icon: RiMoneyDollarCircleLine },
   { id: 'card', label: 'Card (POS)', icon: RiBankCardLine },
@@ -22,25 +24,31 @@ const PAYMENT_METHODS = [
   { id: 'wallet', label: 'Wallet', icon: RiWallet3Line },
 ];
 
-export default function CheckoutModal({ isOpen, onClose, onSuccess, cart, customer, appointmentId }) {
-  const [mounted, setMounted] = useState(false);
+export default function CheckoutModal({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
+  cart, 
+  customer, 
+  appointmentId,
+  subtotal: propSubtotal,
+  discountAmount: propDiscount,
+  taxAmount: propTax,
+  totalAmount: propTotal,
+  businessSettings
+}) {
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
   const [loading, setLoading] = useState(false);
   const [selectedMethods, setSelectedMethods] = useState(['cash']);
-  const [amountReceived, setAmountReceived] = useState('');
+  const [customAmountReceived, setCustomAmountReceived] = useState(null);
   
   useScrollLock(isOpen);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const totalAmount = propTotal !== undefined 
+    ? propTotal 
+    : cart.reduce((sum, item) => sum + ((parseFloat(item.cart_price) || 0) * (item.qty || 1)), 0);
 
-  const totalAmount = cart.reduce((sum, item) => sum + (item.cart_price * item.qty), 0);
-
-  useEffect(() => {
-    if (isOpen) {
-      setAmountReceived(totalAmount.toString());
-    }
-  }, [isOpen, totalAmount]);
+  const amountReceived = customAmountReceived !== null ? customAmountReceived : totalAmount.toString();
 
   if (!mounted || !isOpen) return null;
 
@@ -247,7 +255,7 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess, cart, custom
               <input
                 type="number"
                 value={amountReceived}
-                onChange={(e) => setAmountReceived(e.target.value)}
+                onChange={(e) => setCustomAmountReceived(e.target.value)}
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-3 pl-9 pr-4 font-bold text-lg text-gray-900 dark:text-white outline-none focus:border-[#E91E63] transition-colors"
                 placeholder="0.00"
               />

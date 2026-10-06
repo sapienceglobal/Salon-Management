@@ -814,6 +814,20 @@ export default function StaffProfileView({
               <span className="font-semibold text-gray-900 dark:text-white">{roleName}</span>
             </div>
 
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400">Monthly Salary</span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {staff.salary ? `₹${parseFloat(staff.salary).toLocaleString('en-IN')}` : 'Not Specified'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400">Commission Plan</span>
+              <span className="font-semibold text-purple-600 dark:text-purple-400">
+                {staff.commission_profile_name ? `${staff.commission_profile_name} (${staff.commission_profile_type === 'percentage' ? `${staff.commission_profile_value}%` : `₹${staff.commission_profile_value}`})` : 'Standard / None'}
+              </span>
+            </div>
+
             <div className="flex items-start justify-between pt-1">
               <span className="text-gray-400 shrink-0">Address</span>
               <span className="font-medium text-gray-900 dark:text-white text-right leading-tight max-w-[160px]">

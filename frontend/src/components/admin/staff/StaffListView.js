@@ -504,9 +504,16 @@ export default function StaffListView({
 
                       {/* Role Pill with custom pastel styles */}
                       <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getRoleBadgeStyle(designation)}`}>
-                          {designation}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getRoleBadgeStyle(designation)}`}>
+                            {designation}
+                          </span>
+                          {staff.commission_profile_name && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40">
+                              Comm: {staff.commission_profile_name} {staff.commission_profile_value ? `(${staff.commission_profile_type === 'percentage' ? `${staff.commission_profile_value}%` : `₹${staff.commission_profile_value}`})` : ''}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Phone */}

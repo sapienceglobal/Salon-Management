@@ -25,7 +25,6 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchSettings = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await api.get('/settings');
       setBusiness(res.data?.business || null);
@@ -39,8 +38,25 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+    let ignore = false;
+    api.get('/settings')
+      .then((res) => {
+        if (!ignore) {
+          setBusiness(res.data?.business || null);
+          setSettings(res.data?.settings || null);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch settings', err);
+        toast.error('Failed to load settings');
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const tabs = [
     { id: 'general', label: 'Business Profile', icon: RiStore2Line },

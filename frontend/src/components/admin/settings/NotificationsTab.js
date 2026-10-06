@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '@/lib/api';
-import { RiAddLine, RiMessage3Line, RiMailSendLine, RiWhatsappLine, RiCloseLine, RiNotification3Line } from 'react-icons/ri';
+import { RiAddLine, RiMessage3Line, RiMailSendLine, RiWhatsappLine, RiCloseLine, RiNotification3Line, RiDeleteBin6Line } from 'react-icons/ri';
 import { createPortal } from 'react-dom';
+
+const emptySubscribe = () => () => {};
 
 export default function NotificationsTab() {
   const [templates, setTemplates] = useState([]);
@@ -14,20 +16,17 @@ export default function NotificationsTab() {
     event_type: 'appointment_created', 
     channel: 'sms', 
     subject: '', 
-    body: '',
+    body: '', 
     is_active: true
   });
   const [submitting, setSubmitting] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   const closeModal = () => {
     setIsAdding(false);
   };
 
   const fetchTemplates = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await api.get('/settings/notifications');
       setTemplates(res.data || []);
@@ -42,8 +41,24 @@ export default function NotificationsTab() {
   }, []);
 
   useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
+    let ignore = false;
+    api.get('/settings/notifications')
+      .then((res) => {
+        if (!ignore) setTemplates(res.data || []);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load notification templates');
+        }
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,6 +74,18 @@ export default function NotificationsTab() {
       toast.error(err.response?.data?.message || 'Failed to save template');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (id, title) => {
+    if (!window.confirm(`Are you sure you want to delete template for "${title}"?`)) return;
+    try {
+      await api.delete(`/settings/notifications/${id}`);
+      toast.success('Template deleted successfully');
+      fetchTemplates();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to delete template');
     }
   };
 
@@ -263,12 +290,20 @@ export default function NotificationsTab() {
                     </div>
                   </div>
                 </div>
-                <div>
+                <div className="flex items-center gap-2">
                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border
                       ${template.is_active ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' : 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'}
                     `}>
                       {template.is_active ? 'Active' : 'Inactive'}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTemplate(template.id, formatEventType(template.event_type))}
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors cursor-pointer"
+                      title="Delete template"
+                    >
+                      <RiDeleteBin6Line className="text-base" />
+                    </button>
                 </div>
               </div>
             </div>

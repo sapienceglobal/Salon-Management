@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   RiMoreFill, 
   RiUserLine, 
@@ -10,24 +10,33 @@ import {
   RiCheckLine, 
   RiCloseLine, 
   RiAddLine,
-  RiInformationLine
+  RiInformationLine,
+  RiSparklingFill,
+  RiArrowRightSLine,
+  RiArrowLeftSLine
 } from 'react-icons/ri';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
 
 /**
  * Schedule Grid Component for Day View
- * Industry-Standard Salon Timeline Grid
+ * True Industry-Standard Salon Timeline Grid (Fresha / Zenoti Model)
+ * 
  * Features:
- * - Dedicated "Unassigned Queue / Nobody" Row at top with exact slot positioning & status alerts
- * - Full Status-Aware Card Styling (Pending, In Progress, Confirmed, Completed, Cancelled)
- * - Empty Slot Hover & Quick Booking Triggers
+ * - Dynamic Operating Hours: Automatically derived from Settings -> Operations (working_hours_start & working_hours_end)
+ * - Horizontal X-Axis Scrolling: 120px standard column width for legible, uncompressed appointment cards
+ * - Sticky Left Staff Column (sticky left-0 z-20): Staff name, avatar & shift stay pinned while scrolling across the day
+ * - Sticky Top Hour Headers (sticky top-0 z-30) with elevated corner
+ * - Real-Time Live "NOW" Indicator: Live pulsing red vertical line showing current time across all staff rows
+ * - Auto-Scroll to Current Time on load + Quick "Jump to Now" button
+ * - Dedicated "Unassigned Queue / Nobody" Row at top
  * - Off-Shift Shading per Staff Shift Schedule
- * - Responsive Multi-Hour Timeline
+ * - Full Status-Aware Card Styling & Quick Slot Booking Trigger
  */
 export default function ScheduleGrid({
   staff = [],
   appointments = [],
   businessSettings,
+  currentDate = new Date(),
   onAppointmentClick,
   onSlotClick,
   onAssignStaff,
@@ -35,14 +44,119 @@ export default function ScheduleGrid({
   showCancelled = true,
   className = '',
 }) {
-  const START_HOUR = 9; // 9 AM
-  
-  // Hours: 9 AM to 6 PM (10 columns)
-  const hours = [
-    '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM'
-  ];
-  const TOTAL_HOURS = hours.length;
+  const scrollContainerRef = useRef(null);
 
+  // -------------------------------------------------------------
+  // 1. DYNAMIC OPERATING HOURS CALCULATION (from Business Settings)
+  // -------------------------------------------------------------
+  const parseHour = (timeStr, defaultHour) => {
+    if (!timeStr) return defaultHour;
+    const parts = String(timeStr).split(':');
+    const h = parseInt(parts[0], 10);
+    return isNaN(h) ? defaultHour : h;
+  };
+
+  // Default salon operating hours: 9:00 AM (09:00:00) to 9:00 PM (21:00:00)
+  const configuredStart = parseHour(businessSettings?.working_hours_start, 9);
+  const configuredEnd = parseHour(businessSettings?.working_hours_end, 21);
+
+  // Safeguard: Check if any appointment starts earlier or ends later so no card is clipped
+  let minApptHour = configuredStart;
+  let maxApptHour = configuredEnd;
+  (appointments || []).forEach((a) => {
+    if (a.start_time) {
+      const h = parseInt(String(a.start_time).split(':')[0], 10);
+      if (!isNaN(h) && h < minApptHour) minApptHour = h;
+    }
+    if (a.end_time) {
+      const h = parseInt(String(a.end_time).split(':')[0], 10);
+      if (!isNaN(h) && h > maxApptHour) maxApptHour = h;
+    }
+  });
+
+  const START_HOUR = Math.max(6, Math.min(minApptHour, 11));
+  const END_HOUR = Math.max(START_HOUR + 4, Math.min(maxApptHour, 23));
+  const TOTAL_HOURS = END_HOUR - START_HOUR + 1;
+
+  // Grid sizing constants (Industry Standard)
+  const STAFF_COL_WIDTH = 180; // px
+  const HOUR_WIDTH = 120; // px per hour (allows comfortable 60px 30-min cards)
+  const TOTAL_GRID_WIDTH = STAFF_COL_WIDTH + TOTAL_HOURS * HOUR_WIDTH;
+
+  // Generate dynamic hour slots
+  const hours = useMemo(() => {
+    const list = [];
+    for (let h = START_HOUR; h <= END_HOUR; h++) {
+      const period = h >= 12 ? 'PM' : 'AM';
+      const displayH = h % 12 === 0 ? 12 : h % 12;
+      list.push({ hour: h, label: `${displayH} ${period}` });
+    }
+    return list;
+  }, [START_HOUR, END_HOUR]);
+
+  // -------------------------------------------------------------
+  // 2. LIVE CURRENT TIME INDICATOR & AUTO-SCROLL
+  // -------------------------------------------------------------
+  const [currentMinutesFromMidnight, setCurrentMinutesFromMidnight] = useState(() => {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const d = new Date();
+      setCurrentMinutesFromMidnight(d.getHours() * 60 + d.getMinutes());
+    }, 30000); // 30s update
+    return () => clearInterval(interval);
+  }, []);
+
+  const isTodayDate = useMemo(() => {
+    if (!currentDate) return true;
+    try {
+      const d = new Date(currentDate);
+      const now = new Date();
+      return (
+        d.getDate() === now.getDate() &&
+        d.getMonth() === now.getMonth() &&
+        d.getFullYear() === now.getFullYear()
+      );
+    } catch {
+      return false;
+    }
+  }, [currentDate]);
+
+  const nowHourFraction = currentMinutesFromMidnight / 60;
+  const isNowWithinGrid =
+    nowHourFraction >= START_HOUR && nowHourFraction <= END_HOUR + 1;
+  const nowLeftPct = ((nowHourFraction - START_HOUR) / TOTAL_HOURS) * 100;
+
+  const scrollToNow = () => {
+    if (!scrollContainerRef.current) return;
+    const targetPx = Math.max(0, (nowHourFraction - START_HOUR) * HOUR_WIDTH - 160);
+    scrollContainerRef.current.scrollTo({ left: targetPx, behavior: 'smooth' });
+  };
+
+  const scrollLeftBy = (amount) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+  };
+
+  // Auto-scroll on initial load if today
+  useEffect(() => {
+    if (isTodayDate && isNowWithinGrid && scrollContainerRef.current) {
+      const timer = setTimeout(() => {
+        const targetPx = Math.max(0, (nowHourFraction - START_HOUR) * HOUR_WIDTH - 160);
+        scrollContainerRef.current?.scrollTo({ left: targetPx, behavior: 'smooth' });
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTodayDate, isNowWithinGrid, START_HOUR]);
+
+  // -------------------------------------------------------------
+  // 3. STAFF & SHIFTS
+  // -------------------------------------------------------------
   const getStaffShiftRange = (shiftType) => {
     switch (shiftType) {
       case 'morning':
@@ -75,10 +189,8 @@ export default function ScheduleGrid({
     { id: 'd8', staff_member_id: 104, customer_first_name: 'Aman', customer_last_name: 'Verma', service_name: 'Beard Styling', start_time: '14:00:00', end_time: '15:00:00', status: 'cancelled', color: 'pink' },
   ];
 
-  // If real staff exists, always use real staff. Only fallback if no staff found anywhere.
   const effectiveStaff = staff.length > 0 ? staff : DEFAULT_STAFF;
   
-  // Only inject mock appointments if BOTH staff and appointments are empty (i.e. fresh local dev demo)
   const effectiveAppointments = (staff.length > 0) 
     ? appointments 
     : (appointments.length > 0 ? appointments : DEFAULT_APPOINTMENTS);
@@ -86,9 +198,9 @@ export default function ScheduleGrid({
   const timeToFractionalHour = (timeStr) => {
     if (!timeStr) return 0;
     const parts = timeStr.split(':').map(Number);
-    const hours = parts[0] || 0;
-    const minutes = parts[1] || 0;
-    const totalMinutes = hours * 60 + minutes;
+    const h = parts[0] || 0;
+    const m = parts[1] || 0;
+    const totalMinutes = h * 60 + m;
     const startMinutes = START_HOUR * 60;
     return Math.max(0, (totalMinutes - startMinutes) / 60);
   };
@@ -110,7 +222,7 @@ export default function ScheduleGrid({
     return true;
   });
 
-  // Separate Unassigned appointments (no staff member assigned or staff not in staff list)
+  // Separate Unassigned appointments
   const unassignedAppointments = filteredAppointments.filter((a) => {
     if (!a.staff_member_id && !a.staff_id) return true;
     const assignedId = a.staff_member_id || a.staff_id;
@@ -118,83 +230,65 @@ export default function ScheduleGrid({
   });
 
   const getStaffAppointments = (staffId) => {
-    return filteredAppointments.filter((a) => {
-      const assignedId = a.staff_member_id || a.staff_id;
-      return String(assignedId) === String(staffId);
-    });
+    return filteredAppointments.filter(
+      (a) => String(a.staff_member_id || a.staff_id) === String(staffId)
+    );
   };
 
-  /**
-   * Premium Status & Service-Aware Styling
-   */
+  // -------------------------------------------------------------
+  // 4. CARD STYLES BY STATUS / SERVICE
+  // -------------------------------------------------------------
   const getCardStyle = (appt) => {
-    const status = (appt.status || 'confirmed').toLowerCase();
-    const isUnassigned = !appt.staff_member_id && !appt.staff_id;
+    const st = (appt.status || 'confirmed').toLowerCase();
 
-    // 1. Cancelled / No-show: Muted strikethrough styling with red accent
-    if (status === 'cancelled' || status === 'no_show') {
+    if (st === 'cancelled' || st === 'no_show') {
       return {
-        card: 'bg-gray-100/90 dark:bg-white/[0.04] border-dashed border-red-300 dark:border-red-900/50 opacity-70 hover:opacity-100',
-        serviceText: 'text-gray-500 dark:text-gray-400 line-through font-normal',
-        customerText: 'text-gray-600 dark:text-gray-300 line-through',
-        badgeBg: 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border-red-200 dark:border-red-900/40',
+        card: 'bg-red-50/70 dark:bg-red-950/20 border-dashed border-red-300 dark:border-red-900/40 text-red-700 dark:text-red-400 opacity-60 line-through',
+        serviceText: 'text-red-600 dark:text-red-400 line-through',
+        customerText: 'text-red-700 dark:text-red-300 line-through',
+        badgeBg: 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 border-red-200/60',
         badgeText: 'Cancelled',
-        dot: 'bg-red-400',
+        dot: 'bg-red-500',
       };
     }
 
-    // 2. Pending Approval: High-alert glowing amber styling
-    if (status === 'pending') {
+    if (st === 'pending') {
       return {
-        card: 'bg-amber-50/95 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 shadow-xs ring-1 ring-amber-400/25',
+        card: 'bg-amber-50/90 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 shadow-amber-500/5',
         serviceText: 'text-amber-700 dark:text-amber-300 font-semibold',
-        customerText: 'text-amber-950 dark:text-amber-100',
-        badgeBg: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border-amber-300 dark:border-amber-700/50',
+        customerText: 'text-amber-900 dark:text-amber-100 font-bold',
+        badgeBg: 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border-amber-300/80 animate-pulse',
         badgeText: 'Pending Approval',
-        dot: 'bg-amber-500 animate-pulse',
+        dot: 'bg-amber-500',
       };
     }
 
-    // 3. In Progress / Ongoing: Active pulsing blue styling
-    if (status === 'ongoing' || status === 'in-progress') {
+    if (st === 'ongoing' || st === 'in-progress') {
       return {
-        card: 'bg-blue-50/95 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700/60 shadow-xs ring-1 ring-blue-400/25',
-        serviceText: 'text-[#2E90FA] font-semibold',
-        customerText: 'text-blue-950 dark:text-blue-100',
-        badgeBg: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border-blue-200 dark:border-blue-800/40',
+        card: 'bg-blue-50/95 dark:bg-blue-950/40 border-blue-400 dark:border-blue-700/60 text-blue-900 dark:text-blue-100 ring-1 ring-blue-400/40 shadow-blue-500/10',
+        serviceText: 'text-blue-700 dark:text-blue-300 font-semibold',
+        customerText: 'text-blue-950 dark:text-white font-bold',
+        badgeBg: 'bg-blue-500 text-white dark:bg-blue-600 border-blue-400 animate-pulse',
         badgeText: 'In Progress',
-        dot: 'bg-blue-500 animate-ping',
+        dot: 'bg-blue-500',
       };
     }
 
-    // 4. Completed: Clean emerald styling
-    if (status === 'completed') {
+    if (st === 'completed') {
       return {
-        card: 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/40',
-        serviceText: 'text-[#12B76A] font-semibold',
-        customerText: 'text-gray-900 dark:text-white',
-        badgeBg: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/30',
+        card: 'bg-purple-50/70 dark:bg-purple-950/25 border-purple-200/80 dark:border-purple-900/40 text-purple-900 dark:text-purple-200',
+        serviceText: 'text-purple-700 dark:text-purple-300 font-medium',
+        customerText: 'text-purple-950 dark:text-purple-100 font-semibold',
+        badgeBg: 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200',
         badgeText: 'Completed',
-        dot: 'bg-[#12B76A]',
+        dot: 'bg-purple-500',
       };
     }
 
-    // 5. Unassigned: Distinct dashed amber/purple border
-    if (isUnassigned) {
+    // Default Confirmed Styles
+    if (appt.color === 'pink' || appt.service_name?.toLowerCase().includes('colour') || appt.service_name?.toLowerCase().includes('color')) {
       return {
-        card: 'bg-amber-50/90 dark:bg-amber-950/40 border-2 border-dashed border-amber-400 dark:border-amber-600/70 shadow-xs',
-        serviceText: 'text-amber-700 dark:text-amber-300 font-semibold',
-        customerText: 'text-gray-900 dark:text-white',
-        badgeBg: 'bg-amber-200 text-amber-900 dark:bg-amber-900/80 dark:text-amber-200 border-amber-300 dark:border-amber-700',
-        badgeText: 'Needs Stylist',
-        dot: 'bg-amber-500 animate-pulse',
-      };
-    }
-
-    // 6. Confirmed / Planned (Categorized by Service & Color)
-    if (appt.color === 'pink' || appt.service_name?.toLowerCase().includes('colour') || appt.service_name?.toLowerCase().includes('color') || appt.service_name?.toLowerCase().includes('haircut & styling') || appt.service_name?.toLowerCase().includes('party makeup')) {
-      return {
-        card: 'bg-[#FFF0F5] dark:bg-pink-950/30 border-pink-200 dark:border-pink-900/40 text-gray-900 dark:text-white',
+        card: 'bg-[#FDF2F8] dark:bg-pink-950/30 border-pink-200 dark:border-pink-900/40 text-gray-900 dark:text-white',
         serviceText: 'text-[#E91E63] font-semibold',
         customerText: 'text-gray-900 dark:text-white',
         badgeBg: 'bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200/60',
@@ -245,14 +339,95 @@ export default function ScheduleGrid({
 
   return (
     <div className={`bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm flex flex-col h-full w-full justify-between ${className}`}>
-      <div className="overflow-x-auto no-scrollbar flex-1 flex flex-col w-full">
-        <div className="w-full min-w-[900px] flex-1 flex flex-col">
-          {/* Header Row (Staff Count + Hours) */}
+      
+      {/* ========================================================
+          TOP UTILITY BAR (Operating Hours Info + Jump to Now)
+         ======================================================== */}
+      <div className="px-4 py-2.5 border-b border-gray-100 dark:border-white/5 bg-gray-50/60 dark:bg-white/[0.015] flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-300">
+            <RiTimeLine className="text-[#E91E63]" />
+            Operating Timeline:
+            <span className="px-2 py-0.5 rounded-md font-bold text-gray-900 dark:text-white bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 shadow-2xs">
+              {hours[0]?.label} – {hours[hours.length - 1]?.label} ({TOTAL_HOURS}h)
+            </span>
+          </span>
+
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 hidden md:inline-flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Dynamic Settings
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Scroll Nav buttons for mouse/desktop convenience */}
+          <div className="flex items-center border border-gray-200 dark:border-white/10 rounded-lg overflow-hidden bg-white dark:bg-white/5 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => scrollLeftBy(-240)}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 transition-colors"
+              title="Scroll Left (Earlier)"
+            >
+              <RiArrowLeftSLine className="text-base" />
+            </button>
+            <span className="w-[1px] h-3 bg-gray-200 dark:bg-white/10" />
+            <button
+              type="button"
+              onClick={() => scrollLeftBy(240)}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 transition-colors"
+              title="Scroll Right (Later)"
+            >
+              <RiArrowRightSLine className="text-base" />
+            </button>
+          </div>
+
+          {/* Jump to Now button */}
+          {isTodayDate && isNowWithinGrid && (
+            <button
+              type="button"
+              onClick={scrollToNow}
+              className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/50 rounded-full hover:bg-rose-100 dark:hover:bg-rose-950/80 transition-colors shadow-2xs group"
+              title="Center timeline on current time"
+            >
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse group-hover:scale-125 transition-transform" />
+              <span>Jump to Now</span>
+            </button>
+          )}
+
+          <span className="text-[11px] text-gray-400 dark:text-gray-500 hidden xl:inline">
+            ↔ Scroll horizontally for full day
+          </span>
+        </div>
+      </div>
+
+      {/* ========================================================
+          HORIZONTAL SCROLLABLE SCHEDULE TIMELINE
+         ======================================================== */}
+      <div 
+        ref={scrollContainerRef}
+        className="overflow-x-auto overflow-y-auto flex-1 flex flex-col w-full relative select-none"
+        style={{ scrollBehavior: 'smooth' }}
+      >
+        <div 
+          className="flex-1 flex flex-col"
+          style={{ minWidth: `${TOTAL_GRID_WIDTH}px` }}
+        >
+          {/* ----------------------------------------------------
+              HEADER ROW (Staff Count + Hours)
+              Sticky Top Header & Sticky Left Staff Cell
+             ---------------------------------------------------- */}
           <div
-            className="grid border-b border-gray-100 dark:border-white/5 bg-gray-50/70 dark:bg-white/[0.02] shrink-0"
-            style={{ gridTemplateColumns: `170px repeat(${TOTAL_HOURS}, minmax(0, 1fr))` }}
+            className="grid border-b border-gray-200 dark:border-white/10 bg-gray-50/95 dark:bg-[#16162a] sticky top-0 z-30 shrink-0 backdrop-blur-sm"
+            style={{ 
+              gridTemplateColumns: `${STAFF_COL_WIDTH}px repeat(${TOTAL_HOURS}, ${HOUR_WIDTH}px)`,
+              minWidth: `${TOTAL_GRID_WIDTH}px`
+            }}
           >
-            <div className="px-4 py-3.5 font-bold text-xs text-gray-800 dark:text-white border-r border-gray-100 dark:border-white/5 flex items-center justify-between">
+            {/* Top-Left Corner: Double-sticky (top-0 and left-0) */}
+            <div 
+              className="px-4 py-3.5 font-bold text-xs text-gray-800 dark:text-white border-r border-gray-200 dark:border-white/10 flex items-center justify-between sticky left-0 z-40 bg-gray-50 dark:bg-[#16162a] shadow-[4px_0_12px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_12px_-2px_rgba(0,0,0,0.3)]"
+              style={{ width: `${STAFF_COL_WIDTH}px`, minWidth: `${STAFF_COL_WIDTH}px` }}
+            >
               <span>Staff ({effectiveStaff.length})</span>
               {unassignedAppointments.length > 0 && (
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40">
@@ -260,30 +435,55 @@ export default function ScheduleGrid({
                 </span>
               )}
             </div>
-            {hours.map((hour, idx) => (
+
+            {/* Hour Columns */}
+            {hours.map((hObj, idx) => (
               <div
                 key={idx}
-                className="px-1 py-3.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 text-center border-r border-gray-100 dark:border-white/5 last:border-r-0 flex items-center justify-center truncate"
+                className="px-1 py-3.5 text-[11px] font-semibold text-gray-600 dark:text-gray-300 text-center border-r border-gray-100 dark:border-white/5 last:border-r-0 flex items-center justify-center truncate relative"
+                style={{ width: `${HOUR_WIDTH}px` }}
               >
-                {hour}
+                <span>{hObj.label}</span>
               </div>
             ))}
+
+            {/* Live NOW Header Badge */}
+            {isTodayDate && isNowWithinGrid && (
+              <div
+                className="absolute top-0 bottom-0 pointer-events-none z-35 flex flex-col items-center"
+                style={{
+                  left: `calc(${STAFF_COL_WIDTH}px + ${(nowHourFraction - START_HOUR) * HOUR_WIDTH}px)`,
+                  transform: 'translateX(-50%)',
+                }}
+              >
+                <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-rose-500 text-white tracking-wider shadow-sm uppercase mt-1 animate-pulse">
+                  NOW
+                </span>
+                <div className="w-[2px] flex-1 bg-rose-500" />
+              </div>
+            )}
           </div>
 
-          {/* ========================================================
+          {/* ----------------------------------------------------
               UNASSIGNED / OPEN QUEUE ("Nobody" Lane)
               Industry-standard open appointments buffer
-             ======================================================== */}
+             ---------------------------------------------------- */}
           <div
-            className={`border-b transition-colors ${
+            className={`border-b transition-colors relative ${
               unassignedAppointments.length > 0
                 ? 'bg-amber-50/40 dark:bg-amber-950/15 border-amber-200/70 dark:border-amber-900/30'
                 : 'bg-gray-50/30 dark:bg-white/[0.01] border-gray-100 dark:border-white/5'
             } grid`}
-            style={{ gridTemplateColumns: `170px repeat(${TOTAL_HOURS}, minmax(0, 1fr))` }}
+            style={{ 
+              gridTemplateColumns: `${STAFF_COL_WIDTH}px repeat(${TOTAL_HOURS}, ${HOUR_WIDTH}px)`,
+              minWidth: `${TOTAL_GRID_WIDTH}px`
+            }}
           >
-            {/* Unassigned Lane Header Column */}
-            <div className="px-4 py-3 border-r border-gray-100 dark:border-white/5 flex items-center gap-2.5 relative z-10">
+            {/* Unassigned Lane Header Column - STICKY LEFT */}
+            <div 
+              className="px-4 py-3 border-r border-gray-200 dark:border-white/10 flex items-center gap-2.5 sticky left-0 z-20 bg-[#fffdf9] dark:bg-[#1f1d27] shadow-[4px_0_12px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_12px_-2px_rgba(0,0,0,0.3)]"
+              style={{ width: `${STAFF_COL_WIDTH}px`, minWidth: `${STAFF_COL_WIDTH}px` }}
+            >
               <div className="relative shrink-0">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-xs">
                   <RiUserUnfollowLine className="text-base" />
@@ -328,6 +528,16 @@ export default function ScheduleGrid({
                 backgroundSize: `${100 / TOTAL_HOURS}% 100%`,
               }}
             >
+              {/* Live NOW Vertical Indicator Line */}
+              {isTodayDate && isNowWithinGrid && (
+                <div
+                  className="absolute top-0 bottom-0 pointer-events-none z-25 flex flex-col items-center"
+                  style={{ left: `${nowLeftPct}%`, transform: 'translateX(-50%)' }}
+                >
+                  <div className="w-[2px] h-full bg-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
+                </div>
+              )}
+
               {unassignedAppointments.length === 0 ? (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
                   <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 flex items-center gap-1.5 opacity-60">
@@ -354,7 +564,7 @@ export default function ScheduleGrid({
                       style={{
                         left: `calc(${leftPct}% + 4px)`,
                         width: `calc(${widthPct}% - 8px)`,
-                        minWidth: '95px',
+                        minWidth: '60px',
                       }}
                       title={`Unassigned: ${appt.customer_first_name || 'Walk-in'} - ${appt.service_name} (${appt.start_time?.substring(0, 5)} - ${appt.end_time?.substring(0, 5)})`}
                     >
@@ -402,18 +612,25 @@ export default function ScheduleGrid({
             </div>
           </div>
 
-          {/* ========================================================
+          {/* ----------------------------------------------------
               STAFF ROWS CONTAINER
-             ======================================================== */}
+              Each row has a STICKY LEFT staff card
+             ---------------------------------------------------- */}
           <div className="flex-1 flex flex-col divide-y divide-gray-100 dark:divide-white/5">
             {effectiveStaff.map((member) => (
               <div
                 key={member.id}
                 className="flex-1 min-h-[92px] grid hover:bg-gray-50/30 dark:hover:bg-white/[0.01] transition-colors"
-                style={{ gridTemplateColumns: `170px repeat(${TOTAL_HOURS}, minmax(0, 1fr))` }}
+                style={{ 
+                  gridTemplateColumns: `${STAFF_COL_WIDTH}px repeat(${TOTAL_HOURS}, ${HOUR_WIDTH}px)`,
+                  minWidth: `${TOTAL_GRID_WIDTH}px`
+                }}
               >
-                {/* Staff Info Column */}
-                <div className="px-4 py-3.5 border-r border-gray-100 dark:border-white/5 bg-white dark:bg-[#1a1a2e] flex items-center gap-2.5 relative z-10 h-full">
+                {/* Staff Info Column - STICKY LEFT */}
+                <div 
+                  className="px-4 py-3.5 border-r border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a2e] flex items-center gap-2.5 sticky left-0 z-20 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_12px_-2px_rgba(0,0,0,0.3)] h-full"
+                  style={{ width: `${STAFF_COL_WIDTH}px`, minWidth: `${STAFF_COL_WIDTH}px` }}
+                >
                   <div className="relative shrink-0">
                     <VisualAvatar
                       type="staff"
@@ -458,13 +675,13 @@ export default function ScheduleGrid({
                   {(() => {
                     const shift = getStaffShiftRange(member.shift_schedule);
                     const offRanges = [];
-                    // Before shift start (if within grid hours 9..18)
+                    // Before shift start (if within grid hours)
                     if (shift.startHour > START_HOUR) {
                       const dur = Math.min(shift.startHour - START_HOUR, TOTAL_HOURS);
                       if (dur > 0) offRanges.push({ start: 0, duration: dur });
                     }
-                    // After shift end (if within grid hours 9..18)
-                    const gridEndHour = START_HOUR + TOTAL_HOURS; // 19
+                    // After shift end (if within grid hours)
+                    const gridEndHour = START_HOUR + TOTAL_HOURS;
                     if (shift.endHour < gridEndHour) {
                       const startOffset = Math.max(0, shift.endHour - START_HOUR);
                       const dur = gridEndHour - shift.endHour;
@@ -490,19 +707,35 @@ export default function ScheduleGrid({
 
                   {/* Empty Slot Interactive Click Areas */}
                   {onSlotClick && (
-                    <div className="absolute inset-0 grid grid-cols-10 pointer-events-none z-0">
-                      {hours.map((_, hIdx) => (
+                    <div 
+                      className="absolute inset-0 pointer-events-none z-0"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${TOTAL_HOURS}, minmax(0, 1fr))`,
+                      }}
+                    >
+                      {hours.map((hObj, hIdx) => (
                         <div
                           key={hIdx}
-                          onClick={() => onSlotClick({ staff: member, hour: START_HOUR + hIdx })}
-                          className="h-full pointer-events-auto hover:bg-[#E91E63]/5 transition-colors cursor-pointer group flex items-center justify-center"
-                          title={`Click to book with ${member.first_name} at ${hours[hIdx]}`}
+                          onClick={() => onSlotClick({ staff: member, hour: hObj.hour })}
+                          className="h-full pointer-events-auto hover:bg-[#E91E63]/5 transition-colors cursor-pointer group flex items-center justify-center border-r border-transparent hover:border-[#E91E63]/20"
+                          title={`Click to book with ${member.first_name} at ${hObj.label}`}
                         >
                           <span className="opacity-0 group-hover:opacity-100 text-[#E91E63] text-xs font-bold transition-opacity">
                             +
                           </span>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Live NOW Vertical Indicator Line */}
+                  {isTodayDate && isNowWithinGrid && (
+                    <div
+                      className="absolute top-0 bottom-0 pointer-events-none z-25 flex flex-col items-center"
+                      style={{ left: `${nowLeftPct}%`, transform: 'translateX(-50%)' }}
+                    >
+                      <div className="w-[2px] h-full bg-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
                     </div>
                   )}
 
@@ -526,7 +759,7 @@ export default function ScheduleGrid({
                         style={{
                           left: `calc(${leftPct}% + 4px)`,
                           width: `calc(${widthPct}% - 8px)`,
-                          minWidth: '85px',
+                          minWidth: '60px',
                         }}
                         title={`${appt.customer_first_name || 'Walk-in'} - ${appt.service_name} (${appt.start_time?.substring(0, 5)} - ${appt.end_time?.substring(0, 5)}) [${style.badgeText}]`}
                       >

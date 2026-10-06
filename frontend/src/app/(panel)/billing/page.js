@@ -91,17 +91,19 @@ export default function POSPage() {
   const [completedInvoice, setCompletedInvoice] = useState(null);
   const [appointmentId, setAppointmentId] = useState(null);
   const [mounted, setMounted] = useState(false);
-
+  const [business, setBusiness] = useState(null);
+  const [businessSettings, setBusinessSettings] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [svcRes, prodRes, pkgRes, staffRes, draftRes] = await Promise.allSettled([
+      const [svcRes, prodRes, pkgRes, staffRes, draftRes, settingsRes] = await Promise.allSettled([
         api.get('/services', { params: { limit: 100, active_only: true } }),
         api.get('/products', { params: { limit: 100, is_active: true } }),
         api.get('/catalog/packages'),
         api.get('/staff', { params: { active_only: true } }),
-        api.get('/invoices', { params: { status: 'draft' } })
+        api.get('/invoices', { params: { status: 'draft' } }),
+        api.get('/settings')
       ]);
 
       if (svcRes.status === 'fulfilled' && Array.isArray(svcRes.value.data)) {
@@ -124,6 +126,11 @@ export default function POSPage() {
       }
       if (draftRes.status === 'fulfilled') {
         setDraftCount(draftRes.value.data?.length || 0);
+      }
+      if (settingsRes.status === 'fulfilled') {
+        const stData = settingsRes.value.data?.data || settingsRes.value.data;
+        if (stData?.business) setBusiness(stData.business);
+        if (stData?.settings) setBusinessSettings(stData.settings);
       }
 
       // Check URL query parameters for appointment or customer auto-load
@@ -494,8 +501,22 @@ export default function POSPage() {
     return 0;
   }, [subtotal, discountPercent]);
 
+  const taxRate = useMemo(() => {
+    if (businessSettings && businessSettings.tax_enabled === false) return 0;
+    const cgst = parseFloat(businessSettings?.default_cgst ?? 9);
+    const sgst = parseFloat(businessSettings?.default_sgst ?? 9);
+    return (cgst + sgst) / 100;
+  }, [businessSettings]);
+
+  const taxLabel = useMemo(() => {
+    if (businessSettings && businessSettings.tax_enabled === false) return 'Tax (Exempt)';
+    const cgst = parseFloat(businessSettings?.default_cgst ?? 9);
+    const sgst = parseFloat(businessSettings?.default_sgst ?? 9);
+    return `Tax (${(cgst + sgst).toFixed(0)}%)`;
+  }, [businessSettings]);
+
   const taxableAmount = Math.max(0, subtotal - discountAmount);
-  const taxAmount = taxableAmount * 0.18; // 18% GST
+  const taxAmount = taxableAmount * taxRate;
   const totalAmount = taxableAmount + taxAmount;
 
   // Coupon handler
@@ -1498,7 +1519,7 @@ export default function POSPage() {
           )}
 
           <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-            <span>Tax (18%)</span>
+            <span>{taxLabel}</span>
             <span className="font-bold text-slate-800 dark:text-slate-200">
               ₹{taxAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
@@ -1604,12 +1625,19 @@ export default function POSPage() {
         cart={cart}
         customer={selectedCustomer}
         appointmentId={appointmentId}
+        subtotal={subtotal}
+        discountAmount={discountAmount}
+        taxAmount={taxAmount}
+        totalAmount={totalAmount}
+        businessSettings={businessSettings}
       />
 
       <ReceiptModal
         isOpen={isReceiptOpen}
         onClose={() => setIsReceiptOpen(false)}
         invoice={completedInvoice}
+        business={business}
+        businessSettings={businessSettings}
       />
 
     </div>
