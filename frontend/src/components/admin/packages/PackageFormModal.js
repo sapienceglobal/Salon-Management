@@ -159,13 +159,24 @@ export default function PackageFormModal({ isOpen, onClose, initialData, service
     setFieldErrors({});
     
     try {
+      // If user added items, ensure every row has a selected service
+      const hasEmptyServiceRow = formData.items.some(i => !i.service_id);
+      if (hasEmptyServiceRow) {
+        const msg = 'Please select a salon service for all bundled service rows, or delete empty rows.';
+        setError(msg);
+        setFieldErrors({ items: msg });
+        toast.error(msg);
+        setLoading(false);
+        return;
+      }
+
       const payload = {
         name: formData.name.trim(),
         description: formData.description.trim(),
-        total_price: formData.total_price ? parseFloat(formData.total_price) : undefined,
+        total_price: formData.total_price !== '' && formData.total_price !== undefined ? parseFloat(formData.total_price) : undefined,
         validity_days: formData.validity_days ? parseInt(formData.validity_days, 10) : undefined,
         max_uses: formData.max_uses ? parseInt(formData.max_uses, 10) : undefined,
-        tax_percentage: formData.tax_percentage ? parseFloat(formData.tax_percentage) : undefined,
+        tax_percentage: formData.tax_percentage !== '' && formData.tax_percentage !== undefined ? parseFloat(formData.tax_percentage) : 18,
         items: formData.items.filter(i => i.service_id).map(i => ({
           service_id: parseInt(i.service_id, 10),
           quantity: parseInt(i.quantity, 10) || 1
@@ -174,40 +185,63 @@ export default function PackageFormModal({ isOpen, onClose, initialData, service
 
       const result = packageSchema.safeParse(payload);
       if (!result.success) {
-        setFieldErrors(formatZodErrors(result.error));
+        const formatted = formatZodErrors(result.error);
+        setFieldErrors(formatted);
+        const firstMsg = Object.values(formatted)[0] || 'Please complete all required fields';
+        setError(firstMsg);
+        toast.error(firstMsg);
         setLoading(false);
         return;
       }
 
-      // Build FormData for multipart upload
-      const submitData = new FormData();
-      submitData.append('name', payload.name);
-      if (payload.description) submitData.append('description', payload.description);
-      if (payload.total_price !== undefined) submitData.append('total_price', payload.total_price);
-      if (payload.validity_days !== undefined) submitData.append('validity_days', payload.validity_days);
-      if (payload.max_uses !== undefined) submitData.append('max_uses', payload.max_uses);
-      if (payload.tax_percentage !== undefined) submitData.append('tax_percentage', payload.tax_percentage);
-      submitData.append('items', JSON.stringify(payload.items));
-
       if (imageFile) {
+        // Build FormData for multipart file upload without manual Content-Type header
+        const submitData = new FormData();
+        submitData.append('name', payload.name);
+        if (payload.description) submitData.append('description', payload.description);
+        if (payload.total_price !== undefined) submitData.append('total_price', String(payload.total_price));
+        if (payload.validity_days !== undefined) submitData.append('validity_days', String(payload.validity_days));
+        if (payload.max_uses !== undefined) submitData.append('max_uses', String(payload.max_uses));
+        if (payload.tax_percentage !== undefined) submitData.append('tax_percentage', String(payload.tax_percentage));
+        submitData.append('items', JSON.stringify(payload.items || []));
         submitData.append('image', imageFile);
-      } else if (imagePreview === null && initialData?.image_url) {
-        submitData.append('image_url', '');
-      }
 
-      const headers = { 'Content-Type': 'multipart/form-data' };
-
-      if (initialData) {
-        await api.put(`/catalog/packages/${initialData.id}`, submitData, { headers });
-        toast.success('Package updated successfully');
+        if (initialData) {
+          await api.put(`/catalog/packages/${initialData.id}`, submitData);
+          toast.success('Package updated successfully');
+        } else {
+          await api.post('/catalog/packages', submitData);
+          toast.success('Package created successfully');
+        }
       } else {
-        await api.post('/catalog/packages', submitData, { headers });
-        toast.success('Package created successfully');
+        // Send clean JSON payload directly when no physical file is being uploaded
+        const cleanPayload = {
+          name: payload.name,
+          description: payload.description || undefined,
+          total_price: payload.total_price,
+          validity_days: payload.validity_days || null,
+          max_uses: payload.max_uses || null,
+          tax_percentage: payload.tax_percentage !== undefined ? payload.tax_percentage : 18,
+          items: payload.items || [],
+        };
+        if (imagePreview === null && initialData?.image_url) {
+          cleanPayload.image_url = '';
+        }
+
+        if (initialData) {
+          await api.put(`/catalog/packages/${initialData.id}`, cleanPayload);
+          toast.success('Package updated successfully');
+        } else {
+          await api.post('/catalog/packages', cleanPayload);
+          toast.success('Package created successfully');
+        }
       }
+
       onSuccess && onSuccess();
       onClose();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save package';
+      console.error('Failed to save package:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to save package';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -462,20 +496,26 @@ export default function PackageFormModal({ isOpen, onClose, initialData, service
                 </button>
               </div>
 
+              {fieldErrors.items && (
+                <div className="p-3 mb-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium rounded-xl flex items-center gap-2">
+                  <RiInformationLine className="shrink-0 text-sm" />
+                  <span>{fieldErrors.items}</span>
+                </div>
+              )}
+
               {formData.items.length === 0 ? (
                 <div className="text-center p-6 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-2xl text-gray-400 text-xs">
                   No services bundled yet. Click <strong>Add Service</strong> to bundle services for this package.
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {fieldErrors.items && <p className="text-red-500 text-xs mb-2 font-medium">{fieldErrors.items}</p>}
                   {formData.items.map((item, index) => (
                     <div key={index} className="flex items-center gap-3 bg-gray-50 dark:bg-white/[0.03] p-3 rounded-2xl border border-gray-100 dark:border-white/5">
                       <div className="flex-1">
                         <select
                           value={item.service_id}
                           onChange={(e) => handleItemChange(index, 'service_id', e.target.value)}
-                          className="w-full bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs sm:text-sm text-gray-900 dark:text-white outline-none focus:border-[#E91E63]"
+                          className={`w-full bg-white dark:bg-[#1a1a2e] border ${!item.service_id && fieldErrors.items ? 'border-red-400 focus:border-red-500' : 'border-gray-200 dark:border-white/10 focus:border-[#E91E63]'} rounded-xl px-3 py-2 text-xs sm:text-sm text-gray-900 dark:text-white outline-none`}
                         >
                           <option value="">Select Service...</option>
                           {services.map(s => (

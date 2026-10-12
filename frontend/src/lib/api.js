@@ -15,6 +15,11 @@ const api = axios.create({
 // Request interceptor — attach access token & CSRF token
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
+    // If request body is FormData, let browser/axios handle boundary header automatically
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+
     const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
     if (token) config.headers.Authorization = `Bearer ${token}`;
 

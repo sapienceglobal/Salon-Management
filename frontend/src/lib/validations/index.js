@@ -307,9 +307,9 @@ export const packageSchema = z.object({
   max_uses: z.string().optional().or(z.number().min(1)).or(z.literal('')),
   tax_percentage: z.string().optional().or(z.number().min(0).max(100)).or(z.literal('')),
   items: z.array(z.object({
-    service_id: z.number().min(1, 'Service is required'),
-    quantity: z.number().min(1, 'Quantity must be at least 1')
-  })).min(1, 'At least one service must be included').optional()
+    service_id: z.coerce.number().min(1, 'Please select a valid service'),
+    quantity: z.coerce.number().min(1, 'Quantity must be at least 1')
+  })).optional().nullable()
 });
 
 export const loginSchema = z.object({

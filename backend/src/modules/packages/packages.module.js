@@ -18,7 +18,7 @@ class PackageService {
     const packages = await db('packages').where({ business_id: businessId }).orderBy('created_at', 'desc');
     for (const pkg of packages) {
       pkg.items = await db('package_items as pi')
-        .join('salon_services as s', 'pi.service_id', 's.id')
+        .leftJoin('salon_services as s', 'pi.service_id', 's.id')
         .where('pi.package_id', pkg.id)
         .select('pi.*', 's.name as service_name', 's.price as service_price');
     }
@@ -29,7 +29,7 @@ class PackageService {
     const pkg = await db('packages').where({ id, business_id: businessId }).first();
     if (!pkg) throw ApiError.notFound('Package not found');
     pkg.items = await db('package_items as pi')
-      .join('salon_services as s', 'pi.service_id', 's.id')
+      .leftJoin('salon_services as s', 'pi.service_id', 's.id')
       .where('pi.package_id', id)
       .select('pi.*', 's.name as service_name', 's.price as service_price');
     return pkg;

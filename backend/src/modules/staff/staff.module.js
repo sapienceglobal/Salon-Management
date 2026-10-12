@@ -312,13 +312,32 @@ class StaffService {
       })
       .del();
 
-    const rows = (data || []).filter(d => d.is_assigned).map(d => ({
-      staff_id: targetUserId,
-      service_id: d.service_id,
-      duration_mins: d.duration_mins || null,
-      price: d.price || null,
-      is_assigned: true
-    }));
+    let list = [];
+    if (Array.isArray(data)) {
+      list = data;
+    } else if (data && Array.isArray(data.services)) {
+      list = data.services;
+    } else if (data && Array.isArray(data.service_ids)) {
+      list = data.service_ids.map(id => ({ service_id: id, is_assigned: true }));
+    }
+
+    const rows = list
+      .filter(d => {
+        if (typeof d === 'number' || typeof d === 'string') return true;
+        return d && d.is_assigned !== false;
+      })
+      .map(d => {
+        const sId = typeof d === 'object' ? (d.service_id || d.id) : Number(d);
+        return {
+          staff_id: targetUserId,
+          service_id: sId,
+          duration_mins: (typeof d === 'object' && d.duration_mins) ? d.duration_mins : null,
+          price: (typeof d === 'object' && d.price) ? d.price : null,
+          is_assigned: true,
+        };
+      })
+      .filter(r => r.service_id);
+
     if (rows.length > 0) {
       await db('staff_services').insert(rows);
     }
@@ -363,11 +382,27 @@ class StaffService {
 
   // Profile - Leaves
   async getLeaves(staffId, businessId) {
-    return db('staff_leaves').where({ staff_id: staffId }).orderBy('date', 'desc');
+    const staff = await db('staff_members').where({ id: staffId, business_id: businessId }).first();
+    const targetUserId = staff ? staff.user_id : staffId;
+    return db('staff_leaves')
+      .where(function() {
+        this.where('staff_id', staffId).orWhere('staff_id', targetUserId);
+      })
+      .orderBy('date', 'desc');
   }
 
   async addLeave(staffId, businessId, data) {
-    const [id] = await db('staff_leaves').insert({ staff_id: staffId, ...data });
+    const staff = await db('staff_members').where({ id: staffId, business_id: businessId }).first();
+    const targetUserId = staff ? staff.user_id : staffId;
+    const [id] = await db('staff_leaves').insert({
+      staff_id: targetUserId,
+      date: data.date,
+      leave_type: data.leave_type || 'full_day',
+      status: data.status || 'approved',
+      reason: data.reason || null,
+      start_time: data.start_time || null,
+      end_time: data.end_time || null,
+    });
     return db('staff_leaves').where({ id }).first();
   }
   async deleteStaff(id, businessId) {
@@ -580,7 +615,8 @@ const getStaffServices = asyncHandler(async (req, res) => {
   ApiResponse.ok('Services fetched', data).send(res);
 });
 const updateStaffServices = asyncHandler(async (req, res) => {
-  const data = await staffService.updateServices(req.params.id, req.user.business_id, req.body.services);
+  const payload = req.body.services !== undefined ? req.body.services : (req.body.service_ids !== undefined ? req.body.service_ids : req.body);
+  const data = await staffService.updateServices(req.params.id, req.user.business_id, payload);
   ApiResponse.ok('Services updated', data).send(res);
 });
 const getStaffSchedule = asyncHandler(async (req, res) => {
