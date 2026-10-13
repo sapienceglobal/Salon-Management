@@ -108,7 +108,7 @@ const getRewardTxn = asyncHandler(async (req, res) => {
 const router = Router();
 router.use(authenticate, businessScope());
 
-router.post('/wallet/topup', validate({ body: z.object({ customer_id: z.number().int().positive(), amount: z.number().positive(), description: z.string().optional() }) }), topUp);
+router.post('/wallet/topup', authorize('super_admin', 'admin'), validate({ body: z.object({ customer_id: z.number().int().positive(), amount: z.number().positive(), description: z.string().optional() }) }), topUp);
 router.get('/wallet/:id/balance', validate({ params: idParam }), getBalance);
 router.get('/wallet/:id/transactions', validate({ params: idParam }), getWalletTxn);
 router.post('/rewards/redeem', validate({ body: z.object({ customer_id: z.number().int().positive(), points: z.number().int().positive(), description: z.string().optional() }) }), redeemPoints);

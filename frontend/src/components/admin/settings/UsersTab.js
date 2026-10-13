@@ -80,6 +80,10 @@ export default function UsersTab() {
   };
 
   const handleToggleUserStatus = async (targetUser) => {
+    if (Number(targetUser.id) === Number(currentUser?.id)) {
+      toast.error('You cannot disable your own administrator account');
+      return;
+    }
     const newStatus = targetUser.is_active === false;
     try {
       await api.put(`/settings/users/${targetUser.id}`, { is_active: newStatus });
@@ -337,28 +341,34 @@ export default function UsersTab() {
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleUserStatus(user)}
-                        className={`text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${
-                          user.is_active !== false
-                            ? 'text-amber-600 hover:bg-amber-50 border-amber-200 dark:border-amber-900/40'
-                            : 'text-green-600 hover:bg-green-50 border-green-200 dark:border-green-900/40'
-                        }`}
-                      >
-                        {user.is_active !== false ? 'Disable' : 'Enable'}
-                      </button>
+                      {Number(user.id) === Number(currentUser?.id) ? (
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-pink-50 dark:bg-pink-950/30 text-[#E91E63] border border-pink-200 dark:border-pink-900/40 select-none">
+                          Your Account
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleUserStatus(user)}
+                            className={`text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${
+                              user.is_active !== false
+                                ? 'text-amber-600 hover:bg-amber-50 border-amber-200 dark:border-amber-900/40'
+                                : 'text-green-600 hover:bg-green-50 border-green-200 dark:border-green-900/40'
+                            }`}
+                          >
+                            {user.is_active !== false ? 'Disable' : 'Enable'}
+                          </button>
 
-                      {Number(user.id) !== Number(currentUser?.id) && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteUser(user)}
-                          className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1"
-                          title="Delete user permanently"
-                        >
-                          <RiDeleteBinLine className="text-sm" />
-                          <span>Delete</span>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(user)}
+                            className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1"
+                            title="Delete user permanently"
+                          >
+                            <RiDeleteBinLine className="text-sm" />
+                            <span>Delete</span>
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>

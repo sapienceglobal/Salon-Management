@@ -100,9 +100,20 @@ class SettingsService {
     });
     return db('users').where({ id }).select('id', 'email', 'first_name', 'last_name', 'role', 'avatar_url', 'is_active').first();
   }
-  async updateUser(userId, businessId, data) {
+  async updateUser(userId, businessId, data, currentUserId) {
     const user = await db('users').where({ id: userId, business_id: businessId }).first();
     if (!user) throw ApiError.notFound('User not found');
+
+    // Prevent admin from disabling or demoting their own account
+    if (Number(userId) === Number(currentUserId)) {
+      if (data.is_active === false) {
+        throw ApiError.badRequest('You cannot disable your own administrator account');
+      }
+      if (data.role && !['admin', 'super_admin'].includes(data.role)) {
+        throw ApiError.badRequest('You cannot revoke your own administrator privileges');
+      }
+    }
+
     if (data.avatar_url && user.avatar_url && data.avatar_url !== user.avatar_url) {
       deleteUploadedFile(user.avatar_url);
     }
@@ -194,7 +205,9 @@ router.put('/users/:id', validate({ params: idParam, body: z.object({
   first_name: z.string().min(1).max(100).optional(), last_name: z.string().max(100).optional(),
   phone: z.string().max(20).optional(), role: z.enum(['admin', 'manager', 'staff', 'receptionist']).optional(), is_active: z.boolean().optional(),
   avatar_url: z.string().max(500).optional().nullable(),
-}) }), asyncHandler(async (req, res) => { ApiResponse.ok('User updated', await settingsService.updateUser(req.params.id, req.user.business_id, req.body)).send(res); }));
+}) }), asyncHandler(async (req, res) => { 
+  ApiResponse.ok('User updated', await settingsService.updateUser(req.params.id, req.user.business_id, req.body, req.user.id)).send(res); 
+}));
 router.delete('/users/:id', validate({ params: idParam }), asyncHandler(async (req, res) => { 
   ApiResponse.ok('User deleted successfully', await settingsService.deleteUser(req.params.id, req.user.business_id, req.user.id)).send(res); 
 }));
