@@ -40,7 +40,7 @@ export function AuthProvider({ children }) {
     }
     const userData = payload?.user || res?.user;
     setUser(userData || null);
-    return res;
+    return { ...payload, user: userData, accessToken: token };
   };
 
   const register = async (data) => {

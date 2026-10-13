@@ -252,17 +252,17 @@ const expenseUpdateSchema = expensePayloadSchema.partial();
 
 // ===== ROUTES =====
 const router = Router();
-router.use(authenticate, businessScope());
+router.use(authenticate, businessScope(), authorize('super_admin', 'admin'));
 
-router.post('/upload', authorize('super_admin', 'admin', 'manager'), singleDocument('receipt'), uploadReceipt);
+router.post('/upload', singleDocument('receipt'), uploadReceipt);
 router.get('/categories', getCategories);
-router.post('/categories', authorize('super_admin', 'admin', 'manager'), validate({ body: z.object({ name: z.string().min(1).max(255), description: z.string().max(500).optional() }) }), createCategory);
+router.post('/categories', validate({ body: z.object({ name: z.string().min(1).max(255), description: z.string().max(500).optional() }) }), createCategory);
 
 router.get('/', getExpenses);
-router.post('/bulk-delete', authorize('super_admin', 'admin'), bulkDeleteExpenses);
+router.post('/bulk-delete', bulkDeleteExpenses);
 router.get('/:id', validate({ params: idParam }), getExpenseById);
-router.post('/', authorize('super_admin', 'admin', 'manager'), validate({ body: expensePayloadSchema }), createExpense);
-router.put('/:id', authorize('super_admin', 'admin', 'manager'), validate({ params: idParam, body: expenseUpdateSchema }), updateExpense);
-router.delete('/:id', authorize('super_admin', 'admin'), validate({ params: idParam }), deleteExpense);
+router.post('/', validate({ body: expensePayloadSchema }), createExpense);
+router.put('/:id', validate({ params: idParam, body: expenseUpdateSchema }), updateExpense);
+router.delete('/:id', validate({ params: idParam }), deleteExpense);
 
 export default router;

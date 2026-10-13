@@ -29,6 +29,7 @@ import {
   RiFilter3Line,
 } from 'react-icons/ri';
 import AddAppointmentModal from '@/components/admin/appointments/AddAppointmentModal';
+import AppointmentSuccessModal from '@/components/admin/appointments/AppointmentSuccessModal';
 import AppointmentDetailsDrawer from '@/components/admin/appointments/AppointmentDetailsDrawer';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import BulkActionBar from '@/components/admin/common/BulkActionBar';
@@ -110,6 +111,7 @@ export default function AppointmentsPage() {
   const [preselectedCustomerId, setPreselectedCustomerId] = useState('');
   const [backendStats, setBackendStats] = useState(null);
   const [businessSettings, setBusinessSettings] = useState(null);
+  const [successAppointment, setSuccessAppointment] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showCancelled, setShowCancelled] = useState(true);
   const [prefilledSlot, setPrefilledSlot] = useState(null);
@@ -210,9 +212,12 @@ export default function AppointmentsPage() {
         setBackendStats(statsRes.value.data?.data || statsRes.value.data);
       }
       if (settingsRes.status === 'fulfilled') {
-        setBusinessSettings(
-          settingsRes.value.data?.settings || settingsRes.value.data?.data?.settings || null
-        );
+        const sData = settingsRes.value.data?.data || settingsRes.value.data || {};
+        setBusinessSettings({
+          ...(sData.settings || {}),
+          ...(sData.business || {}),
+          business_name: sData.business?.name || sData.settings?.business_name || 'Kaira Makeover'
+        });
       }
     } catch (err) {
       console.error(err);
@@ -950,9 +955,12 @@ export default function AppointmentsPage() {
       <AddAppointmentModal
         isOpen={isAddModalOpen}
         onClose={handleCloseModal}
-        onSuccess={() => {
+        onSuccess={(bookedAppt, isNew) => {
           handleCloseModal();
           fetchData();
+          if (isNew && bookedAppt) {
+            setSuccessAppointment(bookedAppt);
+          }
         }}
         staffList={staffList}
         customersList={customersList}
@@ -961,6 +969,14 @@ export default function AppointmentsPage() {
         editData={editData}
         preselectedCustomerId={preselectedCustomerId}
         initialSlot={prefilledSlot}
+        businessSettings={businessSettings}
+      />
+
+      {/* Appointment Success Confirmation Modal with WhatsApp Notify & Share */}
+      <AppointmentSuccessModal
+        isOpen={!!successAppointment}
+        onClose={() => setSuccessAppointment(null)}
+        appointment={successAppointment}
         businessSettings={businessSettings}
       />
 

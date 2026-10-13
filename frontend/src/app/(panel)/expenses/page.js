@@ -14,6 +14,8 @@ import AddExpenseModal from '@/components/admin/expenses/AddExpenseModal';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import BulkActionBar from '@/components/admin/common/BulkActionBar';
+import { useAuth } from '@/context/AuthContext';
+import AccessDenied from '@/components/admin/common/AccessDenied';
 
 // Helper for exact date formatting matching screenshot: "28 Sep 2026"
 function formatScreenshotDate(dateStr) {
@@ -68,6 +70,7 @@ const METHOD_BADGES = {
 };
 
 export default function ExpensesPage() {
+  const { user } = useAuth();
   const { confirm } = useConfirm();
 
   // State
@@ -315,6 +318,15 @@ export default function ExpensesPage() {
   const dateRangeDisplay = startDate && endDate 
     ? `${formatScreenshotDate(startDate)} - ${formatScreenshotDate(endDate)}`
     : '01 Sep 2026 - 30 Sep 2026';
+
+  if (user && user.role !== 'admin' && user.role !== 'super_admin') {
+    return (
+      <AccessDenied 
+        title="Expenses Access Restricted" 
+        message="Salon expense and financial records are strictly restricted to Administrator accounts." 
+      />
+    );
+  }
 
   return (
     <div className="relative min-h-[calc(100vh-70px)] w-full overflow-hidden animate-[fadeIn_0.3s_ease-out]">

@@ -9,10 +9,13 @@ import { formatCurrency } from '@/lib/utils';
 import { 
   RiCloseLine, RiEdit2Line, RiCalendarCheckLine, RiMoneyDollarCircleLine, 
   RiPhoneLine, RiMailLine, RiUserLine, RiScissorsLine, RiTimeLine,
-  RiInformationLine
+  RiInformationLine, RiWhatsappFill
 } from 'react-icons/ri';
 import api from '@/lib/api';
+import toast from 'react-hot-toast';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
+import { formatWhatsAppPhone, generateAppointmentMessage } from './AppointmentSuccessModal';
+import { useAuth } from '@/context/AuthContext';
 
 const STATUS_CONFIG = {
   planned: { label: 'Planned', color: 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20', dotColor: 'bg-blue-500' },
@@ -25,6 +28,7 @@ const STATUS_CONFIG = {
 
 export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment, onEdit, onStatusUpdate, businessSettings }) {
   const router = useRouter();
+  const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [error, setError] = useState(null);
@@ -297,7 +301,30 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
         {/* ══════════════════════════════════════════════════════════
             MODAL FOOTER
            ══════════════════════════════════════════════════════════ */}
-        <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
+        <div className="flex items-center justify-end gap-2.5 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01] flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              const phone = formatWhatsAppPhone(appointment.customer_phone);
+              if (!phone) {
+                toast.error('Customer phone number is missing or invalid.');
+                return;
+              }
+              const msg = generateAppointmentMessage({
+                ...appointment,
+                business_name: businessSettings?.business_name || businessSettings?.name,
+                business_phone: businessSettings?.phone,
+                business_address: businessSettings?.address
+              });
+              window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+              toast.success('Opening WhatsApp with confirmation message!');
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-white text-[13px] font-bold shadow-md shadow-[#25D366]/20 transition-all cursor-pointer mr-auto"
+            title="Send WhatsApp confirmation to client"
+          >
+            <RiWhatsappFill className="text-lg" /> WhatsApp
+          </button>
+
           <button 
             type="button" 
             onClick={() => {
@@ -311,18 +338,20 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
             <RiEdit2Line className="text-base" /> Edit
           </button>
           
-          <button 
-            type="button"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#E91E63] hover:bg-[#D81B60] text-white text-[14px] font-bold shadow-lg shadow-[#E91E63]/25 hover:shadow-[#E91E63]/35 transition-all cursor-pointer"
-            onClick={() => {
-              onClose();
-              setTimeout(() => {
-                router.push(`/billing?appointment_id=${appointment.id}`);
-              }, 250);
-            }}
-          >
-            <RiMoneyDollarCircleLine className="text-lg" /> Checkout
-          </button>
+          {user?.role !== 'manager' && (
+            <button 
+              type="button"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#E91E63] hover:bg-[#D81B60] text-white text-[14px] font-bold shadow-lg shadow-[#E91E63]/25 hover:shadow-[#E91E63]/35 transition-all cursor-pointer"
+              onClick={() => {
+                onClose();
+                setTimeout(() => {
+                  router.push(`/billing?appointment_id=${appointment.id}`);
+                }, 250);
+              }}
+            >
+              <RiMoneyDollarCircleLine className="text-lg" /> Checkout
+            </button>
+          )}
         </div>
       </div>
     </div>,

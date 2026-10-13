@@ -6,7 +6,7 @@ import { createInvoiceSchema, addPaymentSchema, refundPaymentSchema, invoiceIdPa
 import { createInvoice, getInvoices, getInvoice, addPayment, refundPayment, updateInvoice, deleteInvoice } from './billing.controller.js';
 
 const router = Router();
-router.use(authenticate, businessScope());
+router.use(authenticate, businessScope(), authorize('super_admin', 'admin'));
 
 router.get('/', validate(listInvoicesSchema), getInvoices);
 router.get('/:id', validate(invoiceIdParamSchema), getInvoice);
@@ -14,6 +14,6 @@ router.post('/', validate(createInvoiceSchema), createInvoice);
 router.put('/:id', validate(updateInvoiceSchema), updateInvoice);
 router.delete('/:id', validate(invoiceIdParamSchema), deleteInvoice);
 router.post('/:id/payment', validate(addPaymentSchema), addPayment);
-router.post('/:id/refund', authorize('super_admin', 'admin', 'manager'), validate(refundPaymentSchema), refundPayment);
+router.post('/:id/refund', validate(refundPaymentSchema), refundPayment);
 
 export default router;

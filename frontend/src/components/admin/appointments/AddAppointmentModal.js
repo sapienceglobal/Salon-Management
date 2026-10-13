@@ -452,13 +452,67 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
         return;
       }
 
+      let createdOrUpdated;
       if (editData) {
-        await api.patch(`/appointments/${editData.id}`, payload);
+        const res = await api.patch(`/appointments/${editData.id}`, payload);
+        createdOrUpdated = res.data?.data || res.data;
       } else {
-        await api.post('/appointments', payload);
+        const res = await api.post('/appointments', payload);
+        createdOrUpdated = res.data?.data || res.data;
       }
       toast.success(editData ? 'Appointment updated successfully!' : 'Appointment booked successfully!');
-      onSuccess();
+
+      const customer = customersList?.find(c => String(c.id) === String(payload.customer_id));
+      const staff = staffList?.find(s => String(s.id) === String(payload.staff_id)) || selectedStaffMember;
+      const selectedServicesList = servicesList?.filter(s => payload.service_ids?.includes(s.id) || s.id === payload.service_id) || [];
+
+      // Format human-readable date & time
+      let formattedDate = payload.appointment_date;
+      try {
+        const [y, m, d] = payload.appointment_date.split('-');
+        const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+        formattedDate = dateObj.toLocaleDateString('en-IN', {
+          weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+        });
+      } catch (e) {
+        console.error(e);
+      }
+
+      const formatSlot = (t) => {
+        if (!t) return '';
+        const [h, min] = t.split(':');
+        const hr = parseInt(h);
+        const ampm = hr >= 12 ? 'PM' : 'AM';
+        const h12 = hr % 12 || 12;
+        return `${h12}:${min} ${ampm}`;
+      };
+
+      const successData = {
+        id: createdOrUpdated?.id,
+        appointment_date: payload.appointment_date,
+        formatted_date: formattedDate,
+        start_time: payload.start_time,
+        end_time: payload.end_time,
+        formatted_time: `${formatSlot(payload.start_time)} - ${formatSlot(payload.end_time)}`,
+        customer_name: customer ? `${customer.first_name} ${customer.last_name || ''}`.trim() : (customerSearch || 'Valued Customer'),
+        customer_phone: customer?.phone || '',
+        customer_email: customer?.email || '',
+        staff_name: staff ? `${staff.first_name} ${staff.last_name || ''}`.trim() : 'Any Available Stylist',
+        staff_role: staff?.designation || 'Hair & Beauty Specialist',
+        services: selectedServicesList.map(s => ({
+          name: s.name,
+          duration: s.duration_minutes || 30,
+          price: s.price
+        })),
+        service_name: selectedServicesList.map(s => s.name).join(', ') || 'Salon Service',
+        total_price: selectedServicesList.reduce((sum, s) => sum + parseFloat(s.price || 0), 0),
+        total_duration: selectedServicesList.reduce((sum, s) => sum + parseInt(s.duration_minutes || 30), 0) || formData.duration_minutes || 30,
+        notes: payload.notes
+      };
+
+      if (typeof onSuccess === 'function') {
+        onSuccess(successData, !editData);
+      }
     } catch (err) {
       const serverMsg = err?.response?.data?.message;
       const statusCode = err?.response?.status;

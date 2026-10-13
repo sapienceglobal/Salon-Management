@@ -482,10 +482,19 @@ router.use(authenticate, businessScope(), authorize('super_admin', 'admin', 'man
 
 router.get('/summary', asyncHandler(async (req, res) => {
   const businessId = req.user.business_id;
-  ApiResponse.ok('Dashboard summary', await dashboardService.getSummary(businessId, req.query.startDate, req.query.endDate)).send(res);
+  const summary = await dashboardService.getSummary(businessId, req.query.startDate, req.query.endDate);
+  
+  // If user is manager or non-admin, sanitize financial figures
+  if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+    if (summary?.today) summary.today.revenue = 0;
+    if (summary?.trends?.today_revenue) summary.trends.today_revenue = { value: 0, is_up: false };
+    if (summary?.monthly_revenue) summary.monthly_revenue = 0;
+  }
+
+  ApiResponse.ok('Dashboard summary', summary).send(res);
 }));
 
-router.get('/revenue-chart', asyncHandler(async (req, res) => {
+router.get('/revenue-chart', authorize('super_admin', 'admin'), asyncHandler(async (req, res) => {
   const businessId = req.user.business_id;
   ApiResponse.ok('Revenue chart', await dashboardService.getRevenueChart(businessId, req.query.startDate, req.query.endDate)).send(res);
 }));

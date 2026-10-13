@@ -22,8 +22,10 @@ import ViewDraftsDrawer from '@/components/admin/billing/ViewDraftsDrawer';
 import ViewInvoicesDrawer from '@/components/admin/billing/ViewInvoicesDrawer';
 import { formatCurrency, getImageUrl } from '@/lib/utils';
 import { useConfirm } from '@/context/ConfirmContext';
+import { useAuth } from '@/context/AuthContext';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
+import AccessDenied from '@/components/admin/common/AccessDenied';
 
 const getShiftLabel = (shift) => {
   switch (shift) {
@@ -39,6 +41,7 @@ const getShiftLabel = (shift) => {
 };
 
 export default function POSPage() {
+  const { user } = useAuth();
   const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState('Services'); // 'Services' | 'Products' | 'Packages'
   const [genderFilter, setGenderFilter] = useState('all'); // 'all' | 'male' | 'female'
@@ -624,6 +627,15 @@ export default function POSPage() {
     setCompletedInvoice(invoiceData);
     setIsReceiptOpen(true);
   };
+
+  if (user && user.role !== 'admin' && user.role !== 'super_admin') {
+    return (
+      <AccessDenied 
+        title="POS & Billing Restricted" 
+        message="POS, billing, and invoice transactions are strictly restricted to Administrator accounts." 
+      />
+    );
+  }
 
   return (
     <div className="relative min-h-[calc(100vh-70px)] flex flex-col lg:flex-row gap-5 p-4 sm:p-5 lg:p-6 bg-[#fcfcfe] dark:bg-[#0f0f1a] text-slate-800 dark:text-slate-100 font-sans transition-colors">

@@ -1,13 +1,17 @@
 import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '@/lib/api';
-import { RiAddLine, RiUserSettingsLine, RiShieldStarLine, RiUserLine, RiCloseLine, RiLockPasswordLine, RiMailLine, RiPhoneLine } from 'react-icons/ri';
+import { RiAddLine, RiUserSettingsLine, RiShieldStarLine, RiUserLine, RiCloseLine, RiLockPasswordLine, RiMailLine, RiPhoneLine, RiDeleteBinLine } from 'react-icons/ri';
 import { createPortal } from 'react-dom';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
+import { useConfirm } from '@/context/ConfirmContext';
+import { useAuth } from '@/context/AuthContext';
 
 const emptySubscribe = () => () => {};
 
 export default function UsersTab() {
+  const { user: currentUser } = useAuth();
+  const { confirm } = useConfirm();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -84,6 +88,29 @@ export default function UsersTab() {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Failed to update user status');
+    }
+  };
+
+  const handleDeleteUser = async (targetUser) => {
+    if (Number(targetUser.id) === Number(currentUser?.id)) {
+      toast.error('You cannot delete your own account');
+      return;
+    }
+    const isConfirmed = await confirm({
+      title: 'Delete User Account',
+      message: `Are you sure you want to permanently delete "${targetUser.first_name} ${targetUser.last_name || ''}" (${targetUser.email})? This user will permanently lose access to the salon system.`,
+      confirmText: 'Delete User',
+      danger: true
+    });
+    if (!isConfirmed) return;
+
+    try {
+      await api.delete(`/settings/users/${targetUser.id}`);
+      toast.success('User deleted successfully');
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to delete user');
     }
   };
 
@@ -309,17 +336,31 @@ export default function UsersTab() {
                     </span>
                   </td>
                   <td className="p-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleUserStatus(user)}
-                      className={`text-xs font-semibold px-3 py-1 rounded-lg border transition-colors cursor-pointer ${
-                        user.is_active !== false
-                          ? 'text-red-600 hover:bg-red-50 border-red-200 dark:border-red-900/40'
-                          : 'text-green-600 hover:bg-green-50 border-green-200 dark:border-green-900/40'
-                      }`}
-                    >
-                      {user.is_active !== false ? 'Disable' : 'Enable'}
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleUserStatus(user)}
+                        className={`text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${
+                          user.is_active !== false
+                            ? 'text-amber-600 hover:bg-amber-50 border-amber-200 dark:border-amber-900/40'
+                            : 'text-green-600 hover:bg-green-50 border-green-200 dark:border-green-900/40'
+                        }`}
+                      >
+                        {user.is_active !== false ? 'Disable' : 'Enable'}
+                      </button>
+
+                      {Number(user.id) !== Number(currentUser?.id) && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUser(user)}
+                          className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1"
+                          title="Delete user permanently"
+                        >
+                          <RiDeleteBinLine className="text-sm" />
+                          <span>Delete</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))

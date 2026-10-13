@@ -29,11 +29,14 @@ import api from '@/lib/api';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import ReceiptModal from '../billing/ReceiptModal';
 import AppointmentDetailsDrawer from '../appointments/AppointmentDetailsDrawer';
+import { useAuth } from '@/context/AuthContext';
 
 export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit, onDelete }) {
   const router = useRouter();
+  const { user } = useAuth();
+  const isManager = user?.role === 'manager';
   const { confirm } = useConfirm();
-  const [activeTab, setActiveTab] = useState('billing');
+  const [activeTab, setActiveTab] = useState('appointments');
   const [mounted, setMounted] = useState(false);
 
   // Data states
@@ -105,7 +108,8 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
 
   if (!mounted || !isOpen || !customer) return null;
 
-  const TABS = ['Billing', 'Wallet', 'Points', 'Packages', 'Membership', 'Appointments'];
+  const allTabs = ['Billing', 'Wallet', 'Points', 'Packages', 'Membership', 'Appointments'];
+  const TABS = isManager ? allTabs.filter(t => t !== 'Billing' && t !== 'Wallet') : allTabs;
 
   return createPortal(
     <Fragment>
@@ -200,15 +204,17 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
 
               {/* Action Buttons */}
               <div className="flex gap-2">
-                <button 
-                  onClick={() => {
-                    onClose();
-                    setTimeout(() => router.push(`/billing?customer_id=${customer.id}`), 150);
-                  }}
-                  className="px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors font-semibold text-xs text-gray-700 dark:text-gray-200 cursor-pointer"
-                >
-                  Create Invoice
-                </button>
+                {!isManager && (
+                  <button 
+                    onClick={() => {
+                      onClose();
+                      setTimeout(() => router.push(`/billing?customer_id=${customer.id}`), 150);
+                    }}
+                    className="px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors font-semibold text-xs text-gray-700 dark:text-gray-200 cursor-pointer"
+                  >
+                    Create Invoice
+                  </button>
+                )}
                 <button 
                   onClick={() => {
                     onClose();

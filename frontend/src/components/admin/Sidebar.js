@@ -287,33 +287,66 @@ function SidebarInner({ collapsed, onToggle }) {
       {!collapsed ? (
         <div className="px-3 py-1.5 shrink-0">
           <div className="relative overflow-hidden rounded-2xl p-3 bg-gradient-to-br from-[#231026] via-[#161224] to-[#0D101C] border border-[#E91E63]/25 hover:border-[#E91E63]/40 shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-all group">
-            <Link href="/settings" className="flex items-center gap-2.5">
-              {/* Circular Pink Gradient Avatar */}
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] via-[#F43F5E] to-[#FB7185] flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_12px_rgba(233,30,99,0.35)] shrink-0 ring-2 ring-white/10">
-                {userInitials}
-              </div>
-
-              {/* User Name & Verified Icon & Email */}
-              <div className="overflow-hidden flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-white text-[13.5px] truncate group-hover:text-pink-100 transition-colors">
-                    {userName}
-                  </span>
-                  <RiCheckboxCircleFill className="text-[#E91E63] text-xs shrink-0" />
+            {user?.role !== 'manager' ? (
+              <Link href="/settings" className="flex items-center gap-2.5">
+                {/* Circular Pink Gradient Avatar */}
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] via-[#F43F5E] to-[#FB7185] flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_12px_rgba(233,30,99,0.35)] shrink-0 ring-2 ring-white/10">
+                  {userInitials}
                 </div>
-                <div className="text-[11px] text-slate-400 truncate mt-0.5">
-                  {userEmail}
+
+                {/* User Name & Verified Icon & Email */}
+                <div className="overflow-hidden flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-white text-[13.5px] truncate group-hover:text-pink-100 transition-colors">
+                      {userName}
+                    </span>
+                    <RiCheckboxCircleFill className="text-[#E91E63] text-xs shrink-0" />
+                  </div>
+                  <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                    {userEmail}
+                  </div>
+                </div>
+
+                {/* Right Chevron on Profile Card */}
+                <RiArrowRightSLine className="text-pink-400/80 text-lg shrink-0 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            ) : (
+              <div className="flex items-center gap-2.5">
+                {/* Circular Blue Gradient Avatar for Manager */}
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_12px_rgba(59,130,246,0.35)] shrink-0 ring-2 ring-white/10">
+                  {userInitials}
+                </div>
+
+                {/* User Name & Verified Icon & Email */}
+                <div className="overflow-hidden flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-white text-[13.5px] truncate">
+                      {userName}
+                    </span>
+                    <RiCheckboxCircleFill className="text-blue-400 text-xs shrink-0" />
+                  </div>
+                  <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                    {userEmail}
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Right Chevron on Profile Card */}
-              <RiArrowRightSLine className="text-pink-400/80 text-lg shrink-0 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-
-            {/* Branch Pill */}
-            <div className="mt-2 flex justify-center">
+            {/* Account Role Badge & Branch Pill */}
+            <div className="mt-2 flex flex-col gap-1.5 items-center">
               <div
-                className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#0A0D17]/85 border border-[#E91E63]/30 text-slate-300 text-[10.5px] font-semibold shadow-inner"
+                className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border text-[10.5px] font-bold shadow-inner ${
+                  user?.role === 'manager'
+                    ? 'bg-blue-950/70 border-blue-500/40 text-blue-300'
+                    : 'bg-pink-950/60 border-[#E91E63]/40 text-pink-300'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${user?.role === 'manager' ? 'bg-blue-400' : 'bg-[#E91E63]'}`}></span>
+                <span className="capitalize">{user?.role === 'manager' ? 'Manager Account' : 'Admin Account'}</span>
+              </div>
+
+              <div
+                className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#0A0D17]/85 border border-white/10 text-slate-400 text-[10px] font-semibold"
               >
                 <RiStore2Line className="text-[#E91E63] text-xs shrink-0" />
                 <span className="truncate max-w-[140px]">{branchName}</span>
@@ -323,19 +356,37 @@ function SidebarInner({ collapsed, onToggle }) {
         </div>
       ) : (
         <div className="px-3 py-2 flex flex-col items-center shrink-0">
-          <Link
-            href="/settings"
-            className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] via-[#F43F5E] to-[#FB7185] flex items-center justify-center text-white font-bold text-xs shadow-[0_4px_12px_rgba(233,30,99,0.35)] ring-2 ring-white/10 hover:scale-105 transition-transform"
-            title={`${userName} (${userEmail})`}
-          >
-            {userInitials}
-          </Link>
+          {user?.role !== 'manager' ? (
+            <Link
+              href="/settings"
+              className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] via-[#F43F5E] to-[#FB7185] flex items-center justify-center text-white font-bold text-xs shadow-[0_4px_12px_rgba(233,30,99,0.35)] ring-2 ring-white/10 hover:scale-105 transition-transform"
+              title={`${userName} (${userEmail})`}
+            >
+              {userInitials}
+            </Link>
+          ) : (
+            <div
+              className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white font-bold text-xs shadow-[0_4px_12px_rgba(59,130,246,0.35)] ring-2 ring-white/10"
+              title={`${userName} (${userEmail})`}
+            >
+              {userInitials}
+            </div>
+          )}
         </div>
       )}
 
       {/* --- Grouped Navigation Items (Scrollable) --- */}
       <nav className="flex-1 px-2.5 py-1 overflow-y-auto no-scrollbar flex flex-col">
-        {NAV_GROUPS.map((group) => (
+        {NAV_GROUPS.map((group) => {
+          // If logged-in user is manager, hide billing, invoices, expenses, and financial reports
+          if (user?.role === 'manager') {
+            const allowedItems = group.items.filter(
+              (item) => !['/billing', '/expenses', '/reports'].includes(item.href)
+            );
+            return { ...group, items: allowedItems };
+          }
+          return group;
+        }).filter((group) => group.items.length > 0).map((group) => (
           <div key={group.title} className="mb-1.5">
             {/* Category Header with Divider */}
             {!collapsed ? (
@@ -585,35 +636,51 @@ function SidebarInner({ collapsed, onToggle }) {
       {/* --- Bottom Footer (Settings & Logout Only) --- */}
       <div className="border-t border-white/[0.08] p-3 shrink-0 bg-[#090D16]/95 backdrop-blur-sm">
         {!collapsed ? (
-          <div className="grid grid-cols-2 gap-2">
-            {/* Settings */}
-            <Link
-              href="/settings"
-              className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 hover:text-white hover:bg-white/[0.08] transition-all text-xs font-semibold group"
-            >
-              <RiSettings4Line className="text-base text-slate-400 group-hover:text-white shrink-0" />
-              <span className="truncate">Settings</span>
-            </Link>
+          user?.role !== 'manager' ? (
+            <div className="grid grid-cols-2 gap-2">
+              {/* Settings */}
+              <Link
+                href="/settings"
+                className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 hover:text-white hover:bg-white/[0.08] transition-all text-xs font-semibold group"
+              >
+                <RiSettings4Line className="text-base text-slate-400 group-hover:text-white shrink-0" />
+                <span className="truncate">Settings</span>
+              </Link>
 
-            {/* Logout */}
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl bg-[#E91E63]/10 border border-[#E91E63]/25 text-[#E91E63] hover:bg-[#E91E63]/20 hover:border-[#E91E63]/40 transition-all text-xs font-semibold group cursor-pointer"
-            >
-              <RiLogoutBoxRLine className="text-base text-[#E91E63] group-hover:scale-110 transition-transform shrink-0" />
-              <span className="truncate">Logout</span>
-            </button>
-          </div>
+              {/* Logout */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl bg-[#E91E63]/10 border border-[#E91E63]/25 text-[#E91E63] hover:bg-[#E91E63]/20 hover:border-[#E91E63]/40 transition-all text-xs font-semibold group cursor-pointer"
+              >
+                <RiLogoutBoxRLine className="text-base text-[#E91E63] group-hover:scale-110 transition-transform shrink-0" />
+                <span className="truncate">Logout</span>
+              </button>
+            </div>
+          ) : (
+            <div className="w-full">
+              {/* Logout Only for Manager */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/40 transition-all text-xs font-semibold group cursor-pointer"
+              >
+                <RiLogoutBoxRLine className="text-base text-rose-400 group-hover:scale-110 transition-transform shrink-0" />
+                <span className="truncate">Logout</span>
+              </button>
+            </div>
+          )
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <Link
-              href="/settings"
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all"
-              title="Settings"
-            >
-              <RiSettings4Line className="text-xl" />
-            </Link>
+            {user?.role !== 'manager' && (
+              <Link
+                href="/settings"
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+                title="Settings"
+              >
+                <RiSettings4Line className="text-xl" />
+              </Link>
+            )}
             <button
               type="button"
               onClick={handleLogout}

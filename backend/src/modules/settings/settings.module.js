@@ -109,10 +109,29 @@ class SettingsService {
     await db('users').where({ id: userId }).update({ ...cleanObject(data), updated_at: db.fn.now() });
     return db('users').where({ id: userId }).select('id', 'email', 'first_name', 'last_name', 'role', 'avatar_url', 'is_active').first();
   }
-  async deleteUser(userId, businessId) {
+  async deleteUser(userId, businessId, currentUserId) {
+    if (Number(userId) === Number(currentUserId)) {
+      throw ApiError.badRequest('You cannot delete your own account');
+    }
     const user = await db('users').where({ id: userId, business_id: businessId }).first();
     if (!user) throw ApiError.notFound('User not found');
-    await db('users').where({ id: userId }).update({ is_active: false, updated_at: db.fn.now() });
+
+    if (user.avatar_url) {
+      deleteUploadedFile(user.avatar_url);
+    }
+
+    // Clean up any linked staff records and related data
+    const staff = await db('staff_members').where({ user_id: userId, business_id: businessId }).first();
+    if (staff) {
+      await db('staff_documents').where({ staff_id: staff.id }).del().catch(() => {});
+      await db('staff_working_hours').where({ staff_member_id: staff.id }).del().catch(() => {});
+      await db('staff_members').where({ id: staff.id }).del().catch(() => {});
+    }
+
+    await db('refresh_tokens').where({ user_id: userId }).del().catch(() => {});
+
+    // Permanently remove user record
+    await db('users').where({ id: userId, business_id: businessId }).del();
     return { success: true };
   }
 }
@@ -176,6 +195,8 @@ router.put('/users/:id', validate({ params: idParam, body: z.object({
   phone: z.string().max(20).optional(), role: z.enum(['admin', 'manager', 'staff', 'receptionist']).optional(), is_active: z.boolean().optional(),
   avatar_url: z.string().max(500).optional().nullable(),
 }) }), asyncHandler(async (req, res) => { ApiResponse.ok('User updated', await settingsService.updateUser(req.params.id, req.user.business_id, req.body)).send(res); }));
-router.delete('/users/:id', validate({ params: idParam }), asyncHandler(async (req, res) => { ApiResponse.ok('User disabled', await settingsService.deleteUser(req.params.id, req.user.business_id)).send(res); }));
+router.delete('/users/:id', validate({ params: idParam }), asyncHandler(async (req, res) => { 
+  ApiResponse.ok('User deleted successfully', await settingsService.deleteUser(req.params.id, req.user.business_id, req.user.id)).send(res); 
+}));
 
 export default router;

@@ -164,8 +164,9 @@ function LoginFormContent() {
 
     try {
       const data = await login(email.trim(), password, rememberMe);
+      const currentUser = data?.user || data?.data?.user;
 
-      if (!ADMIN_ROLES.includes(data.user?.role)) {
+      if (!currentUser || !ADMIN_ROLES.includes(currentUser.role)) {
         sessionStorage.removeItem('accessToken');
         localStorage.removeItem('accessToken');
         setError('Access denied. This login is for staff and administrators only.');

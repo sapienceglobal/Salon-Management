@@ -44,7 +44,12 @@ const globalSearch = asyncHandler(async (req, res) => {
     { title: 'Enquiries', route: '/admin/enquiry', keywords: ['enquiries', 'leads', 'prospects'] }
   ];
 
+  const isAdmin = ['super_admin', 'admin'].includes(req.user.role);
+
   for (const link of possibleLinks) {
+    if (!isAdmin && ['/admin/billing', '/admin/wallet', '/admin/expenses', '/admin/settings', '/settings'].includes(link.route)) {
+      continue;
+    }
     if (link.keywords.some(kw => kw.includes(keyword) || keyword.includes(kw))) {
       links.push(link);
     }
@@ -114,23 +119,27 @@ const globalSearch = asyncHandler(async (req, res) => {
       })
       .limit(5),
 
-    // Invoices / Billing
-    db('invoices')
-      .select('id', 'invoice_number', 'total_amount', 'status')
-      .where('business_id', businessId)
-      .andWhere('invoice_number', 'like', query)
-      .limit(5),
+    // Invoices / Billing (Admin only)
+    isAdmin 
+      ? db('invoices')
+          .select('id', 'invoice_number', 'total_amount', 'status')
+          .where('business_id', businessId)
+          .andWhere('invoice_number', 'like', query)
+          .limit(5)
+      : Promise.resolve([]),
       
-    // Expenses
-    db('expenses as e')
-      .leftJoin('expense_categories as ec', 'e.category_id', 'ec.id')
-      .select('e.id', 'ec.name as category', 'e.amount', 'e.description as notes')
-      .where('e.business_id', businessId)
-      .andWhere(builder => {
-        builder.where('ec.name', 'like', query)
-          .orWhere('e.description', 'like', query);
-      })
-      .limit(5),
+    // Expenses (Admin only)
+    isAdmin
+      ? db('expenses as e')
+          .leftJoin('expense_categories as ec', 'e.category_id', 'ec.id')
+          .select('e.id', 'ec.name as category', 'e.amount', 'e.description as notes')
+          .where('e.business_id', businessId)
+          .andWhere(builder => {
+            builder.where('ec.name', 'like', query)
+              .orWhere('e.description', 'like', query);
+          })
+          .limit(5)
+      : Promise.resolve([]),
 
     // Enquiries
     db('leads')

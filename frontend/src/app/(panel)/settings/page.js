@@ -17,8 +17,11 @@ import UsersTab from '@/components/admin/settings/UsersTab';
 import CommissionsTab from '@/components/admin/settings/CommissionsTab';
 import NotificationsTab from '@/components/admin/settings/NotificationsTab';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
+import { useAuth } from '@/context/AuthContext';
+import AccessDenied from '@/components/admin/common/AccessDenied';
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [business, setBusiness] = useState(null);
   const [settings, setSettings] = useState(null);
@@ -67,6 +70,15 @@ export default function SettingsPage() {
     { id: 'rooms', label: 'Service Rooms', icon: RiHomeGearLine },
     { id: 'notifications', label: 'Notifications', icon: RiNotification3Line },
   ];
+
+  if (user && user.role !== 'admin' && user.role !== 'super_admin') {
+    return (
+      <AccessDenied 
+        title="Settings Access Restricted" 
+        message="Salon configurations, user accounts, and operational settings are strictly restricted to Administrator accounts." 
+      />
+    );
+  }
 
   if (loading) {
     return (

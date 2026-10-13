@@ -200,7 +200,10 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  const isManager = user?.role === 'manager';
+
   const fetchRevenueData = useCallback(async () => {
+    if (user?.role === 'manager') return;
     setRevenueLoading(true);
     try {
       const today = new Date();
@@ -244,7 +247,7 @@ export default function DashboardPage() {
     } finally {
       setRevenueLoading(false);
     }
-  }, [revenueDateRange, customStartDate, customEndDate]);
+  }, [user?.role, revenueDateRange, customStartDate, customEndDate]);
 
   useEffect(() => {
     fetchRevenueData();
@@ -271,7 +274,15 @@ export default function DashboardPage() {
       color: 'bg-accent-blue/15 text-accent-blue',
       href: '/customers'
     },
-    {
+    ...(isManager ? [{
+      icon: RiWalkLine,
+      label: "Today's Walk-ins",
+      value: summary?.today?.appointments?.walk_in ?? 0,
+      trend: `${summary?.today?.appointments?.total ?? 0} total bookings`,
+      up: true,
+      color: 'bg-accent-green/15 text-accent-green',
+      href: '/appointments'
+    }] : [{
       icon: RiMoneyDollarCircleLine,
       label: "Today's Revenue",
       value: formatCurrency(summary?.today?.revenue ?? 0),
@@ -279,7 +290,7 @@ export default function DashboardPage() {
       up: summary?.trends?.today_revenue?.is_up,
       color: 'bg-accent-green/15 text-accent-green',
       href: '/billing'
-    },
+    }]),
     {
       icon: RiTeamLine,
       label: 'Active Staff',
@@ -368,7 +379,7 @@ export default function DashboardPage() {
           </div>
           <div className="px-5 py-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {QUICK_ACTIONS.map((action, i) => {
+              {QUICK_ACTIONS.filter(action => !(isManager && (action.href === '/billing' || action.href === '/settings'))).map((action, i) => {
                 const Icon = action.icon;
                 return (
                   <Link key={i} href={action.href} className="flex flex-col items-center gap-2 py-3.5 px-2 rounded-[10px] cursor-pointer hover:bg-admin-surface-hover hover:-translate-y-0.5 transition-all duration-150">
@@ -414,7 +425,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ====== Row 3: Appointments Table + Revenue Chart ====== */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+      <div className={`grid grid-cols-1 ${!isManager ? 'lg:grid-cols-2' : ''} gap-5 mb-6`}>
 
         {/* Today's Appointments */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
@@ -468,107 +479,109 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Revenue Overview */}
-        <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-[18px] border-b border-admin-border gap-3">
-            <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Revenue Overview</span>
-            <div className="flex items-center gap-3">
-              <select 
-      value={revenueDateRange}
-      onChange={(e) => setRevenueDateRange(e.target.value)}
-      className="text-sm bg-admin-surface border border-admin-border rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand cursor-pointer"
-    >
-      <option value="today">Today</option>
-      <option value="yesterday">Yesterday</option>
-      <option value="this_week">This Week</option>
-      <option value="this_month">This Month</option>
-      <option value="last_month">Last Month</option>
-      <option value="this_year">This Year</option>
-      <option value="custom">Custom Range</option>
-    </select>
-    {revenueDateRange === 'custom' && (
-      <div className="flex items-center gap-2 mt-2 sm:mt-0">
-        <input 
-          type="date" 
-          value={customStartDate} 
-          onChange={(e) => setCustomStartDate(e.target.value)}
-          className="text-sm bg-admin-surface border border-admin-border rounded-lg px-2 py-1 focus:outline-none focus:border-brand"
-        />
-        <span className="text-admin-text-muted">to</span>
-        <input 
-          type="date" 
-          value={customEndDate} 
-          onChange={(e) => setCustomEndDate(e.target.value)}
-          className="text-sm bg-admin-surface border border-admin-border rounded-lg px-2 py-1 focus:outline-none focus:border-brand"
-        />
-      </div>
-    )}
-            </div>
-          </div>
-          <div className="px-5 py-4 min-h-[300px] relative">
-            {/* Show skeleton ONLY if we have no data yet (first load) */}
-            {revenueLoading && !revenueData?.chart && (
-              <div className="space-y-4">
-                <Skeleton className="h-8 w-32" />
-                <Skeleton className="h-[220px] w-full" />
-              </div>
-            )}
-            
-            <div className={`transition-opacity duration-300 ${revenueLoading && revenueData?.chart ? 'opacity-50 pointer-events-none' : 'opacity-100'}`} style={{ display: (revenueLoading && !revenueData?.chart) ? 'none' : 'block' }}>
-              
-              {revenueLoading && revenueData?.chart && (
-                <div className="absolute inset-0 bg-admin-surface/30 z-50 flex items-center justify-center rounded-2xl backdrop-blur-[2px]">
-                  <RiLoader2Line className="animate-spin text-brand text-4xl" />
-                </div>
-              )}
-
-              <div className="flex items-baseline gap-2.5 mb-2">
-                <span className="font-heading text-2xl font-bold">{formatCurrency(revenueData?.stats?.revenue ?? 0)}</span>
-              </div>
-              <div className="w-full h-[220px]">
-                {revenueData?.chart?.length > 0 ? (
-                  <ResponsiveContainer>
-                    <BarChart data={revenueData.chart} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#e74a8a" stopOpacity={0.8} />
-                          <stop offset="100%" stopColor="#e74a8a" stopOpacity={0.2} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} tickLine={false} />
-                      <YAxis tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}K`} />
-                      <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                      <Bar 
-                        dataKey="revenue" 
-                        fill="url(#revenueGrad)" 
-                        radius={[4, 4, 0, 0]} 
-                        barSize={32}
-                        animationDuration={1500}
-                        animationEasing="ease-out"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <EmptyState message="No revenue data yet. Start billing to see charts." />
+        {/* Revenue Overview (Admin Only) */}
+        {!isManager && (
+          <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-[18px] border-b border-admin-border gap-3">
+              <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Revenue Overview</span>
+              <div className="flex items-center gap-3">
+                <select 
+                  value={revenueDateRange}
+                  onChange={(e) => setRevenueDateRange(e.target.value)}
+                  className="text-sm bg-admin-surface border border-admin-border rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand cursor-pointer"
+                >
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="this_week">This Week</option>
+                  <option value="this_month">This Month</option>
+                  <option value="last_month">Last Month</option>
+                  <option value="this_year">This Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+                {revenueDateRange === 'custom' && (
+                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                    <input 
+                      type="date" 
+                      value={customStartDate} 
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="text-sm bg-admin-surface border border-admin-border rounded-lg px-2 py-1 focus:outline-none focus:border-brand"
+                    />
+                    <span className="text-admin-text-muted">to</span>
+                    <input 
+                      type="date" 
+                      value={customEndDate} 
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="text-sm bg-admin-surface border border-admin-border rounded-lg px-2 py-1 focus:outline-none focus:border-brand"
+                    />
+                  </div>
                 )}
               </div>
-              {/* Revenue Breakdown */}
-              <div className="flex gap-4 mt-3">
-                {[
-                  { color: 'bg-accent-green', label: 'Collected', pct: formatCurrency(revenueData?.stats?.collected ?? 0) },
-                  { color: 'bg-accent-red', label: 'Expenses', pct: formatCurrency(revenueData?.stats?.expenses ?? 0) },
-                  { color: 'bg-accent-purple', label: 'Net Profit', pct: formatCurrency(revenueData?.stats?.net_profit ?? 0) },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-1.5">
-                    <div className={`w-2.5 h-2.5 rounded-full ${item.color}`}></div>
-                    <span className="text-xs text-admin-text-secondary">{item.label} <strong>{item.pct}</strong></span>
+            </div>
+            <div className="px-5 py-4 min-h-[300px] relative">
+              {/* Show skeleton ONLY if we have no data yet (first load) */}
+              {revenueLoading && !revenueData?.chart && (
+                <div className="space-y-4">
+                  <Skeleton className="h-8 w-32" />
+                  <Skeleton className="h-[220px] w-full" />
+                </div>
+              )}
+              
+              <div className={`transition-opacity duration-300 ${revenueLoading && revenueData?.chart ? 'opacity-50 pointer-events-none' : 'opacity-100'}`} style={{ display: (revenueLoading && !revenueData?.chart) ? 'none' : 'block' }}>
+                
+                {revenueLoading && revenueData?.chart && (
+                  <div className="absolute inset-0 bg-admin-surface/30 z-50 flex items-center justify-center rounded-2xl backdrop-blur-[2px]">
+                    <RiLoader2Line className="animate-spin text-brand text-4xl" />
                   </div>
-                ))}
+                )}
+
+                <div className="flex items-baseline gap-2.5 mb-2">
+                  <span className="font-heading text-2xl font-bold">{formatCurrency(revenueData?.stats?.revenue ?? 0)}</span>
+                </div>
+                <div className="w-full h-[220px]">
+                  {revenueData?.chart?.length > 0 ? (
+                    <ResponsiveContainer>
+                      <BarChart data={revenueData.chart} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#e74a8a" stopOpacity={0.8} />
+                            <stop offset="100%" stopColor="#e74a8a" stopOpacity={0.2} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} tickLine={false} />
+                        <YAxis tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}K`} />
+                        <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                        <Bar 
+                          dataKey="revenue" 
+                          fill="url(#revenueGrad)" 
+                          radius={[4, 4, 0, 0]} 
+                          barSize={32}
+                          animationDuration={1500}
+                          animationEasing="ease-out"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <EmptyState message="No revenue data yet. Start billing to see charts." />
+                  )}
+                </div>
+                {/* Revenue Breakdown */}
+                <div className="flex gap-4 mt-3">
+                  {[
+                    { color: 'bg-accent-green', label: 'Collected', pct: formatCurrency(revenueData?.stats?.collected ?? 0) },
+                    { color: 'bg-accent-red', label: 'Expenses', pct: formatCurrency(revenueData?.stats?.expenses ?? 0) },
+                    { color: 'bg-accent-purple', label: 'Net Profit', pct: formatCurrency(revenueData?.stats?.net_profit ?? 0) },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <div className={`w-2.5 h-2.5 rounded-full ${item.color}`}></div>
+                      <span className="text-xs text-admin-text-secondary">{item.label} <strong>{item.pct}</strong></span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ====== Row 4: Top Services + Customers + Inventory + Staff ====== */}

@@ -127,24 +127,24 @@ const dateRangeSchema = {
 };
 
 const router = Router();
-router.use(authenticate, businessScope(), authorize('super_admin', 'admin', 'manager'));
+router.use(authenticate, businessScope());
 
-router.get('/sales', validate(dateRangeSchema), asyncHandler(async (req, res) => {
+router.get('/sales', authorize('super_admin', 'admin'), validate(dateRangeSchema), asyncHandler(async (req, res) => {
   ApiResponse.ok('Sales report', await reportService.salesReport(req.user.business_id, req.query.start_date, req.query.end_date)).send(res);
 }));
-router.get('/services', validate(dateRangeSchema), asyncHandler(async (req, res) => {
+router.get('/services', authorize('super_admin', 'admin', 'manager'), validate(dateRangeSchema), asyncHandler(async (req, res) => {
   ApiResponse.ok('Service report', await reportService.serviceReport(req.user.business_id, req.query.start_date, req.query.end_date)).send(res);
 }));
-router.get('/staff', validate(dateRangeSchema), asyncHandler(async (req, res) => {
+router.get('/staff', authorize('super_admin', 'admin', 'manager'), validate(dateRangeSchema), asyncHandler(async (req, res) => {
   ApiResponse.ok('Staff report', await reportService.staffReport(req.user.business_id, req.query.start_date, req.query.end_date)).send(res);
 }));
-router.get('/customers', validate(dateRangeSchema), asyncHandler(async (req, res) => {
+router.get('/customers', authorize('super_admin', 'admin', 'manager'), validate(dateRangeSchema), asyncHandler(async (req, res) => {
   ApiResponse.ok('Customer report', await reportService.customerReport(req.user.business_id, req.query.start_date, req.query.end_date)).send(res);
 }));
-router.get('/expenses', validate(dateRangeSchema), asyncHandler(async (req, res) => {
+router.get('/expenses', authorize('super_admin', 'admin'), validate(dateRangeSchema), asyncHandler(async (req, res) => {
   ApiResponse.ok('Expense report', await reportService.expenseReport(req.user.business_id, req.query.start_date, req.query.end_date)).send(res);
 }));
-router.get('/gst', validate(dateRangeSchema), asyncHandler(async (req, res) => {
+router.get('/gst', authorize('super_admin', 'admin'), validate(dateRangeSchema), asyncHandler(async (req, res) => {
   ApiResponse.ok('GST report', await reportService.gstReport(req.user.business_id, req.query.start_date, req.query.end_date)).send(res);
 }));
 

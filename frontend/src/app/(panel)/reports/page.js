@@ -9,6 +9,8 @@ import CustomerView from '@/components/admin/reports/CustomerView';
 import ExpenseView from '@/components/admin/reports/ExpenseView';
 import TaxView from '@/components/admin/reports/TaxView';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
+import { useAuth } from '@/context/AuthContext';
+import AccessDenied from '@/components/admin/common/AccessDenied';
 
 const TABS = [
   { id: 'sales', label: 'Appointment & Sales' },
@@ -28,6 +30,7 @@ const PRESETS = [
 ];
 
 export default function ReportsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('sales');
   
   // Date State
@@ -80,6 +83,15 @@ export default function ReportsPage() {
     const date = new Date(ymd);
     return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
+
+  if (user && user.role !== 'admin' && user.role !== 'super_admin') {
+    return (
+      <AccessDenied 
+        title="Reports Access Restricted" 
+        message="Business sales, expense, and tax reports are strictly restricted to Administrator accounts." 
+      />
+    );
+  }
 
   return (
     <div className="animate-[fadeOpacity_0.5s_ease_forwards] flex flex-col h-full overflow-hidden">
