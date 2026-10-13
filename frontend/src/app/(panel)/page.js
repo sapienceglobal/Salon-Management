@@ -358,7 +358,62 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ====== Row 2: Appointments Table + Revenue Chart ====== */}
+      {/* ====== Row 2: Quick Actions + Upcoming Appointments ====== */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5 mb-6">
+
+        {/* Quick Actions */}
+        <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
+          <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
+            <span className="text-[0.95rem] font-semibold">Quick Actions</span>
+          </div>
+          <div className="px-5 py-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {QUICK_ACTIONS.map((action, i) => {
+                const Icon = action.icon;
+                return (
+                  <Link key={i} href={action.href} className="flex flex-col items-center gap-2 py-3.5 px-2 rounded-[10px] cursor-pointer hover:bg-admin-surface-hover hover:-translate-y-0.5 transition-all duration-150">
+                    <div className={`w-11 h-11 rounded-[10px] flex items-center justify-center text-xl ${action.color}`}>
+                      <Icon />
+                    </div>
+                    <span className="text-[0.7rem] text-admin-text-secondary text-center font-medium whitespace-nowrap">{action.text}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Upcoming Appointments */}
+        <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
+          <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
+            <span className="text-[0.95rem] font-semibold">Upcoming Appointments</span>
+            <Link href="/appointments" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
+          </div>
+          <div className="px-5 py-3 max-h-[360px] overflow-y-auto custom-scrollbar">
+            {loading ? (
+              <TableSkeleton rows={3} />
+            ) : upcomingAppointments.length === 0 ? (
+              <EmptyState message="No upcoming appointments" />
+            ) : (
+              upcomingAppointments.map((apt, index) => (
+                <div key={apt.id ? `up-apt-${apt.id}-${index}` : `up-apt-${index}`} onClick={() => router.push(`/appointments?appointment_id=${apt.id}`)} className="flex items-center gap-3.5 py-3 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer px-2 rounded-lg -mx-2">
+                  <span className="text-sm font-semibold text-admin-text-secondary min-w-[65px]">{formatTime(apt.start_time)}</span>
+                  <span className="w-2 h-2 rounded-full bg-brand shrink-0"></span>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium">{apt.customer_name}</div>
+                    <div className="text-xs text-admin-text-muted">{apt.service_name}</div>
+                  </div>
+                  <span className="text-[0.7rem] px-2.5 py-1 rounded-full font-semibold bg-accent-blue/15 text-accent-blue">
+                    {formatDate(apt.appointment_date)}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ====== Row 3: Appointments Table + Revenue Chart ====== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
 
         {/* Today's Appointments */}
@@ -512,61 +567,6 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ====== Row 3: Quick Actions + Upcoming ====== */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5 mb-6">
-
-        {/* Quick Actions */}
-        <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
-            <span className="text-[0.95rem] font-semibold">Quick Actions</span>
-          </div>
-          <div className="px-5 py-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {QUICK_ACTIONS.map((action, i) => {
-                const Icon = action.icon;
-                return (
-                  <Link key={i} href={action.href} className="flex flex-col items-center gap-2 py-3.5 px-2 rounded-[10px] cursor-pointer hover:bg-admin-surface-hover hover:-translate-y-0.5 transition-all duration-150">
-                    <div className={`w-11 h-11 rounded-[10px] flex items-center justify-center text-xl ${action.color}`}>
-                      <Icon />
-                    </div>
-                    <span className="text-[0.7rem] text-admin-text-secondary text-center font-medium whitespace-nowrap">{action.text}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Upcoming Appointments */}
-        <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
-            <span className="text-[0.95rem] font-semibold">Upcoming Appointments</span>
-            <Link href="/appointments" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
-          </div>
-          <div className="px-5 py-3 max-h-[360px] overflow-y-auto custom-scrollbar">
-            {loading ? (
-              <TableSkeleton rows={3} />
-            ) : upcomingAppointments.length === 0 ? (
-              <EmptyState message="No upcoming appointments" />
-            ) : (
-              upcomingAppointments.map((apt, index) => (
-                <div key={apt.id ? `up-apt-${apt.id}-${index}` : `up-apt-${index}`} onClick={() => router.push(`/appointments?appointment_id=${apt.id}`)} className="flex items-center gap-3.5 py-3 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer px-2 rounded-lg -mx-2">
-                  <span className="text-sm font-semibold text-admin-text-secondary min-w-[65px]">{formatTime(apt.start_time)}</span>
-                  <span className="w-2 h-2 rounded-full bg-brand shrink-0"></span>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{apt.customer_name}</div>
-                    <div className="text-xs text-admin-text-muted">{apt.service_name}</div>
-                  </div>
-                  <span className="text-[0.7rem] px-2.5 py-1 rounded-full font-semibold bg-accent-blue/15 text-accent-blue">
-                    {formatDate(apt.appointment_date)}
-                  </span>
-                </div>
-              ))
-            )}
           </div>
         </div>
       </div>
