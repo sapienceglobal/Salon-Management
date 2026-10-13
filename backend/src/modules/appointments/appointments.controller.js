@@ -38,3 +38,15 @@ export const bulkStatusAppointments = asyncHandler(async (req, res) => {
   const count = await appointmentService.bulkUpdateStatus(req.user.business_id, req.body.ids, req.body.status);
   ApiResponse.ok(`${count} appointments updated`, { count }).send(res);
 });
+export const sendAppointmentEmail = asyncHandler(async (req, res) => {
+  const appointmentId = req.params.id || req.body.appointment_id || req.body.appointmentId;
+  const result = await appointmentService.sendConfirmationEmail(
+    req.user.business_id,
+    appointmentId,
+    {
+      email: req.body.email,
+      customMessage: req.body.customMessage || req.body.message
+    }
+  );
+  ApiResponse.ok(result.message, result).send(res);
+});

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import api from '@/lib/api';
 import {
   RiWhatsappFill,
   RiShareForwardLine,
@@ -15,6 +16,9 @@ import {
   RiFileCopyLine,
   RiSparklingFill,
   RiPhoneLine,
+  RiMailLine,
+  RiMailSendLine,
+  RiLoader4Line,
   RiRefreshLine,
   RiEditLine
 } from 'react-icons/ri';
@@ -67,10 +71,15 @@ export default function AppointmentSuccessModal({
 }) {
   const [copied, setCopied] = useState(false);
   const [customMessage, setCustomMessage] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   // Derive readable values
   const customerName = appointment?.customer_name || 'Customer';
   const customerPhone = appointment?.customer_phone || '';
+  const customerEmail = appointment?.customer_email || appointment?.email || '';
   const staffName = appointment?.staff_name || 'Stylist';
   const staffRole = appointment?.staff_role || 'Specialist';
   const dateStr = appointment?.formatted_date || appointment?.appointment_date;
@@ -96,12 +105,15 @@ export default function AppointmentSuccessModal({
   const defaultMessage = generateAppointmentMessage(fullData);
   const cleanPhone = formatWhatsAppPhone(customerPhone);
 
-  // Sync custom message when appointment changes or modal opens
+  // Sync custom message and email when appointment changes or modal opens
   useEffect(() => {
     if (isOpen && appointment) {
       setCustomMessage(defaultMessage);
+      setRecipientEmail(customerEmail);
+      setEmailSent(false);
+      setIsEditingEmail(false);
     }
-  }, [isOpen, appointment?.id]);
+  }, [isOpen, appointment?.id, customerEmail]);
 
   if (!isOpen || !appointment) return null;
 
@@ -132,6 +144,44 @@ export default function AppointmentSuccessModal({
     toast.success('Opening WhatsApp with confirmation message!');
   };
 
+  const handleSendRealEmail = async () => {
+    const targetEmail = (recipientEmail || '').trim();
+    if (!targetEmail) {
+      setIsEditingEmail(true);
+      toast.error('Please enter customer email address.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(targetEmail)) {
+      setIsEditingEmail(true);
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    const toastId = toast.loading(`Sending confirmation email to ${targetEmail}...`);
+
+    try {
+      const endpoint = appointment?.id ? `/appointments/${appointment.id}/send-email` : '/appointments/send-email';
+      const res = await api.post(endpoint, {
+        appointment_id: appointment?.id,
+        email: targetEmail,
+        customMessage: customMessage
+      });
+
+      toast.success(res?.data?.message || `Confirmation email sent to ${targetEmail}!`, { id: toastId, duration: 5000 });
+      setEmailSent(true);
+      setIsEditingEmail(false);
+    } catch (err) {
+      console.error('Failed to send confirmation email:', err);
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to send confirmation email.';
+      toast.error(errMsg, { id: toastId, duration: 4500 });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   const handleShare = async () => {
     const sharePayload = {
       title: `Appointment Confirmation - ${businessName}`,
@@ -146,7 +196,7 @@ export default function AppointmentSuccessModal({
         return;
       } catch (err) {
         if (err.name === 'AbortError') {
-          // User simply closed the Windows share sheet
+          // User closed share dialog
           return;
         }
         console.warn('Native share failed:', err);
@@ -160,7 +210,6 @@ export default function AppointmentSuccessModal({
       toast.success('Native share dialog not available. Message copied to clipboard!');
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // Alternate fallback: Mail client
       window.open(`mailto:?subject=${encodeURIComponent(sharePayload.title)}&body=${encodeURIComponent(customMessage)}`);
     }
   };
@@ -223,6 +272,12 @@ export default function AppointmentSuccessModal({
                     <RiPhoneLine className="text-[10px] text-[#25D366]" />
                     <span>{customerPhone || 'No Phone'}</span>
                   </div>
+                  {recipientEmail && (
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate mt-0.5">
+                      <RiMailLine className="text-[10px] text-blue-500" />
+                      <span>{recipientEmail}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -332,8 +387,41 @@ export default function AppointmentSuccessModal({
                 className="w-full h-40 sm:h-44 p-3 bg-slate-50 dark:bg-[#0f121d] border border-slate-200 dark:border-white/10 rounded-2xl text-xs font-mono leading-relaxed text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#25D366] dark:focus:border-[#25D366] resize-none custom-scrollbar transition-colors"
               />
               <p className="text-[10.5px] text-slate-400 dark:text-slate-500 mt-1">
-                💡 You can edit this text directly. WhatsApp and Windows Share will send this customized message.
+                💡 You can edit this text directly. WhatsApp, Mail and Share will include this customized message.
               </p>
+
+              {/* Recipient Email Field */}
+              <div className="mt-2.5 p-2 px-3 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <RiMailLine className="text-blue-500 shrink-0 text-xs" />
+                  {isEditingEmail ? (
+                    <input
+                      type="email"
+                      value={recipientEmail}
+                      onChange={(e) => setRecipientEmail(e.target.value)}
+                      placeholder="Enter customer email address..."
+                      className="w-full text-xs bg-white dark:bg-[#1a1f33] border border-blue-400 rounded-lg px-2 py-0.5 text-slate-900 dark:text-white focus:outline-none"
+                      autoFocus
+                    />
+                  ) : (
+                    <span className="text-xs text-slate-700 dark:text-slate-300 truncate">
+                      <strong className="text-slate-400 font-medium">To Email: </strong>
+                      {recipientEmail ? (
+                        <span className="font-semibold text-slate-900 dark:text-white">{recipientEmail}</span>
+                      ) : (
+                        <span className="text-amber-500 italic">No email set</span>
+                      )}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingEmail(!isEditingEmail)}
+                  className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline shrink-0 cursor-pointer"
+                >
+                  {isEditingEmail ? 'Done' : recipientEmail ? 'Change' : '+ Add Email'}
+                </button>
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -349,16 +437,44 @@ export default function AppointmentSuccessModal({
                 <span>Notify Customer on WhatsApp</span>
               </button>
 
-              {/* Secondary Row: Windows Native Share & Done */}
+              {/* Secondary Row: Real Email Dispatch, Device Share & Done */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={handleSendRealEmail}
+                  disabled={isSendingEmail}
+                  className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer border shadow-sm ${
+                    emailSent
+                      ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800/50'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-blue-500/20'
+                  } disabled:opacity-60 disabled:cursor-not-allowed`}
+                  title="Send real confirmation email directly to customer inbox"
+                >
+                  {isSendingEmail ? (
+                    <>
+                      <RiLoader4Line className="text-base animate-spin" />
+                      <span>Sending Mail...</span>
+                    </>
+                  ) : emailSent ? (
+                    <>
+                      <RiCheckLine className="text-base" />
+                      <span>Email Sent ✓</span>
+                    </>
+                  ) : (
+                    <>
+                      <RiMailSendLine className="text-base" />
+                      <span>Share Details (Mail)</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleShare}
-                  className="flex-1 py-2 px-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  title="Open Windows Share popup (Mail, Apps, Nearby Share)"
+                  className="p-2.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 font-bold text-xs transition-colors cursor-pointer"
+                  title="More share options (Windows / Mobile Native Share)"
                 >
                   <RiShareForwardLine className="text-base" />
-                  <span>Share Details (Mail & Apps)</span>
                 </button>
 
                 <button

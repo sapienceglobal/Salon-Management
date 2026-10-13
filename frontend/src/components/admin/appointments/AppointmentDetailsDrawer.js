@@ -9,7 +9,7 @@ import { formatCurrency } from '@/lib/utils';
 import { 
   RiCloseLine, RiEdit2Line, RiCalendarCheckLine, RiMoneyDollarCircleLine, 
   RiPhoneLine, RiMailLine, RiUserLine, RiScissorsLine, RiTimeLine,
-  RiInformationLine, RiWhatsappFill
+  RiInformationLine, RiWhatsappFill, RiMailSendLine
 } from 'react-icons/ri';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -319,10 +319,34 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
               window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
               toast.success('Opening WhatsApp with confirmation message!');
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-white text-[13px] font-bold shadow-md shadow-[#25D366]/20 transition-all cursor-pointer mr-auto"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-white text-[13px] font-bold shadow-md shadow-[#25D366]/20 transition-all cursor-pointer"
             title="Send WhatsApp confirmation to client"
           >
             <RiWhatsappFill className="text-lg" /> WhatsApp
+          </button>
+
+          <button
+            type="button"
+            onClick={async () => {
+              const targetEmail = appointment.customer_email || appointment.email;
+              if (!targetEmail) {
+                toast.error('Customer email is not available on this appointment.');
+                return;
+              }
+              const toastId = toast.loading(`Sending confirmation email to ${targetEmail}...`);
+              try {
+                const res = await api.post(`/appointments/${appointment.id}/send-email`, {
+                  email: targetEmail
+                });
+                toast.success(res?.data?.message || 'Email sent successfully!', { id: toastId });
+              } catch (err) {
+                toast.error(err?.response?.data?.message || 'Failed to send email', { id: toastId });
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/40 text-[13px] font-bold transition-all cursor-pointer mr-auto"
+            title="Send confirmation email directly to client inbox"
+          >
+            <RiMailSendLine className="text-base" /> Email
           </button>
 
           <button 

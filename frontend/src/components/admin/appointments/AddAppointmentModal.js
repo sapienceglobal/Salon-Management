@@ -251,11 +251,11 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
         };
       }
 
-      // 3. Appointment conflict check
-      const conflictAppt = dayAppointments.find((appt) => {
+      // 3. Appointment conflict check (only if specific staff is selected)
+      const conflictAppt = formData.staff_id ? dayAppointments.find((appt) => {
         if (editData && String(appt.id) === String(editData.id)) return false;
         if (['cancelled', 'no_show'].includes(appt.status)) return false;
-        if (formData.staff_id && String(appt.staff_member_id) !== String(formData.staff_id)) return false;
+        if (String(appt.staff_member_id) !== String(formData.staff_id)) return false;
 
         const [ah1, am1] = (appt.start_time || '00:00').split(':').map(Number);
         const [ah2, am2] = (appt.end_time || '00:00').split(':').map(Number);
@@ -263,7 +263,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
         const aEnd = (ah2 || 0) * 60 + (am2 || 0);
 
         return aStart < endMins && aEnd > startMins;
-      });
+      }) : null;
 
       if (conflictAppt) {
         const cStart = formatTime12h(conflictAppt.start_time);
@@ -298,11 +298,11 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
       }
     }
 
-    // Check conflict
-    const conflictAppt = dayAppointments.find((appt) => {
+    // Check conflict (only if specific staff is selected)
+    const conflictAppt = formData.staff_id ? dayAppointments.find((appt) => {
       if (editData && String(appt.id) === String(editData.id)) return false;
       if (['cancelled', 'no_show'].includes(appt.status)) return false;
-      if (formData.staff_id && String(appt.staff_member_id) !== String(formData.staff_id)) return false;
+      if (String(appt.staff_member_id) !== String(formData.staff_id)) return false;
 
       const [ah1, am1] = (appt.start_time || '00:00').split(':').map(Number);
       const [ah2, am2] = (appt.end_time || '00:00').split(':').map(Number);
@@ -310,7 +310,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
       const aEnd = (ah2 || 0) * 60 + (am2 || 0);
 
       return aStart < endMins && aEnd > startMins;
-    });
+    }) : null;
 
     if (conflictAppt) {
       const staffName = selectedStaffMember 
@@ -435,7 +435,11 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
 
       const result = appointmentSchema.safeParse(payload);
       if (!result.success) {
-        setFieldErrors(formatZodErrors(result.error));
+        const errors = formatZodErrors(result.error);
+        setFieldErrors(errors);
+        const firstErr = Object.values(errors)[0] || 'Please fill in all required fields';
+        setError(firstErr);
+        toast.error(firstErr);
         setLoading(false);
         return;
       }

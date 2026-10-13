@@ -269,6 +269,7 @@ export const appointmentSchema = z.object({
     z.number().min(1, 'Please select a customer')
   ], { message: 'Please select a customer' }),
   staff_id: z.string().optional().or(z.number().nullable()).or(z.literal('')),
+  room_id: z.string().optional().or(z.number().nullable()).or(z.literal('')),
   appointment_date: z.string({ message: 'Appointment date is required' }).regex(/^\d{4}-\d{2}-\d{2}$/, 'Date format: YYYY-MM-DD'),
   start_time: z.string({ message: 'Start time is required' }).regex(/^\d{2}:\d{2}:\d{2}$|^\d{2}:\d{2}$/, 'Time format: HH:mm:ss or HH:mm'),
   end_time: z.string({ message: 'End time is required' }).regex(/^\d{2}:\d{2}:\d{2}$|^\d{2}:\d{2}$/, 'Time format: HH:mm:ss or HH:mm'),

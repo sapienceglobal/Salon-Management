@@ -65,6 +65,7 @@ class AppointmentRepository {
         'a.*',
         db.raw("COALESCE(i.status, 'unpaid') as payment_status"),
         'c.first_name as customer_first_name', 'c.last_name as customer_last_name', 'c.phone as customer_phone',
+        'c.email as customer_email',
         'c.profile_image_url as customer_avatar_url',
         'u.first_name as staff_first_name', 'u.last_name as staff_last_name',
         'u.avatar_url as staff_avatar_url', 'sm.color_code as staff_color'
@@ -174,6 +175,7 @@ class AppointmentRepository {
         'a.*',
         db.raw("COALESCE(i.status, 'unpaid') as payment_status"),
         'c.first_name as customer_first_name', 'c.last_name as customer_last_name', 'c.phone as customer_phone',
+        'c.email as customer_email',
         'c.profile_image_url as customer_avatar_url',
         'u.first_name as staff_first_name', 'u.last_name as staff_last_name',
         'u.avatar_url as staff_avatar_url', 'sm.color_code as staff_color'
