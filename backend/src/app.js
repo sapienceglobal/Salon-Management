@@ -148,7 +148,12 @@ app.get('/api/v1/csrf-token', (req, res) => {
 const API_PREFIX = `/api/${env.API_VERSION}`;
 
 // Webhooks must be public (not protected by secureApi), Meta servers send requests here
+app.use('/webhook', webhookRoutes);
+app.use('/webhooks', webhookRoutes);
+app.use('/api/webhook', webhookRoutes);
+app.use('/api/webhooks', webhookRoutes);
 app.use(`${API_PREFIX}/webhooks`, webhookRoutes);
+app.use(`${API_PREFIX}/webhook`, webhookRoutes);
 
 app.use(API_PREFIX, secureApi);
 
