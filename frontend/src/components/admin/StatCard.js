@@ -22,16 +22,16 @@ export default function StatCard({
         {Icon && <Icon />}
       </div>
       <div className="flex-1">
-        <div className="text-[0.8rem] text-admin-text-secondary mb-1">{label}</div>
-        <div className="font-heading text-2xl font-bold">{loading ? '-' : value}</div>
+        <div className="text-[0.85rem] font-semibold text-slate-800 dark:text-slate-200 mb-1">{label}</div>
+        <div className="font-heading text-2xl font-bold text-slate-900 dark:text-white">{loading ? '-' : value}</div>
         {trend && (
-          <div className={`text-xs mt-1 flex items-center gap-1 ${up === true ? 'text-accent-green' : up === false ? 'text-accent-red' : 'text-admin-text-muted'}`}>
+          <div className={`text-xs mt-1 flex items-center gap-1 font-semibold ${up === true ? 'text-emerald-600 dark:text-emerald-400' : up === false ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
             {up === true ? <RiArrowUpLine /> : up === false ? <RiArrowDownLine /> : null} {trend}
           </div>
         )}
       </div>
       {href ? (
-        <button className="text-xl text-admin-text-muted p-1.5 rounded-full hover:bg-admin-surface-hover hover:text-admin-text transition-all duration-150">
+        <button className="text-xl text-slate-500 dark:text-slate-400 p-1.5 rounded-full hover:bg-admin-surface-hover hover:text-slate-900 dark:hover:text-white transition-all duration-150">
           <RiArrowRightSLine />
         </button>
       ) : (

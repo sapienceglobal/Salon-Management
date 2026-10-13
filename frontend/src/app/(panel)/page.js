@@ -364,7 +364,7 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
-            <span className="text-[0.95rem] font-semibold">Quick Actions</span>
+            <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Quick Actions</span>
           </div>
           <div className="px-5 py-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -375,7 +375,7 @@ export default function DashboardPage() {
                     <div className={`w-11 h-11 rounded-[10px] flex items-center justify-center text-xl ${action.color}`}>
                       <Icon />
                     </div>
-                    <span className="text-[0.7rem] text-admin-text-secondary text-center font-medium whitespace-nowrap">{action.text}</span>
+                    <span className="text-xs text-slate-800 dark:text-slate-100 text-center font-semibold whitespace-nowrap">{action.text}</span>
                   </Link>
                 );
               })}
@@ -386,7 +386,7 @@ export default function DashboardPage() {
         {/* Upcoming Appointments */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
-            <span className="text-[0.95rem] font-semibold">Upcoming Appointments</span>
+            <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Upcoming Appointments</span>
             <Link href="/appointments" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
           <div className="px-5 py-3 max-h-[360px] overflow-y-auto custom-scrollbar">
@@ -397,13 +397,13 @@ export default function DashboardPage() {
             ) : (
               upcomingAppointments.map((apt, index) => (
                 <div key={apt.id ? `up-apt-${apt.id}-${index}` : `up-apt-${index}`} onClick={() => router.push(`/appointments?appointment_id=${apt.id}`)} className="flex items-center gap-3.5 py-3 border-b border-admin-border last:border-0 hover:bg-white/[0.02] transition-colors cursor-pointer px-2 rounded-lg -mx-2">
-                  <span className="text-sm font-semibold text-admin-text-secondary min-w-[65px]">{formatTime(apt.start_time)}</span>
+                  <span className="text-sm font-bold text-slate-800 dark:text-slate-100 min-w-[65px]">{formatTime(apt.start_time)}</span>
                   <span className="w-2 h-2 rounded-full bg-brand shrink-0"></span>
                   <div className="flex-1">
-                    <div className="text-sm font-medium">{apt.customer_name}</div>
-                    <div className="text-xs text-admin-text-muted">{apt.service_name}</div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-white">{apt.customer_name}</div>
+                    <div className="text-xs font-medium text-slate-600 dark:text-slate-300">{apt.service_name}</div>
                   </div>
-                  <span className="text-[0.7rem] px-2.5 py-1 rounded-full font-semibold bg-accent-blue/15 text-accent-blue">
+                  <span className="text-[0.75rem] px-2.5 py-1 rounded-full font-bold bg-accent-blue/15 text-accent-blue">
                     {formatDate(apt.appointment_date)}
                   </span>
                 </div>
@@ -419,7 +419,7 @@ export default function DashboardPage() {
         {/* Today's Appointments */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
-            <span className="text-[0.95rem] font-semibold">Today&apos;s Appointments</span>
+            <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Today&apos;s Appointments</span>
             <Link href="/appointments" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
           <div className="p-0 max-h-[360px] overflow-y-auto relative">
@@ -471,7 +471,7 @@ export default function DashboardPage() {
         {/* Revenue Overview */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-[18px] border-b border-admin-border gap-3">
-            <span className="text-[0.95rem] font-semibold">Revenue Overview</span>
+            <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Revenue Overview</span>
             <div className="flex items-center gap-3">
               <select 
       value={revenueDateRange}
@@ -577,7 +577,7 @@ export default function DashboardPage() {
         {/* Top Services */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
-            <span className="text-[0.95rem] font-semibold">Top Services</span>
+            <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Top Services</span>
             <Link href="/services" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
           <div className="px-5 py-3 max-h-[320px] overflow-y-auto custom-scrollbar">
@@ -602,7 +602,7 @@ export default function DashboardPage() {
         {/* Recent Customers */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
-            <span className="text-[0.95rem] font-semibold">Recent Customers</span>
+            <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Recent Customers</span>
             <Link href="/customers" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
           <div className="px-5 py-3 max-h-[320px] overflow-y-auto custom-scrollbar">
@@ -633,7 +633,7 @@ export default function DashboardPage() {
         {/* Inventory Alerts */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
-            <span className="text-[0.95rem] font-semibold">Inventory Alerts</span>
+            <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Inventory Alerts</span>
             <Link href="/inventory" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
           </div>
           <div className="px-5 py-3 max-h-[320px] overflow-y-auto custom-scrollbar">
@@ -661,7 +661,7 @@ export default function DashboardPage() {
         {/* Staff Performance */}
         <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
-            <span className="text-[0.95rem] font-semibold">Staff Performance</span>
+            <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Staff Performance</span>
             <span className="text-xs text-admin-text-muted">This Month</span>
           </div>
           <div className="px-5 py-3 max-h-[320px] overflow-y-auto custom-scrollbar">

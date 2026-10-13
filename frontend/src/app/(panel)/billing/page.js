@@ -982,14 +982,14 @@ export default function POSPage() {
                     : 'No services found matching your criteria.'}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-3.5">
                   {filteredServices.map((service) => {
                     const isInCart = cart.some(c => String(c.id) === String(service.id) && c.type === 'service');
 
                     return (
                       <div
                         key={service.id}
-                        className={`bg-white dark:bg-[#1a1a2e] rounded-2xl border p-3 hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5 flex items-center justify-between gap-3 group relative overflow-hidden ${
+                        className={`bg-white dark:bg-[#1a1a2e] rounded-2xl border p-3 hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5 flex items-center justify-between gap-3 group relative overflow-hidden min-w-0 ${
                           isInCart 
                             ? 'border-[#E91E63] shadow-[0_4px_16px_rgba(233,30,99,0.1)]' 
                             : 'border-slate-100 dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10'
@@ -1003,20 +1003,20 @@ export default function POSPage() {
                           color={service.service_color}
                           name={service.name}
                           shape="rounded"
-                          size="xl"
-                          className="w-14 h-14 rounded-xl shrink-0 group-hover:scale-105 transition-transform duration-300"
+                          size="lg"
+                          className="w-12 h-12 rounded-xl shrink-0 group-hover:scale-105 transition-transform duration-300"
                         />
 
                         {/* Service Details */}
                         <div className="flex-1 min-w-0 pr-1">
-                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight" title={service.name}>
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug break-words" title={service.name}>
                             {service.name}
                           </h4>
                           <span className="text-[11px] text-slate-400 dark:text-slate-500 block truncate mt-0.5">
                             {service.category_name || service.category || 'Hair Care'}
                           </span>
                           <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                            <RiTimeLine className="text-xs text-slate-400" />
+                            <RiTimeLine className="text-xs text-slate-400 shrink-0" />
                             <span>{service.duration_minutes || 30} mins</span>
                           </div>
                           <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white mt-1 block">
@@ -1025,7 +1025,9 @@ export default function POSPage() {
                         </div>
 
                         {/* Flipkart / Blinkit Style Action Button */}
-                        {renderItemActionButton(service, 'service')}
+                        <div className="shrink-0">
+                          {renderItemActionButton(service, 'service')}
+                        </div>
                       </div>
                     );
                   })}
@@ -1097,7 +1099,7 @@ export default function POSPage() {
                     No products found matching your selection.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 min-[1750px]:grid-cols-3 gap-3.5">
                     {filteredProducts.map((prod) => {
                       const isInCart = cart.some(c => String(c.id) === String(prod.id) && c.type === 'product');
                       const imgUrl = getImageUrl(prod.image_url) || '/pos/prod_shampoo.jpg';
@@ -1105,14 +1107,14 @@ export default function POSPage() {
                       return (
                         <div
                           key={prod.id}
-                          className={`bg-white dark:bg-[#1a1a2e] rounded-2xl border p-3 hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5 flex items-center justify-between gap-3 group relative overflow-hidden ${
+                          className={`bg-white dark:bg-[#1a1a2e] rounded-2xl border p-3 hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5 flex items-center justify-between gap-3 group relative overflow-hidden min-w-0 ${
                             isInCart 
                               ? 'border-[#E91E63] shadow-[0_4px_16px_rgba(233,30,99,0.1)]' 
                               : 'border-slate-100 dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10'
                           }`}
                         >
                           {/* Image Thumbnail */}
-                          <div className="relative w-12 h-14 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 p-1 shrink-0 flex items-center justify-center">
+                          <div className="relative w-12 h-12 sm:w-13 sm:h-13 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 p-1 shrink-0 flex items-center justify-center">
                             <Image
                               src={imgUrl}
                               alt={prod.name}
@@ -1123,7 +1125,7 @@ export default function POSPage() {
 
                           {/* Product Info */}
                           <div className="flex-1 min-w-0 pr-1">
-                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight" title={prod.name}>
+                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug break-words" title={prod.name}>
                               {prod.name}
                             </h4>
                             <span className="text-[11px] text-slate-400 dark:text-slate-500 block truncate mt-0.5">
@@ -1135,7 +1137,9 @@ export default function POSPage() {
                           </div>
 
                           {/* Flipkart / Blinkit Style Action Button */}
-                          {renderItemActionButton(prod, 'product')}
+                          <div className="shrink-0">
+                            {renderItemActionButton(prod, 'product')}
+                          </div>
                         </div>
                       );
                     })}
@@ -1187,7 +1191,7 @@ export default function POSPage() {
                     No packages found matching your selection.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 min-[1750px]:grid-cols-3 gap-3.5">
                     {filteredPackages.map((pkg) => {
                       const isInCart = cart.some(c => String(c.id) === String(pkg.id) && c.type === 'package');
                       const inclusions = pkg.description 
@@ -1199,7 +1203,7 @@ export default function POSPage() {
                       return (
                         <div
                           key={pkg.id}
-                          className={`bg-white dark:bg-[#1a1a2e] rounded-2xl border p-3.5 hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5 flex flex-col justify-between group relative overflow-hidden ${
+                          className={`bg-white dark:bg-[#1a1a2e] rounded-2xl border p-3.5 hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5 flex flex-col justify-between group relative overflow-hidden min-w-0 ${
                             isInCart 
                               ? 'border-[#E91E63] shadow-[0_4px_16px_rgba(233,30,99,0.1)]' 
                               : 'border-slate-100 dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10'
@@ -1207,7 +1211,7 @@ export default function POSPage() {
                         >
                           <div className="flex items-start gap-3">
                             {/* Package Model Image */}
-                            <div className="relative w-16 h-22 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
+                            <div className="relative w-14 h-20 sm:w-16 sm:h-22 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
                               <Image
                                 src={getImageUrl(pkg.image_url) || '/pos/pkg_keratin.jpg'}
                                 alt={pkg.name}
@@ -1230,7 +1234,7 @@ export default function POSPage() {
                                 </span>
                               )}
                               
-                              <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight" title={pkg.name}>
+                              <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug break-words" title={pkg.name}>
                                 {pkg.name}
                               </h4>
 
@@ -1252,7 +1256,9 @@ export default function POSPage() {
                               ₹{(parseFloat(pkg.total_price || pkg.price) || 0).toLocaleString()}
                             </span>
                             {/* Flipkart / Blinkit Style Action Button */}
-                            {renderItemActionButton(pkg, 'package')}
+                            <div className="shrink-0">
+                              {renderItemActionButton(pkg, 'package')}
+                            </div>
                           </div>
                         </div>
                       );
