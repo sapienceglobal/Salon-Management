@@ -1065,10 +1065,10 @@ export default function CustomersPage() {
             await api.delete(`/customers/${id}`);
             setSelectedCustomer(null);
             fetchCustomers();
-            toast.success('Customer deleted successfully');
+            toast.success('Customer marked as inactive');
           } catch (err) {
             console.error(err);
-            toast.error('Failed to delete customer');
+            toast.error('Failed to update customer status');
           }
         }}
       />

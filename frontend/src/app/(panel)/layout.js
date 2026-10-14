@@ -7,6 +7,7 @@ import AdminGuard from '@/components/admin/AdminGuard';
 import { useTheme } from '@/context/ThemeContext';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
+import { resetScrollLock } from '@/hooks/useScrollLock';
 
 /**
  * Admin Panel Layout — sidebar + header.
@@ -34,12 +35,16 @@ export default function AdminPanelLayout({ children }) {
   }, []);
 
   useEffect(() => {
+    // Unconditionally unlock scroll and clear pointer blockers on page navigation
+    resetScrollLock();
+
     const timer = setTimeout(() => {
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, behavior: 'instant' });
       }
       if (mainRef.current) {
         mainRef.current.scrollTo({ top: 0, behavior: 'instant' });
+        mainRef.current.style.pointerEvents = '';
       }
     }, 10);
     return () => clearTimeout(timer);

@@ -147,8 +147,10 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
                       confirmText: 'Mark Inactive'
                     });
                     if (isConfirmed) {
-                      onDelete && onDelete(customer.id);
                       onClose();
+                      if (onDelete) {
+                        onDelete(customer.id);
+                      }
                     }
                   }}
                   className="px-3 py-1.5 rounded-xl transition-colors text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 cursor-pointer"
