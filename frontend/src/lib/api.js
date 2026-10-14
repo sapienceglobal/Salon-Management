@@ -17,7 +17,13 @@ api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     // If request body is FormData, let browser/axios handle boundary header automatically
     if (config.data instanceof FormData) {
-      delete config.headers['Content-Type'];
+      if (config.headers && typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+        config.headers.delete('content-type');
+      } else if (config.headers) {
+        delete config.headers['Content-Type'];
+        delete config.headers['content-type'];
+      }
     }
 
     const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');

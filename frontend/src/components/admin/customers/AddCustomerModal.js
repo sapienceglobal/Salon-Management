@@ -263,13 +263,9 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
         formDataPayload.append('image', selectedFile);
 
         if (isEditing) {
-          res = await api.put(`/customers/${initialData.id}`, formDataPayload, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
+          res = await api.put(`/customers/${initialData.id}`, formDataPayload);
         } else {
-          res = await api.post('/customers', formDataPayload, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
+          res = await api.post('/customers', formDataPayload);
         }
       } else {
         if (profileVisual) {
@@ -752,54 +748,35 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess, initialDa
                 <h3 className="text-[14px] font-bold text-gray-800 dark:text-white">Communication Preferences</h3>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Promotional */}
-                <div className="bg-gray-50/60 dark:bg-white/[0.02] rounded-2xl border border-gray-100 dark:border-white/5 p-4">
-                  <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Promotions</p>
-                  <div className="flex flex-wrap gap-3">
-                    {[
-                      { name: 'sms_opt_in', label: 'SMS', icon: RiMessage3Line },
-                      { name: 'email_opt_in', label: 'Email', icon: RiMailLine },
-                      { name: 'whatsapp_opt_in', label: 'WhatsApp', icon: RiWhatsappLine },
-                    ].map(({ name, label, icon: Icon }) => (
-                      <label
-                        key={name}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border cursor-pointer transition-all text-[13px] font-semibold ${
-                          formData[name]
-                            ? 'border-[#E91E63] bg-[#E91E63]/5 text-[#E91E63] dark:bg-[#E91E63]/10'
-                            : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-white/20'
-                        }`}
-                      >
-                        <input
-                          type="checkbox" name={name} checked={formData[name]} onChange={handleChange}
-                          className="hidden"
-                        />
-                        <Icon className="text-sm" />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Transactional */}
-                <div className="bg-gray-50/60 dark:bg-white/[0.02] rounded-2xl border border-gray-100 dark:border-white/5 p-4">
-                  <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Transactional</p>
-                  <div className="flex flex-wrap gap-3">
-                    {[
-                      { label: 'SMS', icon: RiMessage3Line },
-                      { label: 'Email', icon: RiMailLine },
-                      { label: 'WhatsApp', icon: RiWhatsappLine },
-                    ].map(({ label, icon: Icon }) => (
-                      <label
-                        key={`txn_${label}`}
-                        className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#E91E63] bg-[#E91E63]/5 text-[#E91E63] dark:bg-[#E91E63]/10 text-[13px] font-semibold cursor-pointer"
-                      >
-                        <input type="checkbox" defaultChecked className="hidden" />
-                        <Icon className="text-sm" />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
+              <div className="bg-gray-50/60 dark:bg-white/[0.02] rounded-2xl border border-gray-100 dark:border-white/5 p-4">
+                <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                  Promotions & Marketing Updates
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { name: 'sms_opt_in', label: 'SMS', icon: RiMessage3Line },
+                    { name: 'email_opt_in', label: 'Email', icon: RiMailLine },
+                    { name: 'whatsapp_opt_in', label: 'WhatsApp', icon: RiWhatsappLine },
+                  ].map(({ name, label, icon: Icon }) => (
+                    <label
+                      key={name}
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border cursor-pointer transition-all text-[13px] font-semibold ${
+                        formData[name]
+                          ? 'border-[#E91E63] bg-[#E91E63]/5 text-[#E91E63] dark:bg-[#E91E63]/10'
+                          : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-white/20'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        name={name}
+                        checked={formData[name]}
+                        onChange={handleChange}
+                        className="hidden"
+                      />
+                      <Icon className="text-sm" />
+                      {label}
+                    </label>
+                  ))}
                 </div>
               </div>
             </div>
