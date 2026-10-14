@@ -493,8 +493,8 @@ export default function AppointmentsPage() {
           />
         </div> */}
 
-        {/* Top Bar: Title on left */}
-        <div className="relative z-10 flex items-start justify-between min-h-[105px] xl:min-h-[118px] 2xl:min-h-[128px] px-6 pt-5 sm:pt-6 mb-1">
+        {/* Top Bar: Title on left, New Appointment button on top right */}
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 pt-5 sm:pt-6 pb-3 sm:pb-4 mb-1">
           <div className="max-w-[340px] xl:max-w-md z-10 pt-1">
             <h1 className="text-2xl xl:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               Appointments
@@ -502,6 +502,21 @@ export default function AppointmentsPage() {
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
               Manage your salon appointments, walk-ins and staff schedules.
             </p>
+          </div>
+
+          {/* Top Right: Big Premium New Appointment Button */}
+          <div className="z-20 pt-1">
+            <button
+              onClick={() => {
+                setEditData(null);
+                setPrefilledSlot(null);
+                setIsAddModalOpen(true);
+              }}
+              className="bg-gradient-to-r from-[#E91E63] to-[#d81557] hover:from-[#d81557] hover:to-[#c2185b] text-white px-5 py-2.5 sm:px-6 sm:py-3.5 rounded-2xl text-sm sm:text-base font-bold shadow-md shadow-pink-500/25 hover:shadow-lg hover:shadow-pink-500/35 transition-all flex items-center gap-2.5 shrink-0 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <RiAddLine className="text-xl sm:text-2xl font-black" />
+              <span>New Appointment</span>
+            </button>
           </div>
         </div>
 
@@ -722,14 +737,6 @@ export default function AppointmentsPage() {
               className="w-full bg-white dark:bg-[#1a1a2e] border border-gray-200/80 dark:border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:border-[#E91E63] shadow-xs transition-all"
             />
           </div>
-
-          {/* New Appointment Button */}
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="bg-[#E91E63] hover:bg-[#D81B60] text-white px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm shadow-[#E91E63]/25 flex items-center gap-1.5 shrink-0 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <RiAddLine className="text-base font-bold" /> New Appointment
-          </button>
         </div>
       </div>
 
