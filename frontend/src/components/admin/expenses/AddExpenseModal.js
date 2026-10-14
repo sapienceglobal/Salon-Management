@@ -273,26 +273,26 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess, expenseToE
 
   return createPortal(
     <div 
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-200 ${
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-200 overflow-y-auto ${
         isClosing ? 'opacity-0' : 'opacity-100'
       }`}
       onClick={handleClose}
     >
       <div 
-        className={`bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-slate-100 w-full max-w-[620px] rounded-3xl shadow-2xl border border-slate-100 dark:border-white/10 overflow-hidden transform transition-all duration-200 ${
+        className={`bg-white dark:bg-[#1a1a2e] text-slate-900 dark:text-slate-100 w-full max-w-[620px] max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 dark:border-white/10 overflow-hidden my-auto transform transition-all duration-200 ${
           isClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-7 pt-6 pb-4 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+        <div className="px-5 sm:px-7 pt-4 sm:pt-5 pb-3.5 sm:pb-4 flex items-center justify-between border-b border-slate-100 dark:border-white/5 shrink-0">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
             {expenseToEdit ? 'Edit Expense' : 'Add Expense'}
           </h2>
           <button 
             type="button"
             onClick={handleClose}
-            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-xl"
+            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center transition-colors text-xl shrink-0 ml-2 cursor-pointer"
             aria-label="Close"
           >
             <RiCloseLine />
@@ -300,7 +300,8 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess, expenseToE
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} noValidate className="p-7 space-y-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col flex-1 overflow-hidden min-h-0">
+          <div className="p-5 sm:p-7 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
           
           {/* Row 1: Expense Date & Category */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -670,13 +671,14 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess, expenseToE
             </div>
 
           </div>
+          </div>
 
           {/* Footer Actions */}
-          <div className="pt-4 flex items-center justify-between gap-3 border-t border-slate-100 dark:border-white/5">
+          <div className="px-5 sm:px-7 py-3.5 sm:py-4 flex items-center justify-between gap-2.5 sm:gap-3 border-t border-slate-100 dark:border-white/5 shrink-0 bg-slate-50/50 dark:bg-white/[0.01]">
             <button
               type="button"
               onClick={handleClose}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-white/5 active:scale-95 transition-all"
+              className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-white/5 active:scale-95 transition-all cursor-pointer"
             >
               Cancel
             </button>

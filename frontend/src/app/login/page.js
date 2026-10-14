@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { loginSchema, formatZodErrors } from '@/lib/validations';
 import api from '@/lib/api';
@@ -1084,8 +1085,17 @@ function LoginFormContent() {
         </div>
 
         {/* Footer Row */}
-        <div className="text-center text-[11px] text-gray-400 py-1">
-          &copy; {new Date().getFullYear()} SalonTime. All rights reserved.
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-gray-500 py-2 border-t border-gray-100/60 mt-2">
+          <div>
+            &copy; {new Date().getFullYear()} SalonTime. All rights reserved.
+          </div>
+          <div className="flex items-center gap-4 text-gray-500">
+            <Link href="/privacy-policy" className="hover:text-[#E91E63] transition-colors">Privacy Policy</Link>
+            <span className="text-gray-300">&bull;</span>
+            <Link href="/terms" className="hover:text-[#E91E63] transition-colors">Terms</Link>
+            <span className="text-gray-300">&bull;</span>
+            <Link href="/delete-account" className="hover:text-[#E91E63] transition-colors">Delete Account</Link>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   RiMoreFill, 
   RiUserLine, 
@@ -13,7 +14,10 @@ import {
   RiInformationLine,
   RiSparklingFill,
   RiArrowRightSLine,
-  RiArrowLeftSLine
+  RiArrowLeftSLine,
+  RiStackLine,
+  RiScissorsCutLine,
+  RiSearchLine
 } from 'react-icons/ri';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
 
@@ -101,6 +105,42 @@ export default function ScheduleGrid({
     const d = new Date();
     return d.getHours() * 60 + d.getMinutes();
   });
+
+  // State for overlapping appointment cluster popover
+  const [isMounted, setIsMounted] = useState(false);
+  const [activeCluster, setActiveCluster] = useState(null);
+  const [clusterSearch, setClusterSearch] = useState('');
+  const leaveTimerRef = useRef(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Dismiss floating cluster popover on container scroll, window resize, or Escape key
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const dismiss = () => {
+      if (activeCluster) {
+        setActiveCluster(null);
+        setClusterSearch('');
+      }
+    };
+    if (container) {
+      container.addEventListener('scroll', dismiss, { passive: true });
+    }
+    window.addEventListener('resize', dismiss, { passive: true });
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') dismiss();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', dismiss);
+      }
+      window.removeEventListener('resize', dismiss);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeCluster]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -195,6 +235,23 @@ export default function ScheduleGrid({
     ? appointments 
     : (appointments.length > 0 ? appointments : DEFAULT_APPOINTMENTS);
 
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const parts = String(timeStr).split(':').map(Number);
+    return (parts[0] || 0) * 60 + (parts[1] || 0);
+  };
+
+  const formatTime12h = (timeStr) => {
+    if (!timeStr) return '';
+    const parts = String(timeStr).split(':');
+    const h = parseInt(parts[0], 10);
+    const m = parts[1] || '00';
+    if (isNaN(h)) return timeStr;
+    const period = h >= 12 ? 'PM' : 'AM';
+    const displayH = h % 12 === 0 ? 12 : h % 12;
+    return `${displayH}:${m} ${period}`;
+  };
+
   const timeToFractionalHour = (timeStr) => {
     if (!timeStr) return 0;
     const parts = timeStr.split(':').map(Number);
@@ -203,6 +260,40 @@ export default function ScheduleGrid({
     const totalMinutes = h * 60 + m;
     const startMinutes = START_HOUR * 60;
     return Math.max(0, (totalMinutes - startMinutes) / 60);
+  };
+
+  // Group overlapping appointments in the same lane into clusters
+  const clusterAppointments = (appts) => {
+    if (!appts || appts.length === 0) return [];
+    const sorted = [...appts].sort((a, b) => {
+      const diff = timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+      if (diff !== 0) return diff;
+      return timeToMinutes(a.end_time) - timeToMinutes(b.end_time);
+    });
+
+    const clusters = [];
+    let current = [sorted[0]];
+    let maxEnd = timeToMinutes(sorted[0].end_time || sorted[0].start_time);
+
+    for (let i = 1; i < sorted.length; i++) {
+      const appt = sorted[i];
+      const apptStart = timeToMinutes(appt.start_time);
+      const apptEnd = timeToMinutes(appt.end_time || appt.start_time);
+
+      // Overlap with 1-min tolerance (prevents back-to-back appts from clustering)
+      if (apptStart < maxEnd - 1) {
+        current.push(appt);
+        maxEnd = Math.max(maxEnd, apptEnd);
+      } else {
+        clusters.push(current);
+        current = [appt];
+        maxEnd = apptEnd;
+      }
+    }
+    if (current.length > 0) {
+      clusters.push(current);
+    }
+    return clusters;
   };
 
   // Filter appointments according to statusFilter and showCancelled
@@ -337,6 +428,274 @@ export default function ScheduleGrid({
     };
   };
 
+  // -------------------------------------------------------------
+  // 5. CLUSTER HOVER & INTERACTION HANDLERS
+  // -------------------------------------------------------------
+  const handleClusterMouseEnter = (e, cluster, staffName, isUnassigned, clusterId) => {
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const earliestStartMins = Math.min(...cluster.map((a) => timeToMinutes(a.start_time)));
+    const latestEndMins = Math.max(...cluster.map((a) => timeToMinutes(a.end_time || a.start_time)));
+    const durMins = Math.max(15, latestEndMins - earliestStartMins);
+    const durHours = Math.floor(durMins / 60);
+    const durRemainMins = durMins % 60;
+    const durationLabel = durHours > 0 
+      ? `${durHours}h${durRemainMins > 0 ? ` ${durRemainMins}m` : ''}` 
+      : `${durRemainMins}m`;
+
+    const earliestH = Math.floor(earliestStartMins / 60);
+    const earliestM = String(earliestStartMins % 60).padStart(2, '0');
+    const latestH = Math.floor(latestEndMins / 60);
+    const latestM = String(latestEndMins % 60).padStart(2, '0');
+
+    setActiveCluster({
+      clusterId,
+      cluster,
+      staffName,
+      isUnassigned,
+      rect,
+      earliestTime: formatTime12h(`${earliestH}:${earliestM}`),
+      latestTime: formatTime12h(`${latestH}:${latestM}`),
+      durationLabel,
+    });
+  };
+
+  const handleClusterMouseLeave = () => {
+    leaveTimerRef.current = setTimeout(() => {
+      setActiveCluster(null);
+      setClusterSearch('');
+    }, 260);
+  };
+
+  const handlePopoverMouseEnter = () => {
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+  };
+
+  const handlePopoverMouseLeave = () => {
+    leaveTimerRef.current = setTimeout(() => {
+      setActiveCluster(null);
+      setClusterSearch('');
+    }, 220);
+  };
+
+  const handleClusterClick = (e, cluster, staffName, isUnassigned, clusterId) => {
+    e.stopPropagation();
+    handleClusterMouseEnter(e, cluster, staffName, isUnassigned, clusterId);
+  };
+
+  // Render a standard single appointment card
+  const renderSingleAppointmentCard = (appt, staffContext) => {
+    const startOffset = timeToFractionalHour(appt.start_time);
+    const endOffset = timeToFractionalHour(appt.end_time);
+    const duration = Math.max(0.5, endOffset - startOffset);
+
+    if (startOffset < 0 || startOffset >= TOTAL_HOURS) return null;
+
+    const leftPct = (startOffset / TOTAL_HOURS) * 100;
+    const widthPct = (duration / TOTAL_HOURS) * 100;
+    const style = getCardStyle(appt);
+
+    return (
+      <div
+        key={appt.id}
+        onClick={() => onAppointmentClick && onAppointmentClick(appt)}
+        className={`absolute top-2 bottom-2 rounded-xl border ${style.card} px-2.5 py-1.5 flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-md hover:scale-[1.01] hover:z-20 transition-all select-none shadow-xs`}
+        style={{
+          left: `calc(${leftPct}% + 4px)`,
+          width: `calc(${widthPct}% - 8px)`,
+          minWidth: '60px',
+        }}
+        title={`${appt.customer_first_name || 'Walk-in'} - ${appt.service_name} (${appt.start_time?.substring(0, 5)} - ${appt.end_time?.substring(0, 5)}) [${style.badgeText}]`}
+      >
+        {/* Top Row: Time Range + Status Badge */}
+        <div className="flex items-center justify-between gap-1 leading-none">
+          <span className="text-[10px] font-bold tracking-tight opacity-90 truncate">
+            {appt.start_time?.substring(0, 5)} - {appt.end_time?.substring(0, 5)}
+          </span>
+          <div className="flex items-center gap-1 shrink-0">
+            {style.badgeText && (
+              <span className={`text-[8px] font-bold px-1 py-0.2 rounded border ${style.badgeBg}`}>
+                {style.badgeText}
+              </span>
+            )}
+            <RiMoreFill className="text-xs opacity-50 hover:opacity-100" />
+          </div>
+        </div>
+
+        {/* Bottom Row: Customer Avatar + Name & Service */}
+        <div className="flex items-center gap-1.5 min-w-0 mt-0.5">
+          <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-white/80 dark:border-black/30 shadow-2xs">
+            {appt.is_walk_in || appt.customer_first_name === 'Walk-in' ? (
+              <div className="w-full h-full bg-amber-100 text-amber-600 flex items-center justify-center text-[10px]">
+                <RiUserLine />
+              </div>
+            ) : (
+              <VisualAvatar
+                type="customer"
+                image={appt.customer_avatar_url || appt.profile_image_url}
+                name={`${appt.customer_first_name || ''} ${appt.customer_last_name || ''}`}
+                size="xs"
+                className="w-full h-full"
+              />
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1 leading-none">
+            <div className={`text-[11px] font-bold truncate ${style.customerText || 'text-gray-900 dark:text-white'}`}>
+              {appt.customer_first_name || 'Walk-in'} {appt.customer_last_name || ''}
+            </div>
+            <div className={`text-[10px] truncate mt-0.5 ${style.serviceText}`}>
+              {appt.service_name}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render a 3D Stacked Deck card for overlapping appointments
+  const renderClusterCard = (cluster, staffName, isUnassigned, index, staffColor) => {
+    const earliestStartMins = Math.min(...cluster.map((a) => timeToMinutes(a.start_time)));
+    const latestEndMins = Math.max(...cluster.map((a) => timeToMinutes(a.end_time || a.start_time)));
+    
+    const startOffset = Math.max(0, (earliestStartMins - START_HOUR * 60) / 60);
+    const endOffset = Math.max(0, (latestEndMins - START_HOUR * 60) / 60);
+    const duration = Math.max(0.65, endOffset - startOffset);
+
+    if (startOffset < 0 || startOffset >= TOTAL_HOURS) return null;
+
+    const leftPct = (startOffset / TOTAL_HOURS) * 100;
+    const widthPct = (duration / TOTAL_HOURS) * 100;
+
+    const earliestTimeStr = `${String(Math.floor(earliestStartMins / 60)).padStart(2, '0')}:${String(earliestStartMins % 60).padStart(2, '0')}`;
+    const latestTimeStr = `${String(Math.floor(latestEndMins / 60)).padStart(2, '0')}:${String(latestEndMins % 60).padStart(2, '0')}`;
+
+    const clusterId = `${staffName}-${index}`;
+    const isActive = activeCluster && activeCluster.clusterId === clusterId;
+
+    return (
+      <div
+        key={clusterId}
+        className="absolute top-2 bottom-2 select-none group/cluster"
+        style={{
+          left: `calc(${leftPct}% + 4px)`,
+          width: `calc(${widthPct}% - 8px)`,
+          minWidth: '85px',
+          zIndex: isActive ? 28 : 10,
+        }}
+        onMouseEnter={(e) => handleClusterMouseEnter(e, cluster, staffName, isUnassigned, clusterId)}
+        onMouseLeave={handleClusterMouseLeave}
+        onClick={(e) => handleClusterClick(e, cluster, staffName, isUnassigned, clusterId)}
+      >
+        {/* 3D Stack Deck Layer 2 (Backmost) */}
+        <div 
+          className={`absolute -top-1.5 left-2 right-2 h-full rounded-xl transition-all duration-200 pointer-events-none ${
+            isUnassigned
+              ? 'bg-amber-200/50 dark:bg-amber-950/40 border border-amber-300/60 dark:border-amber-700/40'
+              : 'bg-violet-200/60 dark:bg-violet-950/40 border border-violet-300/60 dark:border-violet-700/40'
+          } ${isActive ? '-translate-y-1' : 'group-hover/cluster:-translate-y-1'}`}
+        />
+
+        {/* 3D Stack Deck Layer 1 (Middle) */}
+        <div 
+          className={`absolute -top-0.5 left-1 right-1 h-full rounded-xl transition-all duration-200 pointer-events-none ${
+            isUnassigned
+              ? 'bg-amber-100/70 dark:bg-amber-900/40 border border-amber-300/80 dark:border-amber-700/50'
+              : 'bg-violet-100/80 dark:bg-violet-900/40 border border-violet-300/80 dark:border-violet-700/50'
+          } ${isActive ? '-translate-y-0.5' : 'group-hover/cluster:-translate-y-0.5'}`}
+        />
+
+        {/* Main Front Stack Card */}
+        <div
+          className={`relative h-full rounded-xl px-2.5 py-1.5 flex flex-col justify-between overflow-hidden cursor-pointer transition-all duration-200 shadow-sm ${
+            isUnassigned
+              ? 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-[#2a2218] dark:to-[#221c15] border border-amber-300/90 dark:border-amber-600/60 text-amber-950 dark:text-amber-100'
+              : 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-[#231e3d] dark:to-[#1c1a30] border border-violet-300/90 dark:border-violet-600/60 text-gray-900 dark:text-white'
+          } ${
+            isActive 
+              ? 'ring-2 ring-violet-500 dark:ring-violet-400 shadow-lg scale-[1.01]' 
+              : 'hover:shadow-md hover:scale-[1.01]'
+          }`}
+        >
+          {/* Top Row: Time Span + Stack Badge */}
+          <div className="flex items-center justify-between gap-1 leading-none">
+            <span className="text-[10px] font-extrabold tracking-tight truncate opacity-90">
+              {earliestTimeStr} – {latestTimeStr}
+            </span>
+            <span 
+              className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full shrink-0 flex items-center gap-1 shadow-2xs ${
+                isUnassigned
+                  ? 'bg-amber-500 text-white dark:bg-amber-600'
+                  : 'bg-violet-600 text-white dark:bg-violet-500'
+              }`}
+            >
+              <RiStackLine className="text-[10px]" />
+              <span>{cluster.length} Bookings</span>
+            </span>
+          </div>
+
+          {/* Bottom Row: Overlapping Avatars + Summary & Expand Cue */}
+          <div className="flex items-center justify-between gap-1.5 min-w-0 mt-0.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              {/* Avatar Stack */}
+              <div className="flex -space-x-1.5 overflow-hidden shrink-0 py-0.5">
+                {cluster.slice(0, 3).map((a, i) => (
+                  <div
+                    key={a.id || i}
+                    className="w-5 h-5 rounded-full ring-2 ring-white dark:ring-[#1a1a2e] overflow-hidden bg-gray-200 dark:bg-gray-800 shrink-0"
+                  >
+                    {a.is_walk_in || a.customer_first_name === 'Walk-in' ? (
+                      <div className="w-full h-full bg-amber-100 text-amber-600 flex items-center justify-center text-[9px]">
+                        <RiUserLine />
+                      </div>
+                    ) : (
+                      <VisualAvatar
+                        type="customer"
+                        image={a.customer_avatar_url || a.profile_image_url}
+                        name={`${a.customer_first_name || ''} ${a.customer_last_name || ''}`}
+                        size="xs"
+                        className="w-full h-full"
+                      />
+                    )}
+                  </div>
+                ))}
+                {cluster.length > 3 && (
+                  <div className="w-5 h-5 rounded-full ring-2 ring-white dark:ring-[#1a1a2e] bg-gray-900 text-white dark:bg-gray-700 text-[8px] font-bold flex items-center justify-center shrink-0">
+                    +{cluster.length - 3}
+                  </div>
+                )}
+              </div>
+
+              {/* Names preview */}
+              <div className="min-w-0 leading-none">
+                <div className="text-[10px] font-bold truncate">
+                  {cluster[0]?.customer_first_name || 'Walk-in'}
+                  {cluster.length > 1 ? `, ${cluster[1]?.customer_first_name || ''}` : ''}
+                  {cluster.length > 2 ? '...' : ''}
+                </div>
+                <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate mt-0.5 font-medium">
+                  {cluster.length} overlapping
+                </div>
+              </div>
+            </div>
+
+            {/* Sparkle / Hover Cue */}
+            <div className="shrink-0 flex items-center gap-0.5 text-[9px] font-bold text-violet-600 dark:text-violet-400 bg-white/80 dark:bg-white/10 px-1 py-0.5 rounded-md border border-violet-200 dark:border-white/10 opacity-80 group-hover/cluster:opacity-100 transition-opacity">
+              <RiSparklingFill className="text-[9px]" />
+              <span className="hidden sm:inline">Deck</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={`bg-white dark:bg-[#1a1a2e] border border-gray-100 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm flex flex-col h-full w-full justify-between ${className}`}>
       
@@ -351,11 +710,6 @@ export default function ScheduleGrid({
             <span className="px-2 py-0.5 rounded-md font-bold text-gray-900 dark:text-white bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 shadow-2xs">
               {hours[0]?.label} – {hours[hours.length - 1]?.label} ({TOTAL_HOURS}h)
             </span>
-          </span>
-
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 hidden md:inline-flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Dynamic Settings
           </span>
         </div>
 
@@ -545,68 +899,11 @@ export default function ScheduleGrid({
                   </span>
                 </div>
               ) : (
-                unassignedAppointments.map((appt) => {
-                  const startOffset = timeToFractionalHour(appt.start_time);
-                  const endOffset = timeToFractionalHour(appt.end_time);
-                  const duration = Math.max(0.5, endOffset - startOffset);
-
-                  if (startOffset < 0 || startOffset >= TOTAL_HOURS) return null;
-
-                  const leftPct = (startOffset / TOTAL_HOURS) * 100;
-                  const widthPct = (duration / TOTAL_HOURS) * 100;
-                  const style = getCardStyle(appt);
-
-                  return (
-                    <div
-                      key={appt.id}
-                      onClick={() => onAppointmentClick && onAppointmentClick(appt)}
-                      className={`absolute top-2 bottom-2 rounded-xl border ${style.card} px-2.5 py-1.5 flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-md hover:scale-[1.01] hover:z-20 transition-all select-none shadow-xs`}
-                      style={{
-                        left: `calc(${leftPct}% + 4px)`,
-                        width: `calc(${widthPct}% - 8px)`,
-                        minWidth: '60px',
-                      }}
-                      title={`Unassigned: ${appt.customer_first_name || 'Walk-in'} - ${appt.service_name} (${appt.start_time?.substring(0, 5)} - ${appt.end_time?.substring(0, 5)})`}
-                    >
-                      {/* Top Row: Time + Status Pill */}
-                      <div className="flex items-center justify-between gap-1 leading-none">
-                        <span className="text-[10px] font-bold tracking-tight opacity-90 truncate">
-                          {appt.start_time?.substring(0, 5)} - {appt.end_time?.substring(0, 5)}
-                        </span>
-                        <span className={`text-[8px] font-bold px-1 py-0.2 rounded border shrink-0 ${style.badgeBg}`}>
-                          {style.badgeText}
-                        </span>
-                      </div>
-
-                      {/* Bottom Row: Customer Avatar + Name & Service */}
-                      <div className="flex items-center gap-1.5 min-w-0 mt-0.5">
-                        <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-white/80 dark:border-black/30 shadow-2xs">
-                          {appt.is_walk_in || appt.customer_first_name === 'Walk-in' ? (
-                            <div className="w-full h-full bg-amber-100 text-amber-600 flex items-center justify-center text-[10px]">
-                              <RiUserLine />
-                            </div>
-                          ) : (
-                            <VisualAvatar
-                              type="customer"
-                              image={appt.customer_avatar_url || appt.profile_image_url}
-                              name={`${appt.customer_first_name || ''} ${appt.customer_last_name || ''}`}
-                              size="xs"
-                              className="w-full h-full"
-                            />
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1 leading-none">
-                          <div className={`text-[11px] font-bold truncate ${style.customerText || 'text-gray-900 dark:text-white'}`}>
-                            {appt.customer_first_name || 'Walk-in'} {appt.customer_last_name || ''}
-                          </div>
-                          <div className={`text-[10px] truncate mt-0.5 ${style.serviceText}`}>
-                            {appt.service_name}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
+                clusterAppointments(unassignedAppointments).map((cluster, cIdx) => {
+                  if (cluster.length === 1) {
+                    return renderSingleAppointmentCard(cluster[0], 'Unassigned Queue');
+                  }
+                  return renderClusterCard(cluster, 'Unassigned Queue', true, cIdx);
                 })
               )}
             </div>
@@ -740,72 +1037,16 @@ export default function ScheduleGrid({
                   )}
 
                   {/* Appointment Blocks */}
-                  {getStaffAppointments(member.id).map((appt) => {
-                    const startOffset = timeToFractionalHour(appt.start_time);
-                    const endOffset = timeToFractionalHour(appt.end_time);
-                    const duration = Math.max(0.5, endOffset - startOffset);
-
-                    if (startOffset < 0 || startOffset >= TOTAL_HOURS) return null;
-
-                    const leftPct = (startOffset / TOTAL_HOURS) * 100;
-                    const widthPct = (duration / TOTAL_HOURS) * 100;
-                    const style = getCardStyle(appt);
-
-                    return (
-                      <div
-                        key={appt.id}
-                        onClick={() => onAppointmentClick && onAppointmentClick(appt)}
-                        className={`absolute top-2 bottom-2 rounded-xl border ${style.card} px-2.5 py-1.5 flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-md hover:scale-[1.01] hover:z-20 transition-all select-none shadow-xs`}
-                        style={{
-                          left: `calc(${leftPct}% + 4px)`,
-                          width: `calc(${widthPct}% - 8px)`,
-                          minWidth: '60px',
-                        }}
-                        title={`${appt.customer_first_name || 'Walk-in'} - ${appt.service_name} (${appt.start_time?.substring(0, 5)} - ${appt.end_time?.substring(0, 5)}) [${style.badgeText}]`}
-                      >
-                        {/* Top Row: Time Range + Status Badge */}
-                        <div className="flex items-center justify-between gap-1 leading-none">
-                          <span className="text-[10px] font-bold tracking-tight opacity-90 truncate">
-                            {appt.start_time?.substring(0, 5)} - {appt.end_time?.substring(0, 5)}
-                          </span>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {style.badgeText && (
-                              <span className={`text-[8px] font-bold px-1 py-0.2 rounded border ${style.badgeBg}`}>
-                                {style.badgeText}
-                              </span>
-                            )}
-                            <RiMoreFill className="text-xs opacity-50 hover:opacity-100" />
-                          </div>
-                        </div>
-
-                        {/* Bottom Row: Customer Avatar + Name & Service */}
-                        <div className="flex items-center gap-1.5 min-w-0 mt-0.5">
-                          <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-white/80 dark:border-black/30 shadow-2xs">
-                            {appt.is_walk_in || appt.customer_first_name === 'Walk-in' ? (
-                              <div className="w-full h-full bg-amber-100 text-amber-600 flex items-center justify-center text-[10px]">
-                                <RiUserLine />
-                              </div>
-                            ) : (
-                              <VisualAvatar
-                                type="customer"
-                                image={appt.customer_avatar_url || appt.profile_image_url}
-                                name={`${appt.customer_first_name || ''} ${appt.customer_last_name || ''}`}
-                                size="xs"
-                                className="w-full h-full"
-                              />
-                            )}
-                          </div>
-
-                          <div className="min-w-0 flex-1 leading-none">
-                            <div className={`text-[11px] font-bold truncate ${style.customerText || 'text-gray-900 dark:text-white'}`}>
-                              {appt.customer_first_name || 'Walk-in'} {appt.customer_last_name || ''}
-                            </div>
-                            <div className={`text-[10px] truncate mt-0.5 ${style.serviceText}`}>
-                              {appt.service_name}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                  {clusterAppointments(getStaffAppointments(member.id)).map((cluster, cIdx) => {
+                    if (cluster.length === 1) {
+                      return renderSingleAppointmentCard(cluster[0], `${member.first_name} ${member.last_name}`);
+                    }
+                    return renderClusterCard(
+                      cluster,
+                      `${member.first_name} ${member.last_name}`,
+                      false,
+                      cIdx,
+                      member.color_code
                     );
                   })}
                 </div>
@@ -814,6 +1055,275 @@ export default function ScheduleGrid({
           </div>
         </div>
       </div>
+
+      {/* ========================================================
+          FLOATING EXPANDED DECK POPOVER (PORTAL)
+          Renders overlapping appointments cleanly without clipping
+         ======================================================== */}
+      {isMounted && activeCluster && typeof document !== 'undefined' && createPortal(
+        (() => {
+          const { rect, cluster, staffName, isUnassigned, earliestTime, latestTime, durationLabel } = activeCluster;
+          const popoverWidth = 400;
+
+          // Horizontal center relative to cluster card
+          let popoverLeft = (rect.left + rect.width / 2) - popoverWidth / 2;
+          if (popoverLeft < 12) popoverLeft = 12;
+          if (popoverLeft + popoverWidth > window.innerWidth - 12) {
+            popoverLeft = window.innerWidth - popoverWidth - 12;
+          }
+
+          // Vertical positioning: Upward if room, else downward
+          const isAbove = rect.top >= 320;
+          const popoverStyle = isAbove
+            ? {
+                position: 'fixed',
+                left: `${popoverLeft}px`,
+                bottom: `${window.innerHeight - rect.top + 12}px`,
+                width: `${popoverWidth}px`,
+                zIndex: 99999,
+              }
+            : {
+                position: 'fixed',
+                left: `${popoverLeft}px`,
+                top: `${rect.bottom + 12}px`,
+                width: `${popoverWidth}px`,
+                zIndex: 99999,
+              };
+
+          const cardCenterX = rect.left + rect.width / 2;
+          const stemX = Math.max(24, Math.min(popoverWidth - 24, cardCenterX - popoverLeft));
+
+          // Filter appointments if searching
+          const filteredInCluster = cluster.filter((a) => {
+            if (!clusterSearch.trim()) return true;
+            const q = clusterSearch.toLowerCase();
+            const name = `${a.customer_first_name || ''} ${a.customer_last_name || ''}`.toLowerCase();
+            const sName = (a.service_name || '').toLowerCase();
+            return name.includes(q) || sName.includes(q);
+          });
+
+          return (
+            <div
+              style={popoverStyle}
+              onMouseEnter={handlePopoverMouseEnter}
+              onMouseLeave={handlePopoverMouseLeave}
+              className="animate-in fade-in zoom-in-95 duration-200 select-none"
+            >
+              {/* Floating Connecting Guide Stem & Pointer Line */}
+              {isAbove ? (
+                <>
+                  {/* Downward stem connecting popover to timeline card */}
+                  <div
+                    className="absolute -bottom-[12px] w-[2px] h-[12px] bg-gradient-to-b from-violet-500 to-indigo-500 pointer-events-none"
+                    style={{ left: `${stemX}px`, transform: 'translateX(-50%)' }}
+                  />
+                  {/* Pulsing anchor dot on timeline card boundary */}
+                  <div
+                    className="absolute -bottom-[16px] w-2.5 h-2.5 rounded-full bg-violet-600 ring-2 ring-white dark:ring-[#1a1a2e] shadow-md pointer-events-none animate-pulse"
+                    style={{ left: `${stemX}px`, transform: 'translateX(-50%)' }}
+                  />
+                  {/* Popover bottom caret arrow */}
+                  <div
+                    className="absolute -bottom-1.5 w-3 h-3 rotate-45 bg-white dark:bg-[#18182b] border-r border-b border-gray-200/80 dark:border-white/10"
+                    style={{ left: `${stemX}px`, transform: 'translateX(-50%)' }}
+                  />
+                </>
+              ) : (
+                <>
+                  {/* Upward stem connecting popover to timeline card */}
+                  <div
+                    className="absolute -top-[12px] w-[2px] h-[12px] bg-gradient-to-t from-violet-500 to-indigo-500 pointer-events-none"
+                    style={{ left: `${stemX}px`, transform: 'translateX(-50%)' }}
+                  />
+                  {/* Pulsing anchor dot on timeline card boundary */}
+                  <div
+                    className="absolute -top-[16px] w-2.5 h-2.5 rounded-full bg-violet-600 ring-2 ring-white dark:ring-[#1a1a2e] shadow-md pointer-events-none animate-pulse"
+                    style={{ left: `${stemX}px`, transform: 'translateX(-50%)' }}
+                  />
+                  {/* Popover top caret arrow */}
+                  <div
+                    className="absolute -top-1.5 w-3 h-3 rotate-45 bg-white dark:bg-[#18182b] border-l border-t border-gray-200/80 dark:border-white/10"
+                    style={{ left: `${stemX}px`, transform: 'translateX(-50%)' }}
+                  />
+                </>
+              )}
+
+              {/* Main Popover Card Box */}
+              <div className="bg-white/95 dark:bg-[#18182d]/95 backdrop-blur-xl border border-gray-200/90 dark:border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[500px] ring-1 ring-black/5 dark:ring-white/10">
+                
+                {/* Header */}
+                <div className="p-3.5 border-b border-gray-100 dark:border-white/10 bg-gray-50/80 dark:bg-white/[0.03]">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                        isUnassigned
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300'
+                          : 'bg-violet-100 text-violet-700 dark:bg-violet-950/70 dark:text-violet-300'
+                      }`}>
+                        <RiStackLine className="text-base" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                          {cluster.length} Overlapping Bookings
+                        </h4>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                          {isUnassigned ? 'Unassigned Queue' : `Staff: ${staffName}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isUnassigned
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40'
+                          : 'bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200 dark:border-violet-800/40'
+                      }`}>
+                        {cluster.length} Cards
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveCluster(null);
+                          setClusterSearch('');
+                        }}
+                        className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                        title="Close popover"
+                      >
+                        <RiCloseLine className="text-base" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Visual Timeline Range Connecting Line Indicator */}
+                  <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10">
+                      <RiTimeLine className="text-[#E91E63]" />
+                      {earliestTime}
+                    </span>
+                    <div className="flex-1 mx-2 flex items-center gap-1">
+                      <div className="h-[2px] flex-1 bg-gradient-to-r from-violet-500 via-pink-500 to-indigo-500 rounded-full" />
+                      <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 px-1 bg-white dark:bg-[#18182d] rounded shrink-0">
+                        {durationLabel} span
+                      </span>
+                      <div className="h-[2px] flex-1 bg-gradient-to-r from-pink-500 via-indigo-500 to-violet-500 rounded-full" />
+                    </div>
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10">
+                      {latestTime}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Quick Search if more than 4 appointments */}
+                {cluster.length > 4 && (
+                  <div className="px-3 pt-2.5 pb-1">
+                    <div className="relative">
+                      <RiSearchLine className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+                      <input
+                        type="text"
+                        value={clusterSearch}
+                        onChange={(e) => setClusterSearch(e.target.value)}
+                        placeholder="Search customer or service..."
+                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50/70 dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Scrollable Individual Cards List */}
+                <div className="p-3 overflow-y-auto space-y-2 max-h-[340px] custom-scrollbar">
+                  {filteredInCluster.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-gray-400 dark:text-gray-500">
+                      No matching bookings found
+                    </div>
+                  ) : (
+                    filteredInCluster.map((appt) => {
+                      const style = getCardStyle(appt);
+                      return (
+                        <div
+                          key={appt.id}
+                          onClick={() => {
+                            setActiveCluster(null);
+                            setClusterSearch('');
+                            if (onAppointmentClick) onAppointmentClick(appt);
+                          }}
+                          className={`p-2.5 rounded-xl border ${style.card} transition-all duration-150 cursor-pointer hover:scale-[1.01] hover:shadow-md select-none group/item relative overflow-hidden`}
+                        >
+                          {/* Top Row: Time + Price + Status */}
+                          <div className="flex items-center justify-between gap-1.5 mb-1.5 leading-none">
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">
+                              <RiTimeLine className="text-violet-500 text-xs" />
+                              <span>
+                                {formatTime12h(appt.start_time)} – {formatTime12h(appt.end_time)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {(appt.total_amount || appt.price) && (
+                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40">
+                                  ₹{appt.total_amount || appt.price}
+                                </span>
+                              )}
+                              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${style.badgeBg}`}>
+                                {style.badgeText}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Bottom Row: Customer Avatar + Name & Service */}
+                          <div className="flex items-center justify-between gap-2.5">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-white dark:border-gray-800 shadow-2xs">
+                                {appt.is_walk_in || appt.customer_first_name === 'Walk-in' ? (
+                                  <div className="w-full h-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs">
+                                    <RiUserLine />
+                                  </div>
+                                ) : (
+                                  <VisualAvatar
+                                    type="customer"
+                                    image={appt.customer_avatar_url || appt.profile_image_url}
+                                    name={`${appt.customer_first_name || ''} ${appt.customer_last_name || ''}`}
+                                    size="xs"
+                                    className="w-full h-full"
+                                  />
+                                )}
+                              </div>
+
+                              <div className="min-w-0">
+                                <div className={`text-xs font-bold truncate ${style.customerText || 'text-gray-900 dark:text-white'}`}>
+                                  {appt.customer_first_name || 'Walk-in'} {appt.customer_last_name || ''}
+                                </div>
+                                <div className="text-[11px] truncate flex items-center gap-1 text-gray-500 dark:text-gray-400 mt-0.5">
+                                  <RiScissorsCutLine className="text-[10px] text-gray-400 shrink-0" />
+                                  <span className={`truncate ${style.serviceText}`}>
+                                    {appt.service_name || 'Salon Service'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Manage Arrow Indicator */}
+                            <div className="shrink-0 flex items-center text-[10px] font-semibold text-violet-600 dark:text-violet-400 group-hover/item:translate-x-0.5 transition-transform opacity-80 group-hover/item:opacity-100">
+                              <span>Details</span>
+                              <RiArrowRightSLine className="text-sm" />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="px-3.5 py-2 border-t border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.015] flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500">
+                  <span>Click any appointment to open details</span>
+                  <span>Esc to close</span>
+                </div>
+              </div>
+            </div>
+          );
+        })(),
+        document.body
+      )}
     </div>
   );
 }

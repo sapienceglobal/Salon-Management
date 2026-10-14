@@ -165,13 +165,13 @@ export default function CategoryFormModal({ isOpen, onClose, onSuccess, initialD
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs transition-opacity duration-200 ${
+      className={`fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/50 backdrop-blur-xs transition-opacity duration-200 overflow-y-auto ${
         isClosing ? 'animate-[fadeOut_0.18s_ease_forwards]' : 'animate-[fadeIn_0.18s_ease_forwards]'
       }`}
       onMouseDown={handleClose}
     >
       <div
-        className="bg-white dark:bg-[#1a1a2e] w-full max-w-[590px] rounded-3xl border border-gray-100 dark:border-white/10 shadow-2xl p-6 sm:p-7 relative animate-[scaleUp_0.2s_ease_forwards]"
+        className="bg-white dark:bg-[#1a1a2e] w-full max-w-[590px] max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl border border-gray-100 dark:border-white/10 shadow-2xl p-5 sm:p-7 relative my-auto overflow-hidden animate-[scaleUp_0.2s_ease_forwards]"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
@@ -179,37 +179,38 @@ export default function CategoryFormModal({ isOpen, onClose, onSuccess, initialD
         <button
           type="button"
           onClick={handleClose}
-          className="absolute right-5 top-5 w-7 h-7 rounded-full bg-pink-50/80 dark:bg-pink-950/40 text-[#E91E63] hover:bg-pink-100 dark:hover:bg-pink-900/60 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+          className="absolute right-5 top-5 w-7 h-7 rounded-full bg-pink-50/80 dark:bg-pink-950/40 text-[#E91E63] hover:bg-pink-100 dark:hover:bg-pink-900/60 transition-colors flex items-center justify-center cursor-pointer shadow-2xs z-10"
           aria-label="Close"
         >
           <RiCloseLine className="text-base font-bold" />
         </button>
 
         {/* Modal Header */}
-        <div className="flex items-center gap-3.5 mb-5 pr-8">
+        <div className="flex items-center gap-3.5 mb-5 pr-8 shrink-0">
           <div className="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-950/40 text-[#E91E63] flex items-center justify-center text-2xl shrink-0 shadow-2xs">
             <RiGridLine />
           </div>
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate">
               {isEditing ? 'Edit Service Category' : 'Add Service Category'}
             </h2>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
               Create a new service category to organize your services.
             </p>
           </div>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} noValidate>
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 text-xs rounded-xl font-medium">
-              {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col flex-1 overflow-hidden min-h-0">
+          <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 -mr-1 space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 text-xs rounded-xl font-medium">
+                {error}
+              </div>
+            )}
 
-          {/* Row 1: Category Name & Icon Select */}
-          <div className="flex items-start gap-4 mb-4">
+            {/* Row 1: Category Name & Icon Select */}
+            <div className="flex items-start gap-4 mb-4">
             {/* Left: Category Name */}
             <div className="flex-1 min-w-0">
               <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
@@ -358,21 +359,22 @@ export default function CategoryFormModal({ isOpen, onClose, onSuccess, initialD
               })}
             </div>
           </div>
+          </div>
 
           {/* Modal Footer (Actions) */}
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="flex items-center justify-end gap-2.5 sm:gap-3 pt-3 shrink-0 border-t border-gray-100 dark:border-white/5">
             <button
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 px-6 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50"
+              className="bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 px-5 sm:px-6 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="bg-[#E91E63] hover:bg-[#D81B60] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-[#E91E63]/25 flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+              className="bg-[#E91E63] hover:bg-[#D81B60] text-white px-5 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-[#E91E63]/25 flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
             >
               <RiAddLine className="text-base font-bold" />{' '}
               {loading ? 'Saving...' : isEditing ? 'Update Category' : 'Save Category'}

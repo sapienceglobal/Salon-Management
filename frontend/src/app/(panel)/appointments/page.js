@@ -1000,8 +1000,8 @@ export default function AppointmentsPage() {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease_forwards]">
-          <div className="bg-white dark:bg-[#1a1a2e] w-full max-w-sm rounded-2xl shadow-xl overflow-hidden p-6 text-center animate-[scaleUp_0.25s_ease_forwards]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]">
+          <div className="bg-white dark:bg-[#1a1a2e] w-full max-w-sm my-auto rounded-2xl shadow-xl overflow-hidden p-6 text-center animate-[scaleUp_0.25s_ease_forwards]">
             <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-950/40 text-red-500 flex items-center justify-center text-2xl mx-auto mb-3.5">
               <RiDeleteBinLine />
             </div>

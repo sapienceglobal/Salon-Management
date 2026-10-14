@@ -114,21 +114,21 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
   return createPortal(
     <Fragment>
       <div 
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
         onMouseDown={onClose}
       >
         <div 
-          className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-3xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
+          className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-3xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-auto overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
           onMouseDown={e => e.stopPropagation()}
         >
           {/* Header Section */}
-          <div className="px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">Customer Profile</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Comprehensive customer details, history and wallet.</p>
+          <div className="shrink-0 px-5 sm:px-8 py-4 sm:py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+            <div className="flex justify-between items-start mb-4 gap-2">
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate">Customer Profile</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">Comprehensive customer details, history and wallet.</p>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 <button 
                   onClick={() => {
                     onClose();
@@ -157,7 +157,7 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
                 </button>
                 <button 
                   onClick={onClose} 
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer ml-1"
                 >
                   <RiCloseLine className="text-2xl" />
                 </button>
@@ -166,36 +166,36 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
 
             {/* Profile Info Card */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-[#151522] border border-gray-100 dark:border-white/5 shadow-sm">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 min-w-0">
                 <VisualAvatar
                   type="customer"
                   image={customer.profile_image_url}
                   name={`${customer.first_name} ${customer.last_name || ''}`}
                   size="xl"
                   shape="rounded"
-                  className="w-13 h-13 shadow-xs"
+                  className="w-13 h-13 shadow-xs shrink-0"
                 />
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                       {customer.first_name} {customer.last_name || ''}
                     </h3>
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/5 capitalize text-gray-600 dark:text-gray-400">
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/5 capitalize text-gray-600 dark:text-gray-400 shrink-0">
                       {customer.gender || 'Unknown'}
                     </span>
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${customer.is_active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800'}`}>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${customer.is_active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800'}`}>
                       {customer.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {customer.phone && (
-                      <a href={`tel:${customer.phone}`} className="flex items-center gap-1 hover:text-[#E91E63] transition-colors">
-                        <RiPhoneLine className="text-[#E91E63]" /> +91 {customer.phone}
+                      <a href={`tel:${customer.phone}`} className="flex items-center gap-1 hover:text-[#E91E63] transition-colors truncate">
+                        <RiPhoneLine className="text-[#E91E63] shrink-0" /> +91 {customer.phone}
                       </a>
                     )}
                     {customer.email && (
-                      <a href={`mailto:${customer.email}`} className="flex items-center gap-1 hover:text-[#E91E63] transition-colors">
-                        <RiMailLine className="text-[#E91E63]" /> {customer.email}
+                      <a href={`mailto:${customer.email}`} className="flex items-center gap-1 hover:text-[#E91E63] transition-colors truncate">
+                        <RiMailLine className="text-[#E91E63] shrink-0" /> {customer.email}
                       </a>
                     )}
                   </div>
@@ -203,14 +203,14 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 shrink-0">
                 {!isManager && (
                   <button 
                     onClick={() => {
                       onClose();
                       setTimeout(() => router.push(`/billing?customer_id=${customer.id}`), 150);
                     }}
-                    className="px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors font-semibold text-xs text-gray-700 dark:text-gray-200 cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors font-semibold text-xs text-gray-700 dark:text-gray-200 cursor-pointer"
                   >
                     Create Invoice
                   </button>
@@ -220,7 +220,7 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
                     onClose();
                     setTimeout(() => router.push(`/appointments?customer_id=${customer.id}`), 150);
                   }}
-                  className="px-4 py-2 rounded-xl bg-[#E91E63] hover:bg-[#d81557] text-white font-semibold text-xs transition-colors shadow-md shadow-[#E91E63]/25 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-[#E91E63] hover:bg-[#d81557] text-white font-semibold text-xs transition-colors shadow-md shadow-[#E91E63]/25 cursor-pointer"
                 >
                   Book Appointment
                 </button>
@@ -228,12 +228,12 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex items-center gap-6 overflow-x-auto mt-4 custom-scrollbar">
+            <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto mt-4 custom-scrollbar">
               {TABS.map(tab => (
                 <button 
                   key={tab}
                   onClick={() => setActiveTab(tab.toLowerCase())}
-                  className={`pb-2.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-colors cursor-pointer ${activeTab === tab.toLowerCase() ? 'border-[#E91E63] text-[#E91E63]' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}
+                  className={`pb-2.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-colors cursor-pointer shrink-0 ${activeTab === tab.toLowerCase() ? 'border-[#E91E63] text-[#E91E63]' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}
                 >
                   {tab} {tab === 'Points' && `(${profileData?.reward_points || 0})`}
                 </button>
@@ -242,7 +242,7 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
           </div>
 
           {/* Tab Content */}
-          <div className="overflow-y-auto max-h-[calc(100vh-320px)] p-6 sm:p-8 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-5 sm:p-8 custom-scrollbar">
             {loading ? (
                <div className="flex items-center justify-center py-16">
                  <div className="animate-spin w-8 h-8 border-4 border-[#E91E63] border-t-transparent rounded-full"></div>

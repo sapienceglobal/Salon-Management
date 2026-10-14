@@ -79,25 +79,28 @@ export default function ViewInvoicesDrawer({ isOpen, onClose, onSelectInvoice })
   });
 
   return createPortal(
-    <div className="fixed inset-0 z-[105] flex justify-end bg-black/50 backdrop-blur-sm transition-opacity">
+    <div 
+      className="fixed inset-0 z-[105] flex justify-end bg-black/50 backdrop-blur-sm transition-opacity"
+      onClick={onClose}
+    >
       <div 
-        className="w-full max-w-md bg-white dark:bg-[#1a1a2e] text-slate-800 dark:text-slate-100 h-full shadow-2xl flex flex-col z-10 animate-[slideLeft_0.3s_ease_forwards]"
+        className="w-full sm:max-w-md md:max-w-lg bg-white dark:bg-[#1a1a2e] text-slate-800 dark:text-slate-100 h-full shadow-2xl flex flex-col z-10 animate-[slideLeft_0.3s_ease_forwards]"
         onClick={e => e.stopPropagation()}
       >
         {/* Drawer Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-white/5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-pink-100 text-[#E91E63] flex items-center justify-center">
+        <div className="flex items-center justify-between shrink-0 px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-white/5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-pink-100 dark:bg-pink-900/30 text-[#E91E63] flex items-center justify-center shrink-0">
               <RiFileList3Line className="text-lg" />
             </div>
-            <div>
-              <h2 className="font-bold text-base text-slate-900 dark:text-white">Invoices History</h2>
-              <p className="text-[11px] text-slate-400">View and print past customer receipts</p>
+            <div className="min-w-0">
+              <h2 className="font-bold text-base text-slate-900 dark:text-white truncate">Invoices History</h2>
+              <p className="text-[11px] text-slate-400 truncate">View and print past customer receipts</p>
             </div>
           </div>
           <button 
             onClick={onClose} 
-            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors shrink-0 ml-2 cursor-pointer"
           >
             <RiCloseLine className="text-xl" />
           </button>

@@ -2080,9 +2080,9 @@ export default function StaffProfileView({
 
       {/* Manual Attendance Entry Modal */}
       {isAddAttendanceOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease_forwards]">
-          <div className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-3xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/50 backdrop-blur-sm overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]">
+          <div className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full max-h-[92vh] flex flex-col my-auto shadow-2xl">
+            <div className="flex items-center justify-between shrink-0 mb-4">
               <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
                 <RiTimeLine className="text-[#FA2D65]" />
                 <span>Mark Attendance</span>
@@ -2096,7 +2096,7 @@ export default function StaffProfileView({
               </button>
             </div>
 
-            <form onSubmit={handleSaveAttendance} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveAttendance} className="space-y-4 text-xs flex-1 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Date</label>
                 <input
@@ -2178,9 +2178,9 @@ export default function StaffProfileView({
       )}
       {/* Real Document Upload Modal */}
       {isUploadDocModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease_forwards]">
-          <div className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-3xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/50 backdrop-blur-sm overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]">
+          <div className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full max-h-[92vh] flex flex-col my-auto shadow-2xl">
+            <div className="flex items-center justify-between shrink-0 mb-4">
               <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
                 <RiUpload2Line className="text-[#FA2D65]" />
                 <span>Upload Staff Document</span>
@@ -2194,7 +2194,7 @@ export default function StaffProfileView({
               </button>
             </div>
 
-            <form onSubmit={handleUploadDocument} className="space-y-4 text-xs">
+            <form onSubmit={handleUploadDocument} className="space-y-4 text-xs flex-1 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">
                   Document Title / Name <span className="text-rose-500">*</span>

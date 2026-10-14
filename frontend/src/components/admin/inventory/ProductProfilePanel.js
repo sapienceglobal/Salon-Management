@@ -88,15 +88,15 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
 
   return createPortal(
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
       onMouseDown={onClose}
     >
       <div 
-        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
+        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-auto overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
         onMouseDown={e => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+        <div className="flex items-center justify-between shrink-0 px-5 sm:px-8 py-4 sm:py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
           <div className="flex items-center gap-4 min-w-0">
             {product.image_url ? (
               <div className="w-12 h-12 rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 relative shadow-sm shrink-0 bg-gray-100 dark:bg-white/5">
@@ -112,10 +112,10 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
               </div>
             )}
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate max-w-[280px] sm:max-w-md" title={product.name}>
+              <h2 className="text-base sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate max-w-[240px] sm:max-w-md" title={product.name}>
                 {product.name}
               </h2>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2 truncate">
                 <span>{product.brand || 'No Brand'}</span>
                 <span>•</span>
                 <span>{product.category || 'General'}</span>
@@ -123,7 +123,7 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0 ml-2">
             <button 
               onClick={() => {
                 onClose();
@@ -144,7 +144,7 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
         </div>
 
         {/* Modal Body */}
-        <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6 space-y-5 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 sm:px-8 py-5 sm:py-6 space-y-5">
           
           {/* Status Alert */}
           {isOutOfStock ? (
@@ -298,7 +298,7 @@ export default function ProductProfilePanel({ isOpen, onClose, product, onEdit, 
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="flex items-center justify-between gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
+        <div className="flex items-center justify-between gap-2.5 sm:gap-3 shrink-0 px-5 sm:px-8 py-3.5 sm:py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01] flex-wrap">
           <button 
             type="button"
             onClick={handleToggleActive}

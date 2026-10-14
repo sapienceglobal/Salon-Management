@@ -133,33 +133,34 @@ export default function ConvertLeadModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#1a1a2e] w-full max-w-3xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+      <div className="bg-white dark:bg-[#1a1a2e] w-full max-w-3xl max-h-[92vh] my-auto rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-pink-50 dark:bg-pink-950/50 text-[#E91E63] flex items-center justify-center text-xl shrink-0 shadow-xs">
               <RiGroupLine />
             </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
                 Convert Lead to Customer
               </h2>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                 Create a customer profile from this lead. Lead details will be saved in customer history.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 ml-2"
           >
             <RiCloseLine className="text-lg" />
           </button>
         </div>
 
         {/* Modal Body (Scrollable) */}
-        <form onSubmit={handleConvert} className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+        <form onSubmit={handleConvert} className="flex flex-col flex-1 overflow-hidden min-h-0">
+          <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5">
           {/* Top Summary: Split Left Lead Card & Right Lead Information Card */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-stretch">
             {/* Left Card: Lead Profile Card */}
@@ -469,8 +470,10 @@ export default function ConvertLeadModal({
             </div>
           </div>
 
+          </div>
+
           {/* Footer Buttons */}
-          <div className="pt-2 border-t border-gray-100 dark:border-white/10 flex items-center justify-end gap-3">
+          <div className="p-4 sm:p-5 border-t border-gray-100 dark:border-white/10 flex items-center justify-end gap-2.5 sm:gap-3 shrink-0 bg-gray-50/50 dark:bg-white/[0.01]">
             <button
               type="button"
               onClick={onClose}

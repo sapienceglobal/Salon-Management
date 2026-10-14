@@ -120,10 +120,41 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const mounted = useSyncExternalStore(subscribe, () => true, () => false);
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+
+  const clearFieldError = useCallback((...fieldNames) => {
+    setFieldErrors(prev => {
+      let changed = false;
+      const next = { ...prev };
+      fieldNames.forEach(fn => {
+        if (next[fn]) {
+          delete next[fn];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+
+    setError(prev => {
+      if (!prev) return '';
+      const p = prev.toLowerCase();
+      const shouldClear = fieldNames.some(fn => {
+        if (fn === 'customer_id' && p.includes('customer')) return true;
+        if ((fn === 'service_id' || fn === 'service_ids') && p.includes('service')) return true;
+        if (fn === 'appointment_date' && p.includes('date')) return true;
+        if ((fn === 'start_time' || fn === 'end_time') && p.includes('time')) return true;
+        if (fn === 'notes' && p.includes('note')) return true;
+        if (fn === 'staff_id' && p.includes('staff')) return true;
+        if (fn === 'room_id' && p.includes('room')) return true;
+        return false;
+      });
+      return shouldClear ? '' : prev;
+    });
+  }, []);
 
   // Time Slots & Staff Availability State
   const [dayAppointments, setDayAppointments] = useState([]);
@@ -392,6 +423,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
 
       setError('');
       setFieldErrors({});
+      setHasSubmitted(false);
     }
   }, [isOpen, initialDate, editData, preselectedCustomerId, customersList, initialSlot]);
 
@@ -399,30 +431,24 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setHasSubmitted(true);
     setLoading(true);
     setError('');
-    setFieldErrors({});
 
     try {
       const serviceIds = (formData.service_ids && formData.service_ids.length > 0)
         ? formData.service_ids.map(Number)
         : formData.service_id ? [Number(formData.service_id)] : [];
 
-      if (serviceIds.length === 0) {
-        setFieldErrors({ service_id: 'Please select at least one service' });
-        setLoading(false);
-        return;
-      }
-
-      const [hours, mins] = formData.start_time.split(':').map(Number);
-      const endMins = (hours * 60) + mins + Number(formData.duration_minutes || 60);
+      const [hours, mins] = (formData.start_time || '10:00:00').split(':').map(Number);
+      const endMins = (hours * 60) + (mins || 0) + Number(formData.duration_minutes || 60);
       const endH = Math.floor(endMins / 60).toString().padStart(2, '0');
       const endM = (endMins % 60).toString().padStart(2, '0');
       const end_time = `${endH}:${endM}:00`;
 
       const payload = {
         customer_id: formData.customer_id,
-        service_id: serviceIds[0],
+        service_id: serviceIds[0] || '',
         service_ids: serviceIds,
         staff_id: formData.staff_id || null,
         room_id: formData.room_id || null,
@@ -433,11 +459,31 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
         status: editData ? editData.status : 'planned'
       };
 
+      // ─── Unified Comprehensive Form Validation ───
+      const validationErrors = {};
+
+      if (payload.customer_id === undefined || payload.customer_id === null || String(payload.customer_id).trim() === '') {
+        validationErrors.customer_id = 'Please select a customer';
+      }
+
+      if (serviceIds.length === 0) {
+        validationErrors.service_id = 'Please select at least one service';
+      }
+
       const result = appointmentSchema.safeParse(payload);
       if (!result.success) {
-        const errors = formatZodErrors(result.error);
-        setFieldErrors(errors);
-        const firstErr = Object.values(errors)[0] || 'Please fill in all required fields';
+        const zodErrors = formatZodErrors(result.error);
+        Object.assign(validationErrors, zodErrors);
+        if (payload.customer_id === undefined || payload.customer_id === null || String(payload.customer_id).trim() === '') {
+          validationErrors.customer_id = 'Please select a customer';
+        }
+      }
+
+      if (Object.keys(validationErrors).length > 0) {
+        setFieldErrors(validationErrors);
+        const priorityKeys = ['customer_id', 'service_id', 'appointment_date', 'start_time'];
+        const firstKey = priorityKeys.find(k => validationErrors[k]) || Object.keys(validationErrors)[0];
+        const firstErr = validationErrors[firstKey] || 'Please fill in all required fields';
         setError(firstErr);
         toast.error(firstErr);
         setLoading(false);
@@ -539,32 +585,32 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
   };
 
   const inputClass = (fieldName) =>
-    `w-full bg-gray-50 dark:bg-white/5 border ${fieldErrors[fieldName] ? 'border-red-400 dark:border-red-400/60 focus:border-red-500' : 'border-gray-200 dark:border-white/10 focus:border-[#E91E63]'} rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none transition-colors`;
+    `w-full bg-gray-50 dark:bg-white/5 border ${fieldErrors[fieldName] ? 'border-red-400 dark:border-red-400/60 focus:border-red-500 ring-1 ring-red-400/20' : 'border-gray-200 dark:border-white/10 focus:border-[#E91E63]'} rounded-xl px-4 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none transition-colors`;
 
   const labelClass = 'block text-[13px] font-semibold text-gray-600 dark:text-gray-400 mb-1.5';
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
       onMouseDown={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-3xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
+        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-3xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-auto overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* ══════════════════════════════════════════════════════════
             MODAL HEADER
            ══════════════════════════════════════════════════════════ */}
-        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
+        <div className="flex items-center justify-between px-5 sm:px-6 md:px-8 py-4 sm:py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02] shrink-0">
+          <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-lg sm:text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
               <RiCalendarLine />
             </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate">
                 {editData ? 'Edit Appointment' : 'Book New Appointment'}
               </h2>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                 {editData ? 'Modify appointment details and schedule.' : 'Schedule a new appointment with service, staff and timing.'}
               </p>
             </div>
@@ -572,7 +618,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
 
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0 ml-2"
           >
             <RiCloseLine className="text-2xl" />
           </button>
@@ -581,7 +627,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
         {/* ══════════════════════════════════════════════════════════
             MODAL BODY
            ══════════════════════════════════════════════════════════ */}
-        <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6">
+        <div className="overflow-y-auto flex-1 custom-scrollbar px-5 sm:px-6 md:px-8 py-5 sm:py-6">
           {error && (
             <div className="flex items-center gap-2 p-3.5 mb-5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[13px] font-medium">
               <RiInformationLine className="shrink-0 text-base" />
@@ -608,15 +654,22 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                       className={`${inputClass('customer_id')} pl-10`}
                       value={customerSearch}
                       onChange={e => {
-                        setCustomerSearch(e.target.value);
+                        const val = e.target.value;
+                        setCustomerSearch(val);
                         setShowCustomerDropdown(true);
                         setFormData(prev => ({ ...prev, customer_id: '' }));
+                        if (hasSubmitted && (!val || val.trim() === '')) {
+                          setFieldErrors(prev => ({ ...prev, customer_id: 'Please select a customer' }));
+                        }
                       }}
                       onFocus={() => setShowCustomerDropdown(true)}
                       onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
                     />
                     {showCustomerDropdown && (
-                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-[#1e1e36] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                      <div 
+                        className="absolute z-10 w-full mt-1 bg-white dark:bg-[#1e1e36] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg max-h-48 overflow-y-auto"
+                        onMouseDown={e => e.preventDefault()}
+                      >
                         {customersList
                           .filter(c => `${c.first_name} ${c.last_name || ''} ${c.phone || ''}`.toLowerCase().includes(customerSearch.toLowerCase()))
                           .map(c => (
@@ -625,8 +678,9 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                               className="px-4 py-2.5 text-[13px] hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer text-gray-900 dark:text-white border-b border-gray-100 dark:border-white/5 last:border-0 flex items-center gap-3"
                               onClick={() => {
                                 setFormData(prev => ({ ...prev, customer_id: c.id }));
-                                setCustomerSearch(`${c.first_name} ${c.last_name || ''} ${c.phone ? `(${c.phone})` : ''}`);
+                                setCustomerSearch(`${c.first_name} ${c.last_name || ''} ${c.phone ? `(${c.phone})` : ''}`.trim());
                                 setShowCustomerDropdown(false);
+                                clearFieldError('customer_id');
                               }}
                             >
                               <VisualAvatar
@@ -688,6 +742,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                         service_id: nextIds[0],
                         duration_minutes: totalDur > 0 ? totalDur : prev.duration_minutes
                       }));
+                      clearFieldError('service_id', 'service_ids');
                     }
                   }}
                 >
@@ -715,9 +770,9 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                           <span className="text-[10px] opacity-75 font-bold">({formatCurrency(s?.price || 0)})</span>
                           <button
                             type="button"
-                            className="hover:text-red-600 text-gray-400 transition-colors ml-0.5"
+                            className="hover:text-red-600 text-gray-400 transition-colors ml-0.5 cursor-pointer"
                             onClick={() => {
-                              const nextIds = formData.service_ids.filter(item => item !== id);
+                              const nextIds = formData.service_ids.filter(item => String(item) !== String(id));
                               const totalDur = nextIds.reduce((sum, item) => {
                                 const s = servicesList?.find(x => x.id == item);
                                 return sum + (s?.duration || s?.duration_minutes || 30);
@@ -728,6 +783,11 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                                 service_id: nextIds[0] || '',
                                 duration_minutes: totalDur > 0 ? totalDur : 30
                               }));
+                              if (nextIds.length === 0 && hasSubmitted) {
+                                setFieldErrors(prev => ({ ...prev, service_id: 'Please select at least one service' }));
+                              } else if (nextIds.length > 0) {
+                                clearFieldError('service_id', 'service_ids');
+                              }
                             }}
                           >
                             ×
@@ -772,7 +832,10 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                   <select
                     className={inputClass('staff_id')}
                     value={formData.staff_id}
-                    onChange={(e) => setFormData({ ...formData, staff_id: e.target.value })}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, staff_id: e.target.value }));
+                      clearFieldError('staff_id');
+                    }}
                   >
                     <option value="">Anyone available</option>
                     {(staffList || [])
@@ -795,7 +858,10 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                   <select
                     className={inputClass('room_id')}
                     value={formData.room_id}
-                    onChange={e => setFormData({ ...formData, room_id: e.target.value })}
+                    onChange={e => {
+                      setFormData(prev => ({ ...prev, room_id: e.target.value }));
+                      clearFieldError('room_id');
+                    }}
                   >
                     <option value="">Any room</option>
                     {roomsList.map(r => <option key={r.id} value={r.id}>{r.name} (Capacity: {r.capacity})</option>)}
@@ -890,7 +956,15 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                       max={maxBookingDate}
                       className={`${inputClass('appointment_date')} pl-10 dark:[color-scheme:dark]`}
                       value={formData.appointment_date}
-                      onChange={e => setFormData({ ...formData, appointment_date: e.target.value })}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setFormData(prev => ({ ...prev, appointment_date: val }));
+                        if (val) {
+                          clearFieldError('appointment_date');
+                        } else if (hasSubmitted) {
+                          setFieldErrors(prev => ({ ...prev, appointment_date: 'Appointment date is required' }));
+                        }
+                      }}
                     />
                   </div>
                   {fieldErrors.appointment_date && <p className="text-red-500 text-xs mt-1">{fieldErrors.appointment_date}</p>}
@@ -908,7 +982,10 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                   <select
                     className={inputClass('duration_minutes')}
                     value={formData.duration_minutes}
-                    onChange={e => setFormData({ ...formData, duration_minutes: Number(e.target.value) })}
+                    onChange={e => {
+                      setFormData(prev => ({ ...prev, duration_minutes: Number(e.target.value) }));
+                      clearFieldError('duration_minutes');
+                    }}
                   >
                     {DURATION_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                   </select>
@@ -925,7 +1002,13 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                       type="time"
                       className={`${inputClass('start_time')} pl-10 dark:[color-scheme:dark]`}
                       value={formData.start_time.substring(0, 5)}
-                      onChange={e => setFormData({ ...formData, start_time: e.target.value + ':00' })}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setFormData(prev => ({ ...prev, start_time: val ? val + ':00' : '' }));
+                        if (val) {
+                          clearFieldError('start_time', 'end_time');
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -1005,6 +1088,7 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                             disabled={!isAvailable}
                             onClick={() => {
                               setFormData(prev => ({ ...prev, start_time: slot.time }));
+                              clearFieldError('start_time', 'end_time');
                               setError('');
                             }}
                             title={slot.reason}
@@ -1082,7 +1166,10 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
                   placeholder="Add any special requests or notes for this appointment..."
                   className={`${inputClass('notes')} min-h-[80px] resize-none`}
                   value={formData.notes}
-                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={e => {
+                    setFormData(prev => ({ ...prev, notes: e.target.value }));
+                    clearFieldError('notes');
+                  }}
                 />
                 {fieldErrors.notes && <p className="text-red-500 text-xs mt-1">{fieldErrors.notes}</p>}
               </div>
@@ -1121,8 +1208,9 @@ export default function AddAppointmentModal({ isOpen, onClose, onSuccess, staffL
               customersList.push(newCustomer);
             }
             setFormData(prev => ({ ...prev, customer_id: newCustomer.id }));
-            setCustomerSearch(`${newCustomer.first_name} ${newCustomer.last_name || ''} ${newCustomer.phone ? `(${newCustomer.phone})` : ''}`);
+            setCustomerSearch(`${newCustomer.first_name} ${newCustomer.last_name || ''} ${newCustomer.phone ? `(${newCustomer.phone})` : ''}`.trim());
             setShowAddCustomer(false);
+            clearFieldError('customer_id');
           }} 
         />
       </div>

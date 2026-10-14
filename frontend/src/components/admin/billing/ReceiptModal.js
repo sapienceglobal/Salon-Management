@@ -158,7 +158,7 @@ export default function ReceiptModal({ isOpen, onClose, invoice, business: propB
 
   return createPortal(
     <div 
-      className={`fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 ${isClosing ? 'animate-[fadeOut_0.2s_ease_forwards]' : 'animate-[fadeIn_0.2s_ease_forwards]'}`} 
+      className={`fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto ${isClosing ? 'animate-[fadeOut_0.2s_ease_forwards]' : 'animate-[fadeIn_0.2s_ease_forwards]'}`} 
       onMouseDown={handleClose}
     >
       <style jsx global>{`
@@ -187,27 +187,27 @@ export default function ReceiptModal({ isOpen, onClose, invoice, business: propB
       `}</style>
 
       <div 
-        className={`bg-white text-slate-800 w-full max-w-lg rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[92vh] border border-slate-100 ${isClosing ? 'animate-[slideDown_0.2s_ease_forwards]' : 'animate-[slideUp_0.3s_ease_forwards]'}`}
+        className={`bg-white text-slate-800 w-full max-w-lg rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[92vh] my-auto border border-slate-100 ${isClosing ? 'animate-[slideDown_0.2s_ease_forwards]' : 'animate-[slideUp_0.3s_ease_forwards]'}`}
         onMouseDown={e => e.stopPropagation()}
       >
         {/* Top Dialog Bar */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 bg-slate-50/70 shrink-0 print:hidden">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 border-b border-slate-100 bg-slate-50/70 shrink-0 print:hidden">
           <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm">
-            <span className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+            <span className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
               <RiCheckDoubleLine className="text-base" />
             </span>
-            Invoice / Receipt
+            <span className="truncate">Invoice / Receipt</span>
           </div>
           <button 
             onClick={handleClose} 
-            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-200/60 transition-colors"
+            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-200/60 transition-colors shrink-0 ml-2 cursor-pointer"
           >
             <RiCloseLine className="text-xl" />
           </button>
         </div>
 
         {/* Receipt Body (Printable Area) */}
-        <div className="overflow-y-auto custom-scrollbar flex-1 p-6 sm:p-7 bg-white text-slate-900" id="printable-receipt">
+        <div className="overflow-y-auto custom-scrollbar flex-1 p-5 sm:p-7 bg-white text-slate-900" id="printable-receipt">
           
           {/* Header Branding */}
           <div className="flex items-start justify-between pb-4 border-b border-slate-100">
@@ -391,7 +391,7 @@ export default function ReceiptModal({ isOpen, onClose, invoice, business: propB
         </div>
 
         {/* Bottom Industry-Level Actions */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50 shrink-0 print:hidden grid grid-cols-4 gap-2.5">
+        <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50 shrink-0 print:hidden grid grid-cols-4 gap-2 sm:gap-2.5">
           <button 
             type="button" 
             onClick={handleDownload}

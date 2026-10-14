@@ -63,31 +63,31 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
       onMouseDown={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
+        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-2xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-auto overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* ══════════════════════════════════════════════════════════
             MODAL HEADER
            ══════════════════════════════════════════════════════════ */}
-        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
+        <div className="flex items-center justify-between shrink-0 px-5 sm:px-8 py-4 sm:py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
               <RiCalendarCheckLine />
             </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-base sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate">
                   Appointment Details
                 </h2>
-                <span className={`px-2.5 py-1 text-[11px] font-bold border rounded-full ${statusConfig.color}`}>
+                <span className={`px-2.5 py-0.5 text-[11px] font-bold border rounded-full ${statusConfig.color}`}>
                   {statusConfig.label}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                 Ref: #{appointment.id?.toString().substring(0, 8).toUpperCase() || 'N/A'}
               </p>
             </div>
@@ -95,7 +95,7 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
 
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0 ml-2"
           >
             <RiCloseLine className="text-2xl" />
           </button>
@@ -104,7 +104,7 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
         {/* ══════════════════════════════════════════════════════════
             MODAL BODY
            ══════════════════════════════════════════════════════════ */}
-        <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6 space-y-5">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 sm:px-8 py-5 sm:py-6 space-y-5">
           
           {error && (
             <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[13px] font-medium">
@@ -301,7 +301,7 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
         {/* ══════════════════════════════════════════════════════════
             MODAL FOOTER
            ══════════════════════════════════════════════════════════ */}
-        <div className="flex items-center justify-end gap-2.5 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01] flex-wrap">
+        <div className="flex items-center justify-end gap-2 sm:gap-2.5 px-5 sm:px-8 py-3.5 sm:py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01] flex-wrap shrink-0">
           <button
             type="button"
             onClick={() => {

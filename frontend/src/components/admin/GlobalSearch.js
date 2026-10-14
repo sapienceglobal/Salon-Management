@@ -230,7 +230,7 @@ export default function GlobalSearch() {
 
       {/* Dropdown Overlay */}
       {isOpen && query.length >= 2 && (
-        <div className="absolute top-[calc(100%+12px)] left-0 w-[90vw] md:w-[450px] xl:w-[550px] bg-admin-card border border-admin-border rounded-2xl shadow-2xl overflow-hidden animate-[fadeOpacity_0.2s_ease_forwards]">
+        <div className="absolute top-[calc(100%+12px)] left-0 w-[min(90vw,450px)] xl:w-[550px] bg-admin-card border border-admin-border rounded-2xl shadow-2xl overflow-hidden animate-[fadeOpacity_0.2s_ease_forwards]">
           
           {loading && !results && (
             <div className="p-8 text-center text-admin-text-secondary text-sm flex flex-col items-center gap-3">
@@ -249,7 +249,7 @@ export default function GlobalSearch() {
           )}
 
           {hasResults && (
-            <div className="max-h-[450px] overflow-y-auto custom-scrollbar py-3">
+            <div className="max-h-[70vh] sm:max-h-[450px] overflow-y-auto custom-scrollbar py-3">
               {Object.entries(results).map(([category, items]) => {
                 if (!items || items.length === 0) return null;
                 const Icon = ICONS[category] || RiSearchLine;

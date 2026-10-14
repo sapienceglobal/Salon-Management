@@ -59,15 +59,15 @@ export default function EnquiryProfilePanel({ isOpen, onClose, enquiry, onEdit, 
 
   return createPortal(
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
       onMouseDown={onClose}
     >
       <div 
-        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
+        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-2xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-auto overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
         onMouseDown={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+        <div className="px-5 sm:px-8 py-4 sm:py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02] shrink-0">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <div className="w-13 h-13 rounded-2xl bg-[#E91E63]/10 text-[#E91E63] border border-[#E91E63]/20 flex items-center justify-center text-2xl font-bold uppercase shadow-sm shrink-0">
@@ -183,7 +183,7 @@ export default function EnquiryProfilePanel({ isOpen, onClose, enquiry, onEdit, 
         </div>
 
         {/* Modal Body */}
-        <div className="overflow-y-auto max-h-[calc(100vh-280px)] px-6 sm:px-8 py-6 custom-scrollbar">
+        <div className="overflow-y-auto flex-1 px-5 sm:px-8 py-5 sm:py-6 custom-scrollbar">
           {activeTab === 'info' && (
             <div className="space-y-4">
               <div className="bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/5 rounded-2xl p-5 shadow-sm">
@@ -255,7 +255,7 @@ export default function EnquiryProfilePanel({ isOpen, onClose, enquiry, onEdit, 
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
+        <div className="flex items-center justify-end px-5 sm:px-8 py-3.5 sm:py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01] shrink-0">
           <button 
             type="button" 
             onClick={onClose}

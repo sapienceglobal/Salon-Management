@@ -228,3 +228,19 @@ export const googleCallback = asyncHandler(async (req, res) => {
     `${env.FRONTEND_URL}/auth/callback?accessToken=${tokens.accessToken}`
   );
 });
+
+/**
+ * @desc    Delete user account permanently (Google Play compliance)
+ * @route   POST /api/v1/auth/delete-account
+ * @access  Private
+ */
+export const deleteAccount = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  await authService.deleteAccount(req.user.id, password);
+
+  // Clear authentication cookies
+  res.clearCookie('refreshToken', REFRESH_TOKEN_COOKIE_OPTIONS);
+
+  ApiResponse.ok('Account successfully deleted').send(res);
+});
+

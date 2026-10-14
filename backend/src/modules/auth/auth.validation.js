@@ -64,3 +64,10 @@ export const changePasswordSchema = {
     path: ['new_password'],
   }),
 };
+
+export const deleteAccountSchema = {
+  body: z.object({
+    password: z.string().min(1, 'Password is required to confirm account deletion'),
+  }),
+};
+

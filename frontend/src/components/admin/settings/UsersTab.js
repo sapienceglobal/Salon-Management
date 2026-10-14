@@ -153,38 +153,38 @@ export default function UsersTab() {
       {/* Add User Modal Popup */}
       {isAdding && mounted && createPortal(
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
           onMouseDown={closeModal}
         >
           <div 
-            className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
+            className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-xl max-h-[92vh] my-auto flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
             onMouseDown={e => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
+            <div className="shrink-0 flex items-center justify-between px-5 sm:px-8 py-4 sm:py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+              <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-[#E91E63] text-white flex items-center justify-center text-lg sm:text-xl shadow-md shadow-[#E91E63]/30 shrink-0">
                   <RiUserSettingsLine />
                 </div>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate">
                     Add System User
                   </h2>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                     Create login access for Admins, Managers, or Receptionists.
                   </p>
                 </div>
               </div>
               <button 
                 onClick={closeModal} 
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0"
               >
-                <RiCloseLine className="text-2xl" />
+                <RiCloseLine className="text-xl sm:text-2xl" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6 custom-scrollbar">
+            <div className="overflow-y-auto flex-1 min-h-0 px-5 sm:px-8 py-5 sm:py-6 custom-scrollbar">
               <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
                 
                 <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-3.5 rounded-xl text-xs border border-blue-100 dark:border-blue-900/30">
@@ -268,11 +268,11 @@ export default function UsersTab() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
+            <div className="shrink-0 flex items-center justify-end gap-2.5 sm:gap-3 px-5 sm:px-8 py-3.5 sm:py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01] flex-wrap">
               <button 
                 type="button" 
                 onClick={closeModal} 
-                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -280,7 +280,7 @@ export default function UsersTab() {
                 type="submit" 
                 form="user-form" 
                 disabled={submitting} 
-                className="px-6 py-2.5 text-sm font-semibold bg-[#E91E63] text-white rounded-xl hover:bg-[#d81557] transition-all disabled:opacity-50 shadow-md shadow-[#E91E63]/25 cursor-pointer"
+                className="px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold bg-[#E91E63] text-white rounded-xl hover:bg-[#d81557] transition-all disabled:opacity-50 shadow-md shadow-[#E91E63]/25 cursor-pointer"
               >
                 {submitting ? 'Creating...' : 'Create User'}
               </button>

@@ -178,16 +178,16 @@ export default function AddLeadModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#1a1a2e] w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+      <div className="bg-white dark:bg-[#1a1a2e] w-full max-w-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden flex flex-col max-h-[92vh] my-auto animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between shrink-0">
+        <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-pink-50 dark:bg-pink-950/40 text-[#E91E63] flex items-center justify-center text-xl shrink-0 shadow-xs">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-pink-50 dark:bg-pink-950/40 text-[#E91E63] flex items-center justify-center text-lg sm:text-xl shrink-0 shadow-xs">
               <RiUserLine />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white">
                 {editData ? 'Edit Lead' : 'Add Lead'}
               </h2>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">Capture details of new customer inquiry</p>
@@ -195,14 +195,16 @@ export default function AddLeadModal({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
           >
             <RiCloseLine className="text-lg" />
           </button>
         </div>
 
-        {/* Form Body (Scrollable) */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+        {/* Form Container */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+          {/* Form Body (Scrollable) */}
+          <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
           {/* Row 1: Name & Mobile Number */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -502,19 +504,21 @@ export default function AddLeadModal({
             />
           </div>
 
-          {/* Footer Buttons */}
-          <div className="pt-3 border-t border-gray-100 dark:border-white/10 flex items-center justify-end gap-3">
+          </div>
+
+          {/* Sticky Footer */}
+          <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-t border-gray-100 dark:border-white/10 flex items-center justify-end gap-2.5 sm:gap-3 shrink-0 bg-gray-50/50 dark:bg-white/[0.01] flex-wrap">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl border border-gray-200 dark:border-white/10 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#E91E63] to-[#F43F5E] hover:from-[#D81B60] hover:to-[#E11D48] text-white text-sm font-bold shadow-md shadow-[#E91E63]/25 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              className="px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#E91E63] to-[#F43F5E] hover:from-[#D81B60] hover:to-[#E11D48] text-white text-xs sm:text-sm font-bold shadow-md shadow-[#E91E63]/25 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
             >
               {loading ? (
                 <RiLoader2Line className="animate-spin text-base" />

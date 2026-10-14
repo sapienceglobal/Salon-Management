@@ -148,11 +148,11 @@ export default function AddFollowUpModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-fadeIn"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 md:p-6 overflow-y-auto animate-fadeIn"
       onMouseDown={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden relative animate-scaleUp"
+        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-4xl max-h-[92vh] my-auto flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden relative animate-scaleUp"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* --- Header --- */}

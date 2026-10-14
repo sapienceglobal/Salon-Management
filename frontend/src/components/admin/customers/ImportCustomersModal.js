@@ -144,25 +144,25 @@ export default function ImportCustomersModal({ isOpen, onClose, onSuccess }) {
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease_forwards] p-4 sm:p-6">
-      <div className="bg-admin-card w-full max-w-2xl rounded-2xl shadow-xl flex flex-col max-h-[90vh] overflow-hidden animate-[slideUp_0.3s_ease_forwards]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease_forwards] p-3 sm:p-4 md:p-6 overflow-y-auto">
+      <div className="bg-admin-card w-full max-w-2xl rounded-2xl shadow-xl flex flex-col max-h-[92vh] my-auto overflow-hidden animate-[slideUp_0.3s_ease_forwards]">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-admin-border bg-admin-surface-light">
-          <div>
-            <h2 className="text-xl font-bold text-admin-text">Import Customers</h2>
-            <p className="text-sm text-admin-text-secondary mt-1">Upload a CSV file to bulk import customers</p>
+        <div className="flex items-center justify-between shrink-0 p-5 sm:p-6 border-b border-admin-border bg-admin-surface-light">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold text-admin-text truncate">Import Customers</h2>
+            <p className="text-xs sm:text-sm text-admin-text-secondary mt-1 truncate">Upload a CSV file to bulk import customers</p>
           </div>
           <button 
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-admin-border text-admin-text-secondary transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-admin-border text-admin-text-secondary transition-colors shrink-0 ml-2 cursor-pointer"
           >
             <RiCloseLine className="text-xl" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
           {results ? (
             <div className="space-y-6">
               <div className="text-center">
@@ -257,7 +257,7 @@ export default function ImportCustomersModal({ isOpen, onClose, onSuccess }) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-6 border-t border-admin-border bg-admin-surface-light flex gap-3 justify-end rounded-b-2xl">
+        <div className="p-3.5 sm:p-4 md:p-6 border-t border-admin-border bg-admin-surface-light flex flex-wrap gap-2.5 sm:gap-3 justify-end rounded-b-2xl shrink-0">
           {results ? (
             <>
               <button 

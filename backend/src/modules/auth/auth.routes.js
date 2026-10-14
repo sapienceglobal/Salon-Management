@@ -10,6 +10,7 @@ import {
   verifyOtpSchema,
   resetPasswordSchema,
   changePasswordSchema,
+  deleteAccountSchema,
 } from './auth.validation.js';
 import {
   register,
@@ -22,6 +23,7 @@ import {
   changePassword,
   getMe,
   googleCallback,
+  deleteAccount,
 } from './auth.controller.js';
 
 const router = Router();
@@ -108,5 +110,19 @@ router.post(
 
 // Get current user profile
 router.get('/me', authenticate, getMe);
+
+// Delete account permanently (Google Play compliance)
+router.post(
+  '/delete-account',
+  authenticate,
+  validate(deleteAccountSchema),
+  deleteAccount
+);
+router.delete(
+  '/delete-account',
+  authenticate,
+  validate(deleteAccountSchema),
+  deleteAccount
+);
 
 export default router;

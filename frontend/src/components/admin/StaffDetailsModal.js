@@ -76,11 +76,11 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
 
   return createPortal(
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
       onMouseDown={onClose}
     >
       <div 
-        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-6 overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
+        className="bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white w-full max-w-2xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-white/10 my-auto overflow-hidden relative animate-[scaleUp_0.25s_ease_forwards]"
         onMouseDown={e => e.stopPropagation()}
       >
         {loading ? (
@@ -95,8 +95,8 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
         ) : staff ? (
           <>
             {/* Modal Header / Profile Card */}
-            <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between shrink-0 px-5 sm:px-8 py-4 sm:py-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
+              <div className="flex items-center gap-4 min-w-0">
                 <VisualAvatar
                   type="staff"
                   image={staff.avatar_url}
@@ -104,17 +104,17 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
                   name={`${staff.first_name} ${staff.last_name || ''}`}
                   size="xl"
                   shape="rounded"
-                  className="shadow-sm border border-gray-200 dark:border-white/10 ring-2 ring-[#E91E63]/30"
+                  className="shadow-sm border border-gray-200 dark:border-white/10 ring-2 ring-[#E91E63]/30 shrink-0"
                 />
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2.5 flex-wrap">
-                    <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate">
                       {staff.first_name} {staff.last_name}
                     </h2>
                     <button
                       type="button"
                       onClick={handleToggleActive}
-                      className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full transition-colors cursor-pointer ${
+                      className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full transition-colors cursor-pointer shrink-0 ${
                         staff.is_active 
                           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' 
                           : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200 dark:border-rose-800'
@@ -125,13 +125,13 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
                       {staff.is_active ? 'Active' : 'Inactive'}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5 truncate">
                     {staff.designation || 'Staff Member'}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0 ml-2">
                 <button 
                   onClick={async () => {
                     const isConfirmed = await confirm({
@@ -159,7 +159,7 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
             </div>
 
             {/* Modal Body */}
-            <div className="overflow-y-auto max-h-[calc(100vh-220px)] px-6 sm:px-8 py-6 space-y-6 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-5 sm:px-8 py-5 sm:py-6 space-y-6">
               
               {/* Contact info strip */}
               <div className="flex flex-wrap gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/5">
@@ -247,7 +247,7 @@ export default function StaffDetailsModal({ isOpen, onClose, staffId, onEdit, on
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
+            <div className="flex items-center justify-end gap-2.5 sm:gap-3 shrink-0 px-5 sm:px-8 py-3.5 sm:py-4 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/[0.01]">
               <button 
                 type="button" 
                 onClick={onClose}

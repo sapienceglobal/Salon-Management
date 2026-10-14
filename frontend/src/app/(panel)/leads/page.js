@@ -1679,8 +1679,8 @@ function LeadsContent() {
 
       {/* --- Import Leads Modal Placeholder --- */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="bg-white dark:bg-[#1a1a2e] rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 dark:border-white/10 p-6 sm:p-7 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto animate-fadeIn">
+          <div className="bg-white dark:bg-[#1a1a2e] rounded-2xl sm:rounded-3xl max-w-md w-full max-h-[92vh] my-auto overflow-y-auto custom-scrollbar shadow-2xl border border-slate-100 dark:border-white/10 p-5 sm:p-7 relative">
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-white/10 mb-4">
               <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-bold text-lg sm:text-xl">
                 <RiUpload2Line className="text-[#E91E63] text-xl" />

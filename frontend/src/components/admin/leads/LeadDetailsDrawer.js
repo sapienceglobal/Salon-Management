@@ -195,22 +195,22 @@ export default function LeadDetailsDrawer({
     >
       {/* Drawer Panel Sliding Smoothly from the Right */}
       <div
-        className={`w-full max-w-xl bg-white dark:bg-[#151522] h-full shadow-2xl flex flex-col border-l border-slate-200 dark:border-white/10 transform transition-transform duration-300 ease-out ${
+        className={`w-full sm:max-w-md md:max-w-lg lg:max-w-xl bg-white dark:bg-[#151522] h-full shadow-2xl flex flex-col border-l border-slate-200 dark:border-white/10 transform transition-transform duration-300 ease-out ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
-        <div className="px-6 py-4.5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-white/[0.02]">
-          <div className="flex items-center gap-3">
+        <div className="px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#E91E63]/20 to-[#FB7185]/30 text-[#E91E63] flex items-center justify-center text-xl shrink-0 border border-[#E91E63]/30">
               <RiInformationLine />
             </div>
-            <div>
-              <h2 className="text-lg font-black text-slate-900 dark:text-white leading-tight">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight truncate">
                 Lead Profile & Details
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                 ID #{lead.id} • Created on {createdFormatted}
               </p>
             </div>
@@ -219,14 +219,14 @@ export default function LeadDetailsDrawer({
           <button
             type="button"
             onClick={handleClose}
-            className="w-8 h-8 rounded-full bg-slate-200/70 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-slate-200/70 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0 ml-2"
           >
             <RiCloseLine className="text-xl" />
           </button>
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-6 space-y-5 sm:space-y-6">
           {/* Hero Profile Card */}
           <div className="p-5 rounded-3xl bg-gradient-to-br from-pink-50/80 via-white to-rose-50/50 dark:from-pink-950/20 dark:via-[#1a1a2e] dark:to-rose-950/10 border border-pink-100 dark:border-pink-900/30 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -450,7 +450,7 @@ export default function LeadDetailsDrawer({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-5 border-t border-slate-100 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.02] flex items-center justify-end gap-3 shrink-0">
+        <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.02] flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0">
           <button
             type="button"
             onClick={handleClose}

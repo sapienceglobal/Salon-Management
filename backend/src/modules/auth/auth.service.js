@@ -426,6 +426,48 @@ class AuthService {
 
     return { accessToken, refreshToken };
   }
+
+  /**
+   * Delete user account permanently (Google Play compliance)
+   * Verifies password before deletion.
+   */
+  async deleteAccount(userId, password) {
+    const user = await db('users').where({ id: userId }).first();
+    if (!user) {
+      throw ApiError.notFound('User not found');
+    }
+
+    if (user.password_hash) {
+      const isMatch = await bcrypt.compare(password, user.password_hash);
+      if (!isMatch) {
+        throw ApiError.badRequest('Incorrect password. Account deletion cannot proceed.');
+      }
+    }
+
+    await db.transaction(async (trx) => {
+      // 1. Invalidate all active refresh tokens
+      await trx('refresh_tokens').where({ user_id: userId }).del();
+
+      // 2. If sole admin of business, delete business (cascading all records)
+      if (user.role === 'admin' || user.role === 'super_admin') {
+        const otherAdmins = await trx('users')
+          .where({ business_id: user.business_id, role: 'admin' })
+          .whereNot({ id: userId });
+
+        if (otherAdmins.length === 0) {
+          logger.info(`Deleting entire business ${user.business_id} due to sole admin account deletion (user: ${userId})`);
+          await trx('businesses').where({ id: user.business_id }).del();
+          return;
+        }
+      }
+
+      // 3. Otherwise delete the user record
+      logger.info(`Permanently deleted user account ${userId}`);
+      await trx('users').where({ id: userId }).del();
+    });
+
+    return { message: 'Account permanently deleted' };
+  }
 }
 
 // Singleton export

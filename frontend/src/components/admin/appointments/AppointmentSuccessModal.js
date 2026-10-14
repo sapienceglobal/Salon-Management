@@ -5,7 +5,6 @@ import { toast } from 'react-hot-toast';
 import api from '@/lib/api';
 import {
   RiWhatsappFill,
-  RiShareForwardLine,
   RiCheckLine,
   RiCalendarEventLine,
   RiTimeLine,
@@ -144,7 +143,7 @@ export default function AppointmentSuccessModal({
     toast.success('Opening WhatsApp with confirmation message!');
   };
 
-  const handleSendRealEmail = async () => {
+  const handleSendEmail = async () => {
     const targetEmail = (recipientEmail || '').trim();
     if (!targetEmail) {
       setIsEditingEmail(true);
@@ -182,60 +181,28 @@ export default function AppointmentSuccessModal({
     }
   };
 
-  const handleShare = async () => {
-    const sharePayload = {
-      title: `Appointment Confirmation - ${businessName}`,
-      text: customMessage,
-    };
-
-    // Try Windows / Mobile Native Share (Web Share API)
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share(sharePayload);
-        toast.success('Shared successfully!');
-        return;
-      } catch (err) {
-        if (err.name === 'AbortError') {
-          // User closed share dialog
-          return;
-        }
-        console.warn('Native share failed:', err);
-      }
-    }
-
-    // Fallback: Copy to clipboard and open mailto
-    try {
-      await navigator.clipboard.writeText(customMessage);
-      setCopied(true);
-      toast.success('Native share dialog not available. Message copied to clipboard!');
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      window.open(`mailto:?subject=${encodeURIComponent(sharePayload.title)}&body=${encodeURIComponent(customMessage)}`);
-    }
-  };
-
   return (
     <div
       className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-md p-3 sm:p-5 overflow-y-auto animate-[fadeIn_0.2s_ease_forwards]"
       onMouseDown={onClose}
     >
       <div
-        className="bg-white dark:bg-[#151928] text-slate-900 dark:text-slate-100 w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden relative animate-[scaleUp_0.2s_ease_forwards] my-auto"
+        className="bg-white dark:bg-[#151928] text-slate-900 dark:text-slate-100 w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden relative animate-[scaleUp_0.2s_ease_forwards] my-auto"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 dark:border-white/5 bg-slate-50/70 dark:bg-white/[0.02]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center text-lg shadow-md shadow-emerald-500/20">
+        <div className="flex items-center justify-between shrink-0 px-5 sm:px-6 py-3.5 border-b border-slate-100 dark:border-white/5 bg-slate-50/70 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center text-lg shadow-md shadow-emerald-500/20 shrink-0">
               <RiCheckLine className="stroke-[1.5]" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
                   Appointment Booked Successfully
                 </h3>
                 {appointment.id && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                     #APT-{appointment.id}
                   </span>
                 )}
@@ -245,7 +212,7 @@ export default function AppointmentSuccessModal({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0 ml-2"
             aria-label="Close modal"
           >
             <RiCloseLine className="text-xl" />
@@ -253,7 +220,7 @@ export default function AppointmentSuccessModal({
         </div>
 
         {/* Horizontal Split Body (Left: Summary, Right: Editable Message & Share) */}
-        <div className="grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-white/5">
+        <div className="grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-white/5 flex-1 overflow-y-auto custom-scrollbar">
           
           {/* Left Column: Appointment Details */}
           <div className="md:col-span-5 p-5 space-y-3.5 bg-slate-50/40 dark:bg-white/[0.01]">
@@ -387,7 +354,7 @@ export default function AppointmentSuccessModal({
                 className="w-full h-40 sm:h-44 p-3 bg-slate-50 dark:bg-[#0f121d] border border-slate-200 dark:border-white/10 rounded-2xl text-xs font-mono leading-relaxed text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#25D366] dark:focus:border-[#25D366] resize-none custom-scrollbar transition-colors"
               />
               <p className="text-[10.5px] text-slate-400 dark:text-slate-500 mt-1">
-                💡 You can edit this text directly. WhatsApp, Mail and Share will include this customized message.
+                💡 You can edit this text directly. WhatsApp and Mail will include this customized message.
               </p>
 
               {/* Recipient Email Field */}
@@ -437,18 +404,18 @@ export default function AppointmentSuccessModal({
                 <span>Notify Customer on WhatsApp</span>
               </button>
 
-              {/* Secondary Row: Real Email Dispatch, Device Share & Done */}
+              {/* Secondary Row: Email Confirmation & Done */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleSendRealEmail}
+                  onClick={handleSendEmail}
                   disabled={isSendingEmail}
                   className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer border shadow-sm ${
                     emailSent
                       ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800/50'
                       : 'bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-blue-500/20'
                   } disabled:opacity-60 disabled:cursor-not-allowed`}
-                  title="Send real confirmation email directly to customer inbox"
+                  title="Send appointment confirmation to customer's email"
                 >
                   {isSendingEmail ? (
                     <>
@@ -466,15 +433,6 @@ export default function AppointmentSuccessModal({
                       <span>Share Details (Mail)</span>
                     </>
                   )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  className="p-2.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 font-bold text-xs transition-colors cursor-pointer"
-                  title="More share options (Windows / Mobile Native Share)"
-                >
-                  <RiShareForwardLine className="text-base" />
                 </button>
 
                 <button
