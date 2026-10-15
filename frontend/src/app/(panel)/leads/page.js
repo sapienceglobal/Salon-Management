@@ -211,23 +211,48 @@ const REFERENCE_LEADS = [
 // Robust date parser supporting YYYY-MM-DD, ISO, DD-MM-YYYY, DD/MM/YYYY, and datetime strings with time
 export function parseDateSafe(val) {
   if (!val) return null;
-  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : new Date(val.getFullYear(), val.getMonth(), val.getDate());
   const trimmed = String(val).trim();
-  if (!trimmed || trimmed === '-') return null;
+  if (!trimmed || trimmed === '-' || trimmed.toLowerCase() === 'null' || trimmed.toLowerCase() === 'undefined') return null;
 
-  // 1. YYYY-MM-DD (e.g. "2026-10-15", "2026-10-15 00:00:00", "2026-10-15T00:00:00")
+  const lower = trimmed.toLowerCase();
+  const now = new Date();
+  if (lower.startsWith('today')) {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  if (lower.startsWith('tomorrow')) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    d.setDate(d.getDate() + 1);
+    return d;
+  }
+  if (lower.startsWith('yesterday')) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    d.setDate(d.getDate() - 1);
+    return d;
+  }
+
+  // 1. If it has T or Z (ISO timestamp from MySQL or API, e.g. "2026-10-14T18:30:00.000Z")
+  // We MUST parse via new Date() FIRST so the browser converts UTC into local timezone!
+  if (trimmed.includes('T') || trimmed.endsWith('Z')) {
+    const nativeParsed = new Date(trimmed);
+    if (!isNaN(nativeParsed.getTime())) {
+      return new Date(nativeParsed.getFullYear(), nativeParsed.getMonth(), nativeParsed.getDate());
+    }
+  }
+
+  // 2. YYYY-MM-DD or YYYY/MM/DD
   const ymdMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
   if (ymdMatch) {
     return new Date(parseInt(ymdMatch[1], 10), parseInt(ymdMatch[2], 10) - 1, parseInt(ymdMatch[3], 10));
   }
 
-  // 2. DD-MM-YYYY or DD/MM/YYYY
+  // 3. DD-MM-YYYY or DD/MM/YYYY
   const dmyMatch = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
   if (dmyMatch) {
     return new Date(parseInt(dmyMatch[3], 10), parseInt(dmyMatch[2], 10) - 1, parseInt(dmyMatch[1], 10));
   }
 
-  // 3. Fallback to native parsing
+  // 4. Fallback to native parsing
   const nativeParsed = new Date(trimmed);
   if (!isNaN(nativeParsed.getTime())) {
     return new Date(nativeParsed.getFullYear(), nativeParsed.getMonth(), nativeParsed.getDate());
@@ -238,7 +263,7 @@ export function parseDateSafe(val) {
 
 // Helper to determine follow up timeliness (Today, Overdue, Upcoming, Completed)
 export function getLeadFollowUpInfo(lead) {
-  const rawDate = lead.follow_up_date || lead.next_follow_up;
+  const rawDate = lead.follow_up_date_formatted || lead.follow_up_date || lead.next_follow_up || lead.next_follow_up_date;
   if (!rawDate || rawDate === '-') {
     return { type: 'none', label: '-', isToday: false, isOverdue: false };
   }
@@ -246,28 +271,70 @@ export function getLeadFollowUpInfo(lead) {
   if (['converted', 'lost'].includes(s)) {
     return {
       type: 'done',
-      label: lead.next_follow_up || (lead.follow_up_date ? String(lead.follow_up_date).slice(0, 10) : '-'),
+      label: lead.next_follow_up || lead.follow_up_date_formatted || (lead.follow_up_date ? String(lead.follow_up_date).slice(0, 10) : '-'),
       isToday: false,
       isOverdue: false,
     };
   }
 
-  const d = parseDateSafe(lead.follow_up_date) || parseDateSafe(lead.next_follow_up);
+  const timeStr = lead.follow_up_time || (lead.next_follow_up ? String(lead.next_follow_up).match(/\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?/)?.[0] : '') || '';
+
+  // 1. Direct flag from MySQL query (evaluated via CURDATE() on server)
+  if (lead.is_today_followup == 1 || lead.is_today_followup === true) {
+    return {
+      type: 'today',
+      label: `Today${timeStr ? ` ${timeStr}` : ''}`,
+      isToday: true,
+      isOverdue: false,
+    };
+  }
+
+  // 2. Direct string check for "today"
+  const rawStr = String(rawDate).trim().toLowerCase();
+  if (rawStr.startsWith('today') || rawStr.includes('today')) {
+    return {
+      type: 'today',
+      label: `Today${timeStr ? ` ${timeStr}` : ''}`,
+      isToday: true,
+      isOverdue: false,
+    };
+  }
+
+  // 3. Local date string match (YYYY-MM-DD)
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const localTodayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  if (
+    lead.follow_up_date_formatted === localTodayStr ||
+    String(lead.follow_up_date || '').slice(0, 10) === localTodayStr ||
+    String(lead.next_follow_up || '').slice(0, 10) === localTodayStr
+  ) {
+    return {
+      type: 'today',
+      label: `Today${timeStr ? ` ${timeStr}` : ''}`,
+      isToday: true,
+      isOverdue: false,
+    };
+  }
+
+  // 4. Robust parsed date comparison
+  const d =
+    parseDateSafe(lead.follow_up_date_formatted) ||
+    parseDateSafe(lead.follow_up_date) ||
+    parseDateSafe(lead.next_follow_up) ||
+    parseDateSafe(lead.next_follow_up_date);
 
   if (!d) {
     return {
       type: 'unknown',
-      label: lead.next_follow_up || String(lead.follow_up_date || '-'),
+      label: lead.next_follow_up || lead.follow_up_date_formatted || String(lead.follow_up_date || '-'),
       isToday: false,
       isOverdue: false,
     };
   }
 
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const targetDate = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-
-  const timeStr = lead.follow_up_time || (lead.next_follow_up ? lead.next_follow_up.match(/\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?/)?.[0] : '') || '';
 
   if (targetDate === todayStart) {
     return {
@@ -276,7 +343,7 @@ export function getLeadFollowUpInfo(lead) {
       isToday: true,
       isOverdue: false,
     };
-  } else if (targetDate < todayStart) {
+  } else if (targetDate < todayStart || lead.is_overdue_followup == 1 || lead.is_overdue_followup === true) {
     return {
       type: 'overdue',
       label: `Overdue (${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}${timeStr ? ` ${timeStr}` : ''})`,
@@ -513,20 +580,20 @@ function LeadsContent() {
 
     leads.forEach((l) => {
       const info = getLeadFollowUpInfo(l);
-      if (info.isToday) todayCount++;
-      if (info.isOverdue) overdueCount++;
+      if (info.isToday || l.is_today_followup == 1 || l.is_today_followup === true) todayCount++;
+      if (info.isOverdue || l.is_overdue_followup == 1 || l.is_overdue_followup === true) overdueCount++;
       if (info.type === 'upcoming') upcomingCount++;
       if (user?.id && Number(l.assigned_to) === Number(user.id)) myLeadsCount++;
     });
 
     return {
-      total: leads.length,
-      today: todayCount,
-      overdue: overdueCount,
-      upcoming: upcomingCount,
+      total: stats.total || leads.length,
+      today: stats.today_followups !== undefined && stats.today_followups !== null ? Math.max(stats.today_followups, todayCount) : todayCount,
+      overdue: stats.overdue_followups !== undefined && stats.overdue_followups !== null ? Math.max(stats.overdue_followups, overdueCount) : overdueCount,
+      upcoming: stats.upcoming_followups !== undefined && stats.upcoming_followups !== null ? Math.max(stats.upcoming_followups, upcomingCount) : upcomingCount,
       myLeads: myLeadsCount,
     };
-  }, [leads, user?.id]);
+  }, [leads, user?.id, stats]);
 
   // Filtered Leads Client-side
   const filteredLeads = useMemo(() => {
@@ -534,10 +601,12 @@ function LeadsContent() {
       // Follow-up agenda filter
       if (followUpFilter === 'today') {
         const info = getLeadFollowUpInfo(lead);
-        if (!info.isToday) return false;
+        const isServerToday = lead.is_today_followup == 1 || lead.is_today_followup === true;
+        if (!info.isToday && !isServerToday) return false;
       } else if (followUpFilter === 'overdue') {
         const info = getLeadFollowUpInfo(lead);
-        if (!info.isOverdue) return false;
+        const isServerOverdue = lead.is_overdue_followup == 1 || lead.is_overdue_followup === true;
+        if (!info.isOverdue && !isServerOverdue) return false;
       } else if (followUpFilter === 'upcoming') {
         const info = getLeadFollowUpInfo(lead);
         if (info.type !== 'upcoming') return false;

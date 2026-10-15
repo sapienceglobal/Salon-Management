@@ -91,7 +91,10 @@ class LeadService {
         'u.last_name as assigned_last_name',
         'u.avatar_url as assigned_avatar_url',
         'sm.designation as assigned_designation',
-        'u.role as assigned_role'
+        'u.role as assigned_role',
+        db.raw('DATE_FORMAT(l.follow_up_date, "%Y-%m-%d") as follow_up_date_formatted'),
+        db.raw('(CASE WHEN (DATE(l.follow_up_date) = CURDATE() OR DATE(l.next_follow_up) = CURDATE()) AND l.status NOT IN ("converted", "lost") THEN 1 ELSE 0 END) as is_today_followup'),
+        db.raw('(CASE WHEN ((l.follow_up_date IS NOT NULL AND DATE(l.follow_up_date) < CURDATE()) OR (l.next_follow_up IS NOT NULL AND DATE(l.next_follow_up) < CURDATE())) AND l.status NOT IN ("converted", "lost") THEN 1 ELSE 0 END) as is_overdue_followup')
       )
       .orderBy('l.created_at', 'desc')
       .limit(limit)
@@ -110,12 +113,43 @@ class LeadService {
     const [convertedRow] = await base.clone().where('status', 'converted').count('* as count');
     const [lostRow] = await base.clone().where('status', 'lost').count('* as count');
 
+    const [todayFollowupsRow] = await base.clone()
+      .where(function() {
+        this.whereRaw('DATE(follow_up_date) = CURDATE()')
+          .orWhereRaw('DATE(next_follow_up) = CURDATE()');
+      })
+      .whereNotIn('status', ['converted', 'lost'])
+      .count('* as count');
+
+    const [overdueFollowupsRow] = await base.clone()
+      .where(function() {
+        this.where(function() {
+          this.whereRaw('follow_up_date IS NOT NULL AND DATE(follow_up_date) < CURDATE()')
+            .orWhereRaw('next_follow_up IS NOT NULL AND DATE(next_follow_up) < CURDATE()');
+        });
+      })
+      .whereNotIn('status', ['converted', 'lost'])
+      .count('* as count');
+
+    const [upcomingFollowupsRow] = await base.clone()
+      .where(function() {
+        this.where(function() {
+          this.whereRaw('follow_up_date IS NOT NULL AND DATE(follow_up_date) > CURDATE()')
+            .orWhereRaw('next_follow_up IS NOT NULL AND DATE(next_follow_up) > CURDATE()');
+        });
+      })
+      .whereNotIn('status', ['converted', 'lost'])
+      .count('* as count');
+
     return {
       total: parseInt(totalRow?.count || 0, 10),
       new: parseInt(newRow?.count || 0, 10),
       in_progress: parseInt(inProgressRow?.count || 0, 10),
       converted: parseInt(convertedRow?.count || 0, 10),
       lost: parseInt(lostRow?.count || 0, 10),
+      today_followups: parseInt(todayFollowupsRow?.count || 0, 10),
+      overdue_followups: parseInt(overdueFollowupsRow?.count || 0, 10),
+      upcoming_followups: parseInt(upcomingFollowupsRow?.count || 0, 10),
     };
   }
 
