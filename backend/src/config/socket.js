@@ -1,17 +1,19 @@
 import { Server } from 'socket.io';
 import { logger } from './logger.js';
-import { env } from './env.js';
+import { isOriginAllowed } from './cors.js';
 
 let io;
 
 export const initSocket = (server) => {
-  const allowedOrigins = env.CORS_ALLOWED_ORIGINS 
-    ? env.CORS_ALLOWED_ORIGINS.split(',') 
-    : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://127.0.0.1:3000'];
-
   io = new Server(server, {
     cors: {
-      origin: allowedOrigins,
+      origin: (origin, callback) => {
+        if (isOriginAllowed(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Origin not allowed by CORS'));
+        }
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },

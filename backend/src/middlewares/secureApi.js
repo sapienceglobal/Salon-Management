@@ -1,13 +1,24 @@
 import { ApiError } from '../utils/ApiError.js';
-import { env } from '../config/env.js';
+import { isOriginAllowed } from '../config/cors.js';
 
 export const secureApi = (req, res, next) => {
-  // Allow requests from our own web frontend based on Origin
-  const origin = req.headers.origin || req.headers.referer;
-  const allowedOrigins = env.CORS_ALLOWED_ORIGINS ? env.CORS_ALLOWED_ORIGINS.split(',') : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://127.0.0.1:3000'];
-  
-  if (origin && allowedOrigins.some(o => origin.startsWith(o))) {
+  // Allow requests from recognized web frontends (including any tenant subdomain)
+  const origin = req.headers.origin;
+  const referer = req.headers.referer;
+
+  if (origin && isOriginAllowed(origin)) {
     return next();
+  }
+
+  if (referer) {
+    try {
+      const refererOrigin = new URL(referer).origin;
+      if (isOriginAllowed(refererOrigin)) {
+        return next();
+      }
+    } catch {
+      // ignore parse error and proceed to check api key
+    }
   }
 
   // If not from a recognized web origin, it must be the mobile app or another client.

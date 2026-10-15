@@ -117,6 +117,13 @@ export function getImageUrl(path, fallback = '') {
     return trimmed;
   }
 
+  // Sanitize legacy or development URLs containing localhost:5000
+  if (trimmed.includes('localhost:5000')) {
+    const relative = trimmed.replace(/^https?:\/\/localhost:5000/, '');
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/v1\/?$/, '');
+    return apiBase ? `${apiBase}${relative}` : relative;
+  }
+
   // Remote external URLs
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return trimmed;
@@ -127,6 +134,10 @@ export function getImageUrl(path, fallback = '') {
 
   // If it's a backend upload
   if (cleanPath.startsWith('/uploads/')) {
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/v1\/?$/, '');
+    if (apiBase && typeof window !== 'undefined' && !apiBase.includes(window.location.host)) {
+      return `${apiBase}${cleanPath}`;
+    }
     const backendOrigin = process.env.NEXT_PUBLIC_BACKEND_URL;
     if (backendOrigin && typeof window !== 'undefined' && !backendOrigin.includes(window.location.host)) {
       return `${backendOrigin.replace(/\/+$/, '')}${cleanPath}`;
