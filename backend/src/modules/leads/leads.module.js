@@ -50,13 +50,23 @@ class LeadService {
       }
     }
 
-    if (query.follow_up_date) {
-      if (query.follow_up_date === 'today') {
-        base.whereRaw('DATE(l.follow_up_date) = CURDATE()');
-      } else if (query.follow_up_date === 'upcoming') {
-        base.where('l.follow_up_date', '>=', db.raw('CURDATE()'));
-      } else if (query.follow_up_date === 'overdue') {
-        base.where('l.follow_up_date', '<', db.raw('CURDATE()')).whereNotIn('l.status', ['converted', 'lost']);
+    const followUpParam = query.follow_up_date || query.follow_up;
+    if (followUpParam) {
+      if (followUpParam === 'today') {
+        base.where(function () {
+          this.whereRaw('DATE(l.follow_up_date) = CURDATE()')
+            .orWhereRaw('DATE(l.next_follow_up) = CURDATE()');
+        });
+      } else if (followUpParam === 'upcoming') {
+        base.where(function () {
+          this.where('l.follow_up_date', '>=', db.raw('CURDATE()'))
+            .orWhere('l.next_follow_up', '>=', db.raw('CURDATE()'));
+        });
+      } else if (followUpParam === 'overdue') {
+        base.where(function () {
+          this.where('l.follow_up_date', '<', db.raw('CURDATE()'))
+            .orWhere('l.next_follow_up', '<', db.raw('CURDATE()'));
+        }).whereNotIn('l.status', ['converted', 'lost']);
       }
     }
 

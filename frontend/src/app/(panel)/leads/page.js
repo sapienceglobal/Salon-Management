@@ -208,6 +208,34 @@ const REFERENCE_LEADS = [
   },
 ];
 
+// Robust date parser supporting YYYY-MM-DD, ISO, DD-MM-YYYY, DD/MM/YYYY, and datetime strings with time
+export function parseDateSafe(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  const trimmed = String(val).trim();
+  if (!trimmed || trimmed === '-') return null;
+
+  // 1. YYYY-MM-DD (e.g. "2026-10-15", "2026-10-15 00:00:00", "2026-10-15T00:00:00")
+  const ymdMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (ymdMatch) {
+    return new Date(parseInt(ymdMatch[1], 10), parseInt(ymdMatch[2], 10) - 1, parseInt(ymdMatch[3], 10));
+  }
+
+  // 2. DD-MM-YYYY or DD/MM/YYYY
+  const dmyMatch = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+  if (dmyMatch) {
+    return new Date(parseInt(dmyMatch[3], 10), parseInt(dmyMatch[2], 10) - 1, parseInt(dmyMatch[1], 10));
+  }
+
+  // 3. Fallback to native parsing
+  const nativeParsed = new Date(trimmed);
+  if (!isNaN(nativeParsed.getTime())) {
+    return new Date(nativeParsed.getFullYear(), nativeParsed.getMonth(), nativeParsed.getDate());
+  }
+
+  return null;
+}
+
 // Helper to determine follow up timeliness (Today, Overdue, Upcoming, Completed)
 export function getLeadFollowUpInfo(lead) {
   const rawDate = lead.follow_up_date || lead.next_follow_up;
@@ -218,21 +246,15 @@ export function getLeadFollowUpInfo(lead) {
   if (['converted', 'lost'].includes(s)) {
     return {
       type: 'done',
-      label: lead.next_follow_up || (lead.follow_up_date ? String(lead.follow_up_date).split('T')[0] : '-'),
+      label: lead.next_follow_up || (lead.follow_up_date ? String(lead.follow_up_date).slice(0, 10) : '-'),
       isToday: false,
       isOverdue: false,
     };
   }
 
-  let d = null;
-  if (lead.follow_up_date) {
-    const str = String(lead.follow_up_date).split('T')[0];
-    d = new Date(str + 'T00:00:00');
-  } else if (lead.next_follow_up) {
-    d = new Date(lead.next_follow_up);
-  }
+  const d = parseDateSafe(lead.follow_up_date) || parseDateSafe(lead.next_follow_up);
 
-  if (!d || isNaN(d.getTime())) {
+  if (!d) {
     return {
       type: 'unknown',
       label: lead.next_follow_up || String(lead.follow_up_date || '-'),
@@ -410,7 +432,7 @@ function LeadsContent() {
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { limit: 100 };
+      const params = { limit: 500 };
       if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
       if (sourceFilter && sourceFilter !== 'all') params.source = sourceFilter;
       if (serviceFilter && serviceFilter !== 'all') params.service = serviceFilter;
