@@ -267,15 +267,6 @@ export function getLeadFollowUpInfo(lead) {
   if (!rawDate || rawDate === '-') {
     return { type: 'none', label: '-', isToday: false, isOverdue: false };
   }
-  const s = (lead.status || '').toLowerCase();
-  if (['converted', 'lost'].includes(s)) {
-    return {
-      type: 'done',
-      label: lead.next_follow_up || lead.follow_up_date_formatted || (lead.follow_up_date ? String(lead.follow_up_date).slice(0, 10) : '-'),
-      isToday: false,
-      isOverdue: false,
-    };
-  }
 
   const timeStr = lead.follow_up_time || (lead.next_follow_up ? String(lead.next_follow_up).match(/\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?/)?.[0] : '') || '';
 
@@ -336,6 +327,7 @@ export function getLeadFollowUpInfo(lead) {
 
   const targetDate = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
+  // If follow-up date is TODAY, it is a Today follow-up regardless of status
   if (targetDate === todayStart) {
     return {
       type: 'today',
@@ -343,7 +335,20 @@ export function getLeadFollowUpInfo(lead) {
       isToday: true,
       isOverdue: false,
     };
-  } else if (targetDate < todayStart || lead.is_overdue_followup == 1 || lead.is_overdue_followup === true) {
+  }
+
+  // For non-today followups: if already converted or lost, don't nag as overdue
+  const s = (lead.status || '').toLowerCase();
+  if (['converted', 'lost'].includes(s)) {
+    return {
+      type: 'done',
+      label: lead.next_follow_up || lead.follow_up_date_formatted || (lead.follow_up_date ? String(lead.follow_up_date).slice(0, 10) : '-'),
+      isToday: false,
+      isOverdue: false,
+    };
+  }
+
+  if (targetDate < todayStart || lead.is_overdue_followup == 1 || lead.is_overdue_followup === true) {
     return {
       type: 'overdue',
       label: `Overdue (${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}${timeStr ? ` ${timeStr}` : ''})`,

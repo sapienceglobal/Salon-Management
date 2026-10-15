@@ -93,7 +93,7 @@ class LeadService {
         'sm.designation as assigned_designation',
         'u.role as assigned_role',
         db.raw('DATE_FORMAT(l.follow_up_date, "%Y-%m-%d") as follow_up_date_formatted'),
-        db.raw('(CASE WHEN (DATE(l.follow_up_date) = CURDATE() OR DATE(l.next_follow_up) = CURDATE()) AND l.status NOT IN ("converted", "lost") THEN 1 ELSE 0 END) as is_today_followup'),
+        db.raw('(CASE WHEN (DATE(l.follow_up_date) = CURDATE() OR DATE(l.next_follow_up) = CURDATE()) THEN 1 ELSE 0 END) as is_today_followup'),
         db.raw('(CASE WHEN ((l.follow_up_date IS NOT NULL AND DATE(l.follow_up_date) < CURDATE()) OR (l.next_follow_up IS NOT NULL AND DATE(l.next_follow_up) < CURDATE())) AND l.status NOT IN ("converted", "lost") THEN 1 ELSE 0 END) as is_overdue_followup')
       )
       .orderBy('l.created_at', 'desc')
@@ -118,7 +118,6 @@ class LeadService {
         this.whereRaw('DATE(follow_up_date) = CURDATE()')
           .orWhereRaw('DATE(next_follow_up) = CURDATE()');
       })
-      .whereNotIn('status', ['converted', 'lost'])
       .count('* as count');
 
     const [overdueFollowupsRow] = await base.clone()
