@@ -81,7 +81,10 @@ class SettingsService {
 
   // Users management
   async getUsers(businessId) {
-    return db('users').where({ business_id: businessId }).select('id', 'email', 'first_name', 'last_name', 'phone', 'role', 'is_active', 'last_login_at', 'created_at').orderBy('created_at');
+    return db('users')
+      .where({ business_id: businessId })
+      .select('id', 'email', 'first_name', 'last_name', 'phone', 'role', 'avatar_url', 'is_active', 'last_login_at', 'created_at')
+      .orderBy('created_at', 'desc');
   }
   async createUser(businessId, data) {
     const existing = await db('users').where({ email: data.email }).first();
@@ -117,8 +120,18 @@ class SettingsService {
     if (data.avatar_url && user.avatar_url && data.avatar_url !== user.avatar_url) {
       deleteUploadedFile(user.avatar_url);
     }
-    await db('users').where({ id: userId }).update({ ...cleanObject(data), updated_at: db.fn.now() });
-    return db('users').where({ id: userId }).select('id', 'email', 'first_name', 'last_name', 'role', 'avatar_url', 'is_active').first();
+
+    const updatePayload = { ...cleanObject(data) };
+    if (data.password && typeof data.password === 'string' && data.password.trim().length >= 8) {
+      const bcrypt = (await import('bcryptjs')).default;
+      updatePayload.password_hash = await bcrypt.hash(data.password.trim(), 12);
+      delete updatePayload.password;
+    } else {
+      delete updatePayload.password;
+    }
+
+    await db('users').where({ id: userId }).update({ ...updatePayload, updated_at: db.fn.now() });
+    return db('users').where({ id: userId }).select('id', 'email', 'first_name', 'last_name', 'phone', 'role', 'avatar_url', 'is_active', 'last_login_at', 'created_at').first();
   }
   async deleteUser(userId, businessId, currentUserId) {
     if (Number(userId) === Number(currentUserId)) {
@@ -204,6 +217,7 @@ router.post('/users', validate({ body: z.object({
 router.put('/users/:id', validate({ params: idParam, body: z.object({
   first_name: z.string().min(1).max(100).optional(), last_name: z.string().max(100).optional(),
   phone: z.string().max(20).optional(), role: z.enum(['admin', 'manager', 'staff', 'receptionist']).optional(), is_active: z.boolean().optional(),
+  password: z.string().min(8).optional(),
   avatar_url: z.string().max(500).optional().nullable(),
 }) }), asyncHandler(async (req, res) => { 
   ApiResponse.ok('User updated', await settingsService.updateUser(req.params.id, req.user.business_id, req.body, req.user.id)).send(res); 

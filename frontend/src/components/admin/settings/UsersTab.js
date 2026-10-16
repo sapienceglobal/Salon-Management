@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import api from '@/lib/api';
-import { RiAddLine, RiUserSettingsLine, RiShieldStarLine, RiUserLine, RiCloseLine, RiLockPasswordLine, RiMailLine, RiPhoneLine, RiDeleteBinLine } from 'react-icons/ri';
+import { RiAddLine, RiUserSettingsLine, RiShieldStarLine, RiUserLine, RiCloseLine, RiLockPasswordLine, RiMailLine, RiPhoneLine, RiDeleteBinLine, RiExternalLinkLine } from 'react-icons/ri';
 import { createPortal } from 'react-dom';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import { useConfirm } from '@/context/ConfirmContext';
@@ -148,6 +149,30 @@ export default function UsersTab() {
             <RiAddLine className="text-lg" /> Add User
           </button>
         )}
+      </div>
+
+      {/* Banner linking to dedicated /users page */}
+      <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-indigo-500/10 border border-pink-500/20 dark:border-pink-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#E91E63]/15 text-[#E91E63] flex items-center justify-center text-xl shrink-0">
+            <RiUserSettingsLine />
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+              Dedicated User Management Page Available
+            </h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Access advanced search, role filtering, KPI metrics, password resets, and permission matrix on the dedicated page.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/users"
+          className="inline-flex items-center gap-2 px-3.5 py-2 bg-[#E91E63] hover:bg-[#d81557] text-white text-xs font-semibold rounded-xl transition-all shadow-sm shrink-0 cursor-pointer"
+        >
+          Open User Management
+          <RiExternalLinkLine className="text-sm" />
+        </Link>
       </div>
 
       {/* Add User Modal Popup */}

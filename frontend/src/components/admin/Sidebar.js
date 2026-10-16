@@ -13,6 +13,7 @@ import {
   RiCalendarEventLine,
   RiGroupLine,
   RiUserStarLine,
+  RiUserSettingsLine,
   RiCalendarCheckLine,
   RiScissorsCutLine,
   RiBox3Line,
@@ -51,7 +52,7 @@ const NAV_GROUPS = [
     title: 'SALON OPERATIONS',
     items: [
       { label: 'Staff Management', href: '/staff', icon: RiUserStarLine },
-
+      { label: 'User Management', href: '/users', icon: RiUserSettingsLine },
       { label: 'Services', href: '/services', icon: RiScissorsCutLine },
       {
         label: 'Packages',
@@ -381,7 +382,7 @@ function SidebarInner({ collapsed, onToggle }) {
           // If logged-in user is manager, hide billing, invoices, expenses, and financial reports
           if (user?.role === 'manager') {
             const allowedItems = group.items.filter(
-              (item) => !['/billing', '/expenses', '/reports'].includes(item.href)
+              (item) => !['/billing', '/expenses', '/reports', '/users'].includes(item.href)
             );
             return { ...group, items: allowedItems };
           }
