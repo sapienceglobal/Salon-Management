@@ -28,6 +28,7 @@ import {
 } from 'react-icons/ri';
 import { getImageUrl } from '@/lib/utils';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
+import BulkActionBar from '@/components/admin/common/BulkActionBar';
 import { useConfirm } from '@/context/ConfirmContext';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
