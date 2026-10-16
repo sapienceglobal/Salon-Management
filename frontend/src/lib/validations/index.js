@@ -164,9 +164,9 @@ export const serviceSchema = z.object({
 export const staffSchema = z.object({
   first_name: z.string({ message: 'First name is required' }).trim().min(1, 'First name is required').max(100, 'First name cannot exceed 100 characters'),
   last_name: z.string({ message: 'Last name is required' }).trim().min(1, 'Last name is required').max(100, 'Last name cannot exceed 100 characters'),
-  email: z.string({ message: 'Email address is required' }).trim().email('Please enter a valid email address').max(255),
+  email: z.string().trim().email('Please enter a valid email address').max(255).optional().or(z.literal('')),
   phone: z.string().trim().min(10, 'Mobile number must be at least 10 digits').max(20).optional().or(z.literal('')),
-  role: z.enum(['admin', 'manager', 'staff', 'receptionist'], { message: 'Please select a valid role' }),
+  role: z.enum(['admin', 'manager', 'staff', 'receptionist'], { message: 'Please select a valid role' }).optional().default('staff'),
   password: z.string().min(6, 'Password must be at least 6 characters').optional().or(z.literal('')),
   designation: z.string().max(100).optional().or(z.literal('')),
   specializations: z.string().optional().or(z.literal('')),

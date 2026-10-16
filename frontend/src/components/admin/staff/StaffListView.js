@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import {
   RiUserAddLine,
   RiSearchLine,
@@ -18,6 +19,8 @@ import {
   RiCheckLine,
   RiCloseLine,
   RiShieldCheckLine,
+  RiShieldStarLine,
+  RiUserSettingsLine,
   RiDownload2Line,
   RiArrowLeftSLine,
   RiArrowRightSLine,
@@ -508,6 +511,12 @@ export default function StaffListView({
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getRoleBadgeStyle(designation)}`}>
                             {designation}
                           </span>
+                          {staff.role && ['admin', 'manager', 'receptionist'].includes(staff.role) && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40">
+                              <RiShieldStarLine className="text-[11px]" />
+                              {staff.role === 'manager' ? 'Manager Login' : staff.role === 'receptionist' ? 'Front Desk Login' : 'Admin Login'}
+                            </span>
+                          )}
                           {staff.commission_profile_name && (
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40">
                               Comm: {staff.commission_profile_name} {staff.commission_profile_value ? `(${staff.commission_profile_type === 'percentage' ? `${staff.commission_profile_value}%` : `₹${staff.commission_profile_value}`})` : ''}
@@ -627,6 +636,15 @@ export default function StaffListView({
                                   <span className={`w-2 h-2 rounded-full ${staff.is_active ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
                                   <span>{staff.is_active ? 'Mark Inactive' : 'Mark Active'}</span>
                                 </button>
+                                <div className="my-1 border-t border-gray-100 dark:border-white/5" />
+                                <Link
+                                  href={`/users?search=${encodeURIComponent(staff.email || staff.first_name || '')}`}
+                                  onClick={() => setActiveMenuId(null)}
+                                  className="w-full text-left px-3.5 py-2 hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 text-gray-700 dark:text-gray-200"
+                                >
+                                  <RiUserSettingsLine className="text-sm text-gray-400" />
+                                  <span>Manage User Login ↗</span>
+                                </Link>
                                 <div className="my-1 border-t border-gray-100 dark:border-white/5" />
                                 <button
                                   type="button"

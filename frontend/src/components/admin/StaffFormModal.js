@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import {
   RiCloseLine,
   RiFileCopyLine,
@@ -24,6 +25,13 @@ import {
   RiSparklingLine,
   RiStarSmileLine,
   RiCalendarLine,
+  RiLockPasswordLine,
+  RiEyeLine,
+  RiEyeOffLine,
+  RiPaletteLine,
+  RiUserSettingsLine,
+  RiExternalLinkLine,
+  RiShieldStarLine,
 } from 'react-icons/ri';
 import { MdFace2, MdFace6 } from 'react-icons/md';
 import api from '@/lib/api';
@@ -33,6 +41,31 @@ import toast from 'react-hot-toast';
 
 // Curated high-resolution salon staff avatar presets (deprecated in favor of clean stylized avatars)
 export const PRESET_STAFF_AVATARS = [];
+
+// Industry-standard Salon Designation Presets for quick selection
+export const DESIGNATION_PRESETS = [
+  'Senior Hair Stylist',
+  'Hair Stylist',
+  'Color Specialist',
+  'Makeup Artist',
+  'Nail Technician',
+  'Beautician',
+  'Spa Therapist',
+  'Barber',
+  'Salon Assistant',
+];
+
+// Curated Calendar Schedule Highlights
+export const CALENDAR_COLORS = [
+  { label: 'Signature Pink', hex: '#E91E63' },
+  { label: 'Rose Red', hex: '#F43F5E' },
+  { label: 'Vibrant Purple', hex: '#8B5CF6' },
+  { label: 'Indigo Blue', hex: '#6366F1' },
+  { label: 'Ocean Sky', hex: '#0EA5E9' },
+  { label: 'Teal Mint', hex: '#14B8A6' },
+  { label: 'Emerald Green', hex: '#10B981' },
+  { label: 'Warm Amber', hex: '#F59E0B' },
+];
 
 // Specialist icon badges for fallback visual representation
 export const PRESET_STAFF_ICONS = [
@@ -58,6 +91,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
     phone: '',
     role: 'staff',
     password: '',
+    enable_login: false,
 
     // Staff Profile
     designation: '',
@@ -89,6 +123,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [copied, setCopied] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useScrollLock(isOpen);
 
@@ -106,23 +141,27 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
     fetchCommissionProfiles();
   }, [fetchCommissionProfiles]);
 
-  // Generate a random secure password for new users
+  // Generate a random secure password for staff accounts
   const generatePassword = () => {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-    let pass = '';
-    for (let i = 0; i < 10; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
+    let pass = 'Stf@';
+    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
     setFormData((prev) => ({ ...prev, password: pass }));
   };
 
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
+        const hasLogin = !!(initialData.role && ['admin', 'manager', 'receptionist'].includes(initialData.role)) || 
+          (!!initialData.email && !initialData.email.includes('@internal.salon'));
+
         setFormData({
           first_name: initialData.first_name || '',
           last_name: initialData.last_name || '',
-          email: initialData.email || '',
+          email: initialData.email && !initialData.email.includes('@internal.salon') ? initialData.email : '',
           phone: initialData.phone || '',
           role: initialData.role || 'staff',
+          enable_login: hasLogin,
           designation: initialData.designation || '',
           salary: initialData.salary ? String(initialData.salary) : '',
           joining_date: initialData.joining_date ? initialData.joining_date.split('T')[0] : '',
@@ -139,6 +178,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
           staff_color: initialData.color_code || '#E91E63',
           shift_schedule: 'full_time',
         });
+        setShowPassword(false);
         const av = initialData.avatar_url || '';
         const isIcon = av.startsWith('icon:');
         setImagePreview(isIcon ? '' : av);
@@ -155,6 +195,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
           phone: '',
           role: 'staff',
           password: '',
+          enable_login: false,
           designation: '',
           salary: '',
           joining_date: new Date().toISOString().split('T')[0],
@@ -171,6 +212,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
           shift_schedule: 'full_time',
         });
         generatePassword();
+        setShowPassword(false);
         setImagePreview('');
         setVisualTab('upload');
       }
@@ -270,18 +312,32 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
       return;
     }
 
+    // If login is enabled, email is required
+    if (formData.enable_login && !formData.email?.trim()) {
+      setFieldErrors({ email: 'Email address is required for salon software login access' });
+      setLoading(false);
+      return;
+    }
+
     try {
       let userId = initialData?.user_id;
 
       if (!isEditing) {
         // Step 1: Create the User Account with credentials & optional avatar_url
+        // If no email entered for pure service provider, create a unique internal dummy email
+        const userEmail = formData.email?.trim() || `staff.${Date.now()}.${Math.floor(Math.random() * 1000)}@internal.salon`;
+        const userPassword = (formData.enable_login && formData.password?.trim()) 
+          ? formData.password.trim() 
+          : ('Stf@' + Math.random().toString(36).slice(-8) + '9!');
+        const userRole = formData.enable_login ? (formData.role || 'staff') : 'staff';
+
         const userPayload = {
-          email: formData.email.trim(),
-          password: formData.password,
+          email: userEmail,
+          password: userPassword,
           first_name: formData.first_name.trim(),
           last_name: formData.last_name.trim(),
-          phone: formData.phone.trim() || undefined,
-          role: formData.role,
+          phone: formData.phone?.trim() || undefined,
+          role: userRole,
           avatar_url: formData.avatar_url || undefined,
         };
         const userRes = await api.post('/settings/users', userPayload);
@@ -292,6 +348,8 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
       const specializationsArray = formData.specializations
         ? formData.specializations.split(',').map((s) => s.trim()).filter(Boolean)
         : undefined;
+
+      const userRole = formData.enable_login ? (formData.role || 'staff') : 'staff';
 
       if (selectedFile) {
         // If an image file was selected from computer, send via FormData
@@ -320,13 +378,17 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
           });
 
           // Also update base user profile
-          await api.put(`/settings/users/${initialData.user_id}`, {
+          const userUpdate = {
             first_name: formData.first_name.trim(),
             last_name: formData.last_name.trim(),
-            phone: formData.phone.trim() || undefined,
-            role: formData.role,
+            phone: formData.phone?.trim() || undefined,
+            role: userRole,
             is_active: formData.is_active,
-          });
+          };
+          if (formData.enable_login && formData.password?.trim() && formData.password.trim().length >= 8) {
+            userUpdate.password = formData.password.trim();
+          }
+          await api.put(`/settings/users/${initialData.user_id}`, userUpdate);
         } else {
           await api.post('/staff', formDataPayload, {
             headers: { 'Content-Type': 'multipart/form-data' },
@@ -351,14 +413,18 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
         if (isEditing) {
           await api.put(`/staff/${initialData.id}`, staffPayload);
 
-          await api.put(`/settings/users/${initialData.user_id}`, {
+          const userUpdate = {
             first_name: formData.first_name.trim(),
             last_name: formData.last_name.trim(),
-            phone: formData.phone.trim() || undefined,
-            role: formData.role,
+            phone: formData.phone?.trim() || undefined,
+            role: userRole,
             is_active: formData.is_active,
             avatar_url: formData.avatar_url || null,
-          });
+          };
+          if (formData.enable_login && formData.password?.trim() && formData.password.trim().length >= 8) {
+            userUpdate.password = formData.password.trim();
+          }
+          await api.put(`/settings/users/${initialData.user_id}`, userUpdate);
         } else {
           await api.post('/staff', staffPayload);
         }
@@ -470,9 +536,14 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                 {/* Row 2: Email Address & Phone Number */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Email Address <span className="text-[#E91E63]">*</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        Email Address {formData.enable_login && <span className="text-[#E91E63]">*</span>}
+                      </label>
+                      <span className="text-[10px] text-gray-400 font-normal">
+                        {formData.enable_login ? 'Required for login' : 'Optional for service providers'}
+                      </span>
+                    </div>
                     <div className="relative">
                       <RiMailLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
                       <input
@@ -516,40 +587,70 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                   </div>
                 </div>
 
-                {/* Row 3: System Role & Designation */}
+                {/* Row 3: Salon Designation & Calendar Color Tag */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                      System Role <span className="text-[#E91E63]">*</span>
-                    </label>
-                    <select
-                      value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                      className={`w-full bg-white dark:bg-[#121224] border rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all cursor-pointer font-medium ${
-                        fieldErrors.role ? 'border-red-500' : 'border-gray-200 dark:border-white/10'
-                      }`}
-                    >
-                      <option value="staff">Staff (Service Provider)</option>
-                      <option value="receptionist">Receptionist (Front Desk)</option>
-                      <option value="manager">Manager</option>
-                      <option value="admin">Administrator</option>
-                    </select>
-                    {fieldErrors.role && (
-                      <p className="text-red-500 text-xs font-medium mt-1">{fieldErrors.role}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Designation
+                      Salon Role / Designation <span className="text-[#E91E63]">*</span>
                     </label>
                     <input
                       type="text"
                       value={formData.designation}
                       onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                      placeholder="e.g. Senior Hair Stylist, Esthetician"
-                      className="w-full bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all font-medium"
+                      placeholder="e.g. Senior Hair Stylist, Makeup Artist"
+                      className={`w-full bg-white dark:bg-[#121224] border rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all font-medium ${
+                        fieldErrors.designation ? 'border-red-500' : 'border-gray-200 dark:border-white/10'
+                      }`}
                     />
+                    {fieldErrors.designation && (
+                      <p className="text-red-500 text-xs font-medium mt-1">{fieldErrors.designation}</p>
+                    )}
+                    {/* Quick suggestion chips */}
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {DESIGNATION_PRESETS.map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, designation: preset }))}
+                          className={`text-[11px] px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
+                            formData.designation === preset
+                              ? 'bg-[#E91E63]/10 text-[#E91E63] border-[#E91E63]/30 font-semibold'
+                              : 'bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 border-gray-200/60 dark:border-white/5 hover:border-gray-300'
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                      Calendar Schedule Color Tag
+                    </label>
+                    <div className="p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.02]">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {CALENDAR_COLORS.map((c) => (
+                          <button
+                            key={c.hex}
+                            type="button"
+                            title={c.label}
+                            onClick={() => setFormData((prev) => ({ ...prev, staff_color: c.hex }))}
+                            className={`w-6 h-6 rounded-full transition-transform cursor-pointer flex items-center justify-center shrink-0 ${
+                              formData.staff_color === c.hex ? 'scale-110 ring-2 ring-offset-2 ring-[#E91E63]' : 'hover:scale-105'
+                            }`}
+                            style={{ backgroundColor: c.hex }}
+                          >
+                            {formData.staff_color === c.hex && (
+                              <RiCheckLine className="text-white text-xs drop-shadow" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-gray-400 mt-1.5">
+                        Color tag for appointment schedule grid &amp; bookings.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -637,43 +738,137 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                   />
                 </div>
 
-                {/* Row 7: Temporary Password (New Staff Only) */}
-                {!isEditing && (
-                  <div className="bg-pink-50/50 dark:bg-pink-950/20 border border-pink-100 dark:border-pink-900/30 rounded-2xl p-4">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                        Generated Temporary Password
-                      </label>
-                      <button
-                        type="button"
-                        onClick={generatePassword}
-                        className="text-xs text-[#E91E63] hover:underline font-semibold cursor-pointer"
-                      >
-                        Regenerate
-                      </button>
+                {/* Row 7: Salon Software & App Access (Login Credentials) */}
+                <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-gradient-to-br from-gray-50/80 to-white dark:from-white/[0.03] dark:to-white/[0.01] p-4 sm:p-5 transition-all">
+                  <div className="flex items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 transition-colors ${
+                        formData.enable_login 
+                          ? 'bg-[#E91E63] text-white shadow-md shadow-[#E91E63]/25' 
+                          : 'bg-gray-200 dark:bg-white/10 text-gray-500'
+                      }`}>
+                        <RiLockPasswordLine />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">
+                            Salon Software &amp; App Login Access
+                          </h4>
+                          {formData.enable_login ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold">
+                              Login Enabled
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-400 font-semibold">
+                              Service Provider Only
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {formData.enable_login
+                            ? 'Allows this employee to log in to the salon software or staff app with their credentials.'
+                            : 'Service Provider only. Onboard staff for booking & commission without software login credentials.'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={formData.password}
-                        className="flex-1 bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-sm font-mono font-bold text-gray-900 dark:text-white outline-none"
+                    {/* Toggle Switch */}
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={formData.enable_login}
+                      onClick={() => {
+                        const next = !formData.enable_login;
+                        setFormData((prev) => ({
+                          ...prev,
+                          enable_login: next,
+                          password: next && !prev.password ? generatePassword() : prev.password,
+                        }));
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        formData.enable_login ? 'bg-[#E91E63]' : 'bg-gray-300 dark:bg-gray-700'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
+                          formData.enable_login ? 'translate-x-5' : 'translate-x-0'
+                        }`}
                       />
-                      <button
-                        type="button"
-                        onClick={copyToClipboard}
-                        className="border border-[#E91E63] text-[#E91E63] hover:bg-pink-50 dark:hover:bg-pink-950/40 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                      >
-                        {copied ? <RiCheckLine className="text-base text-emerald-600" /> : <RiFileCopyLine className="text-base" />}
-                        {copied ? 'Copied' : 'Copy'}
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center gap-1">
-                      <RiInformationLine className="text-sm shrink-0" />
-                      Staff will use this password for their initial login.
-                    </p>
+                    </button>
                   </div>
-                )}
+
+                  {/* Expanded Login Details when Toggle is ON */}
+                  {formData.enable_login && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/5 space-y-4 animate-[fadeIn_0.2s_ease_forwards]">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                            Software Role <span className="text-[#E91E63]">*</span>
+                          </label>
+                          <select
+                            value={formData.role}
+                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                            className="w-full bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-[#E91E63] font-medium cursor-pointer"
+                          >
+                            <option value="staff">Staff (Service Provider - My Bookings &amp; Commission)</option>
+                            <option value="receptionist">Receptionist (Front Desk - Billing, Appointments &amp; Clients)</option>
+                            <option value="manager">Manager (Full Salon Operations &amp; Reports)</option>
+                          </select>
+                          <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
+                            <RiInformationLine className="text-xs shrink-0" />
+                            Manage full permissions &amp; account locks in{' '}
+                            <Link href="/users" className="text-[#E91E63] hover:underline font-semibold" target="_blank">
+                              User Management ↗
+                            </Link>
+                          </p>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                              {isEditing ? 'New Password (optional)' : 'Temporary Login Password'}
+                              {!isEditing && <span className="text-[#E91E63]"> *</span>}
+                            </label>
+                            <button
+                              type="button"
+                              onClick={generatePassword}
+                              className="text-xs text-[#E91E63] hover:underline font-semibold cursor-pointer"
+                            >
+                              Regenerate
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                              <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                placeholder={isEditing ? 'Keep existing password' : 'Password'}
+                                className="w-full bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-xl pl-3.5 pr-9 py-2.5 text-sm font-mono font-bold text-gray-900 dark:text-white outline-none focus:border-[#E91E63]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                              >
+                                {showPassword ? <RiEyeOffLine /> : <RiEyeLine />}
+                              </button>
+                            </div>
+                            {formData.password && (
+                              <button
+                                type="button"
+                                onClick={copyToClipboard}
+                                className="border border-[#E91E63] text-[#E91E63] hover:bg-pink-50 dark:hover:bg-pink-950/40 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                              >
+                                {copied ? <RiCheckLine className="text-base text-emerald-600" /> : <RiFileCopyLine className="text-base" />}
+                                {copied ? 'Copied' : 'Copy'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Row 8: 2x2 Toggle Switches */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
