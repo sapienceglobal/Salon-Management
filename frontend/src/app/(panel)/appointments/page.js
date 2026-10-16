@@ -4,9 +4,22 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { formatCurrency, formatTime, getInitials } from '@/lib/utils';
-import { format } from 'date-fns';
+import {
+  format,
+  startOfWeek,
+  endOfWeek,
+  addDays,
+  addWeeks,
+  addMonths,
+  subDays,
+  subWeeks,
+  subMonths,
+  isToday,
+} from 'date-fns';
 import api from '@/lib/api';
 import ScheduleGrid from '@/components/admin/ScheduleGrid';
+import WeekScheduleView from '@/components/admin/appointments/WeekScheduleView';
+import MonthCalendarView from '@/components/admin/appointments/MonthCalendarView';
 import MiniCalendar from '@/components/admin/MiniCalendar';
 import {
   RiCalendarEventLine,
@@ -91,6 +104,7 @@ export default function AppointmentsPage() {
   const [viewMode, setViewMode] = useState('Day'); // Day, Week, Month
   const [activeTab, setActiveTab] = useState('Today');
   const [appointments, setAppointments] = useState([]);
+  const [weekAppointments, setWeekAppointments] = useState([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [monthAppointments, setMonthAppointments] = useState([]);
   const [staffList, setStaffList] = useState([]);
@@ -153,6 +167,14 @@ export default function AppointmentsPage() {
       let upcomingQuery = `/appointments?upcoming=true&limit=20`;
       if (selectedStaff) upcomingQuery += `&staff_id=${selectedStaff}`;
 
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
+      const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+      const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
+      let weekQuery = `/appointments?from_date=${weekStartStr}&to_date=${weekEndStr}&limit=300`;
+      if (selectedStaff) weekQuery += `&staff_id=${selectedStaff}`;
+      if (selectedService) weekQuery += `&service_id=${selectedService}`;
+
       const monthStartStr = format(
         new Date(currentDate.getFullYear(), currentDate.getMonth(), 1),
         'yyyy-MM-dd'
@@ -163,6 +185,7 @@ export default function AppointmentsPage() {
       );
       let monthQuery = `/appointments?from_date=${monthStartStr}&to_date=${monthEndStr}&limit=500`;
       if (selectedStaff) monthQuery += `&staff_id=${selectedStaff}`;
+      if (selectedService) monthQuery += `&service_id=${selectedService}`;
 
       let statsQuery = `/appointments/stats?date=${dateStr}`;
       if (selectedStaff) statsQuery += `&staff_id=${selectedStaff}`;
@@ -171,6 +194,7 @@ export default function AppointmentsPage() {
       const [
         apptsRes,
         upcomingRes,
+        weekRes,
         monthRes,
         staffRes,
         custRes,
@@ -180,6 +204,7 @@ export default function AppointmentsPage() {
       ] = await Promise.allSettled([
         api.get(apptQuery),
         api.get(upcomingQuery),
+        api.get(weekQuery),
         api.get(monthQuery),
         api.get('/staff'),
         api.get('/customers?limit=100'),
@@ -193,6 +218,9 @@ export default function AppointmentsPage() {
       }
       if (upcomingRes.status === 'fulfilled') {
         setUpcomingAppointments(upcomingRes.value.data?.appointments || upcomingRes.value.data || []);
+      }
+      if (weekRes.status === 'fulfilled') {
+        setWeekAppointments(weekRes.value.data?.appointments || weekRes.value.data || []);
       }
       if (monthRes.status === 'fulfilled') {
         setMonthAppointments(monthRes.value.data?.appointments || monthRes.value.data || []);
@@ -280,11 +308,21 @@ export default function AppointmentsPage() {
     }
   };
 
-  const handleDateChange = (days) => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + days);
-    setCurrentDate(newDate);
+  const handleDateChange = (delta) => {
+    if (viewMode === 'Week') {
+      setCurrentDate((prev) => (delta > 0 ? addWeeks(prev, delta) : subWeeks(prev, Math.abs(delta))));
+    } else if (viewMode === 'Month') {
+      setCurrentDate((prev) => (delta > 0 ? addMonths(prev, delta) : subMonths(prev, Math.abs(delta))));
+    } else {
+      setCurrentDate((prev) => (delta > 0 ? addDays(prev, delta) : subDays(prev, Math.abs(delta))));
+    }
   };
+
+  const activeScopeAppointments = useMemo(() => {
+    if (viewMode === 'Week') return weekAppointments;
+    if (viewMode === 'Month') return monthAppointments;
+    return appointments;
+  }, [viewMode, appointments, weekAppointments, monthAppointments]);
 
   const handleCalendarSelect = (date) => {
     setCurrentDate(date);
@@ -681,19 +719,37 @@ export default function AppointmentsPage() {
             <button
               onClick={() => handleDateChange(-1)}
               className="p-2 border border-gray-200/80 dark:border-white/10 bg-white dark:bg-[#1a1a2e] rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer text-gray-600 dark:text-gray-300"
+              title={viewMode === 'Week' ? 'Previous week' : viewMode === 'Month' ? 'Previous month' : 'Previous day'}
             >
               <RiArrowLeftSLine className="text-base" />
             </button>
-            <div className="px-4 py-2 border border-gray-200/80 dark:border-white/10 rounded-xl text-xs font-semibold bg-white dark:bg-[#1a1a2e] text-gray-800 dark:text-gray-200 flex items-center gap-2 min-w-[160px] justify-center shadow-xs">
+            <div className="px-4 py-2 border border-gray-200/80 dark:border-white/10 rounded-xl text-xs font-semibold bg-white dark:bg-[#1a1a2e] text-gray-800 dark:text-gray-200 flex items-center gap-2 min-w-[170px] sm:min-w-[190px] justify-center shadow-xs">
               <RiCalendarLine className="text-[#E91E63] text-sm" />
-              {format(currentDate, 'EEE, d MMM yyyy')}
+              {viewMode === 'Day' && format(currentDate, 'EEE, d MMM yyyy')}
+              {viewMode === 'Week' &&
+                `${format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'd MMM')} – ${format(
+                  endOfWeek(currentDate, { weekStartsOn: 1 }),
+                  'd MMM yyyy'
+                )}`}
+              {viewMode === 'Month' && format(currentDate, 'MMMM yyyy')}
             </div>
             <button
               onClick={() => handleDateChange(1)}
               className="p-2 border border-gray-200/80 dark:border-white/10 bg-white dark:bg-[#1a1a2e] rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer text-gray-600 dark:text-gray-300"
+              title={viewMode === 'Week' ? 'Next week' : viewMode === 'Month' ? 'Next month' : 'Next day'}
             >
               <RiArrowRightSLine className="text-base" />
             </button>
+            {!isToday(currentDate) && (
+              <button
+                type="button"
+                onClick={() => setCurrentDate(new Date())}
+                className="px-2.5 py-1.5 text-[11px] font-bold border border-pink-200 dark:border-pink-500/20 bg-pink-50 dark:bg-[#E91E63]/10 rounded-xl hover:bg-pink-100 dark:hover:bg-[#E91E63]/20 transition-colors cursor-pointer text-[#E91E63]"
+                title="Jump to today"
+              >
+                Today
+              </button>
+            )}
           </div>
         </div>
 
@@ -746,15 +802,15 @@ export default function AppointmentsPage() {
       <div className="px-6 flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mr-1 flex items-center gap-1">
-            <RiFilter3Line className="text-xs" /> Timeline:
+            <RiFilter3Line className="text-xs" /> Filter:
           </span>
           {[
-            { key: 'all', label: 'All', count: appointments.length, color: 'bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white' },
-            { key: 'confirmed', label: 'Confirmed', count: appointments.filter(a => a.status === 'confirmed' || a.status === 'planned').length, color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' },
-            { key: 'in-progress', label: 'In Progress', count: appointments.filter(a => a.status === 'ongoing' || a.status === 'in-progress').length, color: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' },
-            { key: 'pending', label: 'Pending', count: appointments.filter(a => a.status === 'pending').length, color: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' },
-            { key: 'unassigned', label: 'Unassigned (Open)', count: appointments.filter(a => !a.staff_member_id && !a.staff_id).length, color: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' },
-            { key: 'cancelled', label: 'Cancelled', count: appointments.filter(a => a.status === 'cancelled' || a.status === 'no_show').length, color: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300' },
+            { key: 'all', label: 'All', count: activeScopeAppointments.length, color: 'bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white' },
+            { key: 'confirmed', label: 'Confirmed', count: activeScopeAppointments.filter(a => a.status === 'confirmed' || a.status === 'planned').length, color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' },
+            { key: 'in-progress', label: 'In Progress', count: activeScopeAppointments.filter(a => a.status === 'ongoing' || a.status === 'in-progress').length, color: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' },
+            { key: 'pending', label: 'Pending', count: activeScopeAppointments.filter(a => a.status === 'pending').length, color: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' },
+            { key: 'unassigned', label: 'Unassigned (Open)', count: activeScopeAppointments.filter(a => !a.staff_member_id && !a.staff_id).length, color: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' },
+            { key: 'cancelled', label: 'Cancelled', count: activeScopeAppointments.filter(a => a.status === 'cancelled' || a.status === 'no_show').length, color: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300' },
           ].map((pill) => (
             <button
               key={pill.key}
@@ -795,28 +851,87 @@ export default function AppointmentsPage() {
              (items-stretch ensures ScheduleGrid extends to the bottom of Top Services)
          ======================================================== */}
       <div className="px-6 flex flex-col xl:flex-row gap-6 items-stretch">
-        {/* LEFT: SCHEDULE TIMELINE GRID */}
+        {/* LEFT: SCHEDULE TIMELINE GRID / WEEK / MONTH VIEW */}
         <div className="flex-1 w-full min-w-0 flex flex-col">
-          <ScheduleGrid
-            staff={staffList}
-            appointments={filteredAppointments}
-            businessSettings={businessSettings}
-            statusFilter={statusFilter}
-            showCancelled={showCancelled}
-            currentDate={currentDate}
-            onAppointmentClick={(appt) => setSelectedViewAppointment(appt)}
-            onSlotClick={({ staff, hour }) => {
-              const hourStr = String(hour).padStart(2, '0') + ':00:00';
-              setEditData(null);
-              setPreselectedCustomerId('');
-              setPrefilledSlot({
-                staff_id: staff?.id || '',
-                start_time: hourStr,
-                appointment_date: format(currentDate, 'yyyy-MM-dd')
-              });
-              setIsAddModalOpen(true);
-            }}
-          />
+          {viewMode === 'Day' && (
+            <ScheduleGrid
+              staff={staffList}
+              appointments={filteredAppointments}
+              businessSettings={businessSettings}
+              statusFilter={statusFilter}
+              showCancelled={showCancelled}
+              currentDate={currentDate}
+              onAppointmentClick={(appt) => setSelectedViewAppointment(appt)}
+              onSlotClick={({ staff, hour }) => {
+                const hourStr = String(hour).padStart(2, '0') + ':00:00';
+                setEditData(null);
+                setPreselectedCustomerId('');
+                setPrefilledSlot({
+                  staff_id: staff?.id || '',
+                  start_time: hourStr,
+                  appointment_date: format(currentDate, 'yyyy-MM-dd')
+                });
+                setIsAddModalOpen(true);
+              }}
+            />
+          )}
+
+          {viewMode === 'Week' && (
+            <WeekScheduleView
+              appointments={weekAppointments}
+              currentDate={currentDate}
+              businessSettings={businessSettings}
+              statusFilter={statusFilter}
+              showCancelled={showCancelled}
+              searchQuery={searchQuery}
+              selectedStaff={selectedStaff}
+              selectedService={selectedService}
+              onAppointmentClick={(appt) => setSelectedViewAppointment(appt)}
+              onDayClick={(day) => {
+                setCurrentDate(day);
+                setViewMode('Day');
+              }}
+              onSlotClick={({ date, hour, staff }) => {
+                const hourStr = String(hour || 10).padStart(2, '0') + ':00:00';
+                setEditData(null);
+                setPreselectedCustomerId('');
+                setPrefilledSlot({
+                  staff_id: staff?.id || selectedStaff || '',
+                  start_time: hourStr,
+                  appointment_date: date || format(currentDate, 'yyyy-MM-dd'),
+                });
+                setIsAddModalOpen(true);
+              }}
+            />
+          )}
+
+          {viewMode === 'Month' && (
+            <MonthCalendarView
+              appointments={monthAppointments}
+              currentDate={currentDate}
+              businessSettings={businessSettings}
+              statusFilter={statusFilter}
+              showCancelled={showCancelled}
+              searchQuery={searchQuery}
+              selectedStaff={selectedStaff}
+              selectedService={selectedService}
+              onAppointmentClick={(appt) => setSelectedViewAppointment(appt)}
+              onDayClick={(day) => {
+                setCurrentDate(day);
+                setViewMode('Day');
+              }}
+              onSlotClick={({ date, staff }) => {
+                setEditData(null);
+                setPreselectedCustomerId('');
+                setPrefilledSlot({
+                  staff_id: staff?.id || selectedStaff || '',
+                  start_time: '10:00:00',
+                  appointment_date: date || format(currentDate, 'yyyy-MM-dd'),
+                });
+                setIsAddModalOpen(true);
+              }}
+            />
+          )}
         </div>
 
         {/* RIGHT SIDEBAR: MiniCalendar + Appointment Insights + Top Services */}
