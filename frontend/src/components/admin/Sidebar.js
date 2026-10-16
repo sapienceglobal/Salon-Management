@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
-import { getInitials } from '@/lib/utils';
+import { getInitials, getImageUrl } from '@/lib/utils';
 import api from '@/lib/api';
 import {
   RiApps2Line,
@@ -223,9 +223,11 @@ function SidebarInner({ collapsed, onToggle }) {
   const activeUser = profile || user;
   const fullName = [activeUser?.first_name, activeUser?.last_name].filter(Boolean).join(' ').trim();
   const userName = fullName || activeUser?.name || 'Rahul Arora';
-  const userInitials = (activeUser?.first_name || activeUser?.last_name)
-    ? getInitials(activeUser.first_name, activeUser.last_name)
-    : 'SA';
+  const userInitials = (
+    (activeUser?.first_name || activeUser?.last_name)
+      ? getInitials(activeUser.first_name, activeUser.last_name)
+      : (activeUser?.name ? getInitials(activeUser.name) : '')
+  ) || activeUser?.first_name?.[0]?.toUpperCase() || activeUser?.email?.[0]?.toUpperCase() || 'SA';
 
   const getRoleLabel = (role) => {
     switch (role) {
@@ -305,10 +307,28 @@ function SidebarInner({ collapsed, onToggle }) {
             href={user?.role !== 'manager' ? '/settings' : '/staff'}
             className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-gradient-to-r from-[#210F24]/90 via-[#161022]/90 to-[#0F101B]/90 border border-[#E91E63]/30 hover:border-[#E91E63]/50 shadow-[0_4px_16px_rgba(0,0,0,0.4)] transition-all group cursor-pointer"
           >
-            {/* Circular Pink Gradient Avatar with soft glow */}
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] via-[#F43F5E] to-[#FB7185] flex items-center justify-center text-white font-bold text-xs shadow-[0_0_14px_rgba(233,30,99,0.45)] ring-2 ring-white/10 shrink-0">
-              {userInitials || 'SA'}
-            </div>
+            {/* User Avatar: photo if uploaded, otherwise capital initials in glowing gradient circle */}
+            {activeUser?.avatar_url ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-white/20 shadow-[0_0_14px_rgba(233,30,99,0.45)] ring-2 ring-[#E91E63]/30">
+                <img
+                  src={getImageUrl(activeUser.avatar_url)}
+                  alt={userName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                    if (fallback) fallback.classList.remove('hidden');
+                  }}
+                />
+                <div className="avatar-fallback hidden w-full h-full bg-gradient-to-tr from-[#E91E63] to-[#FB7185] flex items-center justify-center text-white font-bold text-xs tracking-wider">
+                  {userInitials}
+                </div>
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] to-[#FB7185] flex items-center justify-center text-white font-bold text-xs tracking-wider shadow-[0_0_12px_rgba(233,30,99,0.5)] shrink-0">
+                {userInitials}
+              </div>
+            )}
 
             {/* User Name & Verified Icon & Role Type (NO email, NO branch text) */}
             <div className="overflow-hidden flex-1 min-w-0">
@@ -331,10 +351,30 @@ function SidebarInner({ collapsed, onToggle }) {
         <div className="px-3 py-2 flex flex-col items-center shrink-0">
           <Link
             href={user?.role !== 'manager' ? '/settings' : '/staff'}
-            className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] via-[#F43F5E] to-[#FB7185] flex items-center justify-center text-white font-bold text-xs shadow-[0_0_14px_rgba(233,30,99,0.45)] ring-2 ring-white/10 hover:scale-105 transition-transform"
+            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 hover:scale-105 transition-transform"
             title={`${userName} (${getRoleLabel(activeUser?.role)})`}
           >
-            {userInitials || 'SA'}
+            {activeUser?.avatar_url ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-white/20 shadow-[0_0_14px_rgba(233,30,99,0.45)] ring-2 ring-[#E91E63]/30">
+                <img
+                  src={getImageUrl(activeUser.avatar_url)}
+                  alt={userName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                    if (fallback) fallback.classList.remove('hidden');
+                  }}
+                />
+                <div className="avatar-fallback hidden w-full h-full bg-gradient-to-tr from-[#E91E63] to-[#FB7185] flex items-center justify-center text-white font-bold text-xs tracking-wider">
+                  {userInitials}
+                </div>
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] to-[#FB7185] flex items-center justify-center text-white font-bold text-xs tracking-wider shadow-[0_0_12px_rgba(233,30,99,0.5)] shrink-0">
+                {userInitials}
+              </div>
+            )}
           </Link>
         </div>
       )}

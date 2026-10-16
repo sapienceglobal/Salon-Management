@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { authorize, businessScope } from '../../middlewares/authorize.js';
 import { validate } from '../../middlewares/validate.js';
-import { deleteUploadedFile } from '../../utils/fileUpload.js';
+import { singleImage, deleteUploadedFile } from '../../utils/fileUpload.js';
 
 // ===== SETTINGS SERVICE =====
 class SettingsService {
@@ -131,11 +131,14 @@ class SettingsService {
       }
     }
 
-    if (data.avatar_url && user.avatar_url && data.avatar_url !== user.avatar_url) {
+    if ((data.avatar_url === null || (data.avatar_url && data.avatar_url !== user.avatar_url)) && user.avatar_url) {
       deleteUploadedFile(user.avatar_url);
     }
 
     const updatePayload = { ...cleanObject(data) };
+    if (data.avatar_url === null) {
+      updatePayload.avatar_url = null;
+    }
     if (data.password && typeof data.password === 'string' && data.password.trim().length >= 8) {
       const bcrypt = (await import('bcryptjs')).default;
       updatePayload.password_hash = await bcrypt.hash(data.password.trim(), 12);
@@ -145,6 +148,11 @@ class SettingsService {
     }
 
     await db('users').where({ id: userId }).update({ ...updatePayload, updated_at: db.fn.now() });
+
+    if (data.avatar_url !== undefined) {
+      await db('staff_members').where({ user_id: userId, business_id: businessId }).update({ avatar_url: data.avatar_url, updated_at: db.fn.now() }).catch(() => {});
+    }
+
     return db('users').where({ id: userId }).select('id', 'email', 'first_name', 'last_name', 'phone', 'role', 'avatar_url', 'is_active', 'last_login_at', 'created_at').first();
   }
   async deleteUser(userId, businessId, currentUserId) {
@@ -222,19 +230,33 @@ router.delete('/notifications/:id', validate({ params: idParam }), asyncHandler(
 
 // Users management
 router.get('/users', asyncHandler(async (req, res) => { ApiResponse.ok('Users', await settingsService.getUsers(req.user.business_id)).send(res); }));
-router.post('/users', validate({ body: z.object({
+router.post('/users', singleImage('image'), validate({ body: z.object({
   email: z.string().email(), password: z.string().min(8), first_name: z.string().min(1).max(100),
-  last_name: z.string().max(100).optional(), phone: z.string().max(20).optional(),
+  last_name: z.string().max(100).optional().nullable(), phone: z.string().max(20).optional().nullable(),
   role: z.enum(['admin', 'manager', 'staff', 'receptionist']),
   avatar_url: z.string().max(500).optional().nullable(),
-}) }), asyncHandler(async (req, res) => { ApiResponse.created('User created', await settingsService.createUser(req.user.business_id, req.body)).send(res); }));
-router.put('/users/:id', validate({ params: idParam, body: z.object({
-  first_name: z.string().min(1).max(100).optional(), last_name: z.string().max(100).optional(),
-  phone: z.string().max(20).optional(), role: z.enum(['admin', 'manager', 'staff', 'receptionist']).optional(), is_active: z.boolean().optional(),
+}) }), asyncHandler(async (req, res) => {
+  const avatarUrl = req.file ? `/uploads/${req.file.filename}` : req.body.avatar_url;
+  const payload = { ...req.body };
+  if (avatarUrl !== undefined) payload.avatar_url = avatarUrl;
+  const user = await settingsService.createUser(req.user.business_id, payload);
+  ApiResponse.created('User created', user).send(res);
+}));
+router.put('/users/:id', singleImage('image'), validate({ params: idParam, body: z.object({
+  first_name: z.string().min(1).max(100).optional(), last_name: z.string().max(100).optional().nullable(),
+  phone: z.string().max(20).optional().nullable(), role: z.enum(['admin', 'manager', 'staff', 'receptionist']).optional(), is_active: z.coerce.boolean().optional(),
   password: z.string().min(8).optional(),
   avatar_url: z.string().max(500).optional().nullable(),
-}) }), asyncHandler(async (req, res) => { 
-  ApiResponse.ok('User updated', await settingsService.updateUser(req.params.id, req.user.business_id, req.body, req.user.id)).send(res); 
+}) }), asyncHandler(async (req, res) => {
+  const userRec = await db('users').where({ id: req.params.id, business_id: req.user.business_id }).first();
+  const avatarUrl = req.file ? `/uploads/${req.file.filename}` : req.body.avatar_url;
+  if (req.file && userRec?.avatar_url && userRec.avatar_url !== avatarUrl) {
+    deleteUploadedFile(userRec.avatar_url);
+  }
+  const payload = { ...req.body };
+  if (avatarUrl !== undefined) payload.avatar_url = avatarUrl;
+  const user = await settingsService.updateUser(req.params.id, req.user.business_id, payload, req.user.id);
+  ApiResponse.ok('User updated', user).send(res);
 }));
 router.delete('/users/:id', validate({ params: idParam }), asyncHandler(async (req, res) => { 
   ApiResponse.ok('User deleted successfully', await settingsService.deleteUser(req.params.id, req.user.business_id, req.user.id)).send(res); 

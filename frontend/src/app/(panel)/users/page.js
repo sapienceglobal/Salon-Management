@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
@@ -12,6 +12,7 @@ import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import AccessDenied from '@/components/admin/common/AccessDenied';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
+import { getImageUrl } from '@/lib/utils';
 import {
   RiAddLine,
   RiSearchLine,
@@ -41,6 +42,8 @@ import {
   RiFilter3Line,
   RiUserStarLine,
   RiCalendarCheckLine,
+  RiCameraLine,
+  RiUpload2Line,
 } from 'react-icons/ri';
 
 const emptySubscribe = () => () => {};
@@ -71,6 +74,9 @@ export default function UserManagementPage() {
     password: '',
     role: 'receptionist',
   });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const fileInputRef = useRef(null);
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -97,9 +103,35 @@ export default function UserManagementPage() {
     fetchUsers();
   }, [fetchUsers]);
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (PNG, JPG, WebP)');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be under 5MB');
+      return;
+    }
+
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleRemovePhoto = () => {
+    setSelectedFile(null);
+    setPreviewUrl('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   // Open modal for Adding new user
   const handleOpenAddModal = () => {
     setEditingUser(null);
+    setSelectedFile(null);
+    setPreviewUrl('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setFormData({
       first_name: '',
       last_name: '',
@@ -115,6 +147,9 @@ export default function UserManagementPage() {
   // Open modal for Editing existing user
   const handleOpenEditModal = (targetUser) => {
     setEditingUser(targetUser);
+    setSelectedFile(null);
+    setPreviewUrl(targetUser.avatar_url || '');
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setFormData({
       first_name: targetUser.first_name || '',
       last_name: targetUser.last_name || '',
@@ -130,6 +165,8 @@ export default function UserManagementPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingUser(null);
+    setSelectedFile(null);
+    setPreviewUrl('');
   };
 
   // Generate strong random password
@@ -163,33 +200,53 @@ export default function UserManagementPage() {
 
     setSubmitting(true);
     try {
-      if (editingUser) {
-        // Edit Mode
-        const payload = {
-          first_name: formData.first_name.trim(),
-          last_name: formData.last_name.trim() || undefined,
-          phone: formData.phone.trim() || undefined,
-          role: formData.role,
-        };
-        if (formData.password && formData.password.trim()) {
-          payload.password = formData.password.trim();
+      if (selectedFile) {
+        // Multipart Form Data when a file is selected
+        const fd = new FormData();
+        fd.append('first_name', formData.first_name.trim());
+        if (formData.last_name?.trim()) fd.append('last_name', formData.last_name.trim());
+        if (formData.phone?.trim()) fd.append('phone', formData.phone.trim());
+        fd.append('role', formData.role);
+        fd.append('image', selectedFile);
+
+        if (editingUser) {
+          if (formData.password?.trim()) {
+            fd.append('password', formData.password.trim());
+          }
+          await api.put(`/settings/users/${editingUser.id}`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          toast.success('User updated successfully');
+        } else {
+          fd.append('email', formData.email.trim().toLowerCase());
+          fd.append('password', formData.password.trim());
+          await api.post('/settings/users', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          toast.success('User created successfully');
         }
-
-        await api.put(`/settings/users/${editingUser.id}`, payload);
-        toast.success('User updated successfully');
       } else {
-        // Add Mode
+        // Standard JSON payload
         const payload = {
           first_name: formData.first_name.trim(),
           last_name: formData.last_name.trim() || undefined,
-          email: formData.email.trim().toLowerCase(),
           phone: formData.phone.trim() || undefined,
-          password: formData.password.trim(),
           role: formData.role,
+          avatar_url: previewUrl || null,
         };
 
-        await api.post('/settings/users', payload);
-        toast.success('User created successfully');
+        if (editingUser) {
+          if (formData.password?.trim()) {
+            payload.password = formData.password.trim();
+          }
+          await api.put(`/settings/users/${editingUser.id}`, payload);
+          toast.success('User updated successfully');
+        } else {
+          payload.email = formData.email.trim().toLowerCase();
+          payload.password = formData.password.trim();
+          await api.post('/settings/users', payload);
+          toast.success('User created successfully');
+        }
       }
 
       handleCloseModal();
@@ -862,6 +919,59 @@ export default function UserManagementPage() {
                       Staff Management
                     </Link>{' '}
                     page. This form is specifically for system accounts with login credentials.
+                  </div>
+                </div>
+
+                {/* Profile Photo / Avatar Section */}
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/[0.02] flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="relative w-14 h-14 rounded-2xl overflow-hidden shrink-0 border-2 border-pink-500/20 shadow-sm bg-gradient-to-tr from-[#E91E63]/10 to-[#FB7185]/10 flex items-center justify-center">
+                      {previewUrl ? (
+                        <img
+                          src={selectedFile ? previewUrl : getImageUrl(previewUrl)}
+                          alt="Avatar Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+                          <RiCameraLine className="text-2xl text-slate-400 dark:text-slate-500" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Profile Photo</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {previewUrl ? 'Photo selected' : 'Upload photo (PNG, JPG up to 5MB)'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-white/10 text-slate-700 dark:text-white border border-slate-200 dark:border-white/10 hover:border-[#E91E63] hover:text-[#E91E63] dark:hover:border-[#E91E63] dark:hover:text-[#E91E63] transition-all cursor-pointer shadow-sm"
+                    >
+                      <RiUpload2Line className="text-sm" />
+                      <span>{previewUrl ? 'Change' : 'Upload'}</span>
+                    </button>
+                    {previewUrl && (
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all cursor-pointer"
+                        title="Remove photo"
+                      >
+                        <RiDeleteBinLine className="text-sm" />
+                      </button>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
                   </div>
                 </div>
 

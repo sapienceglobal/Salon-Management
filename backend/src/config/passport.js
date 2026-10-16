@@ -19,19 +19,22 @@ passport.use(
   'jwt',
   new JwtStrategy(jwtOptions, async (payload, done) => {
     try {
-      const user = await db('users')
-        .leftJoin('businesses', 'users.business_id', 'businesses.id')
+      const user = await db('users as u')
+        .leftJoin('businesses as b', 'u.business_id', 'b.id')
+        .leftJoin('staff_members as sm', 'u.id', 'sm.user_id')
         .select(
-          'users.id',
-          'users.business_id',
-          'users.email',
-          'users.first_name',
-          'users.last_name',
-          'users.role',
-          'users.is_active',
-          'businesses.name as business_name'
+          'u.id',
+          'u.business_id',
+          'u.email',
+          'u.first_name',
+          'u.last_name',
+          'u.role',
+          'u.phone',
+          db.raw('COALESCE(NULLIF(u.avatar_url, ""), NULLIF(sm.avatar_url, "")) as avatar_url'),
+          'u.is_active',
+          'b.name as business_name'
         )
-        .where({ 'users.id': payload.sub, 'users.is_active': true })
+        .where({ 'u.id': payload.sub, 'u.is_active': true })
         .first();
 
       if (!user) {
