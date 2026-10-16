@@ -23,7 +23,6 @@ import {
   RiBarChartBoxLine,
   RiUserSharedLine,
   RiSettings4Line,
-  RiStore2Line,
   RiLogoutBoxRLine,
   RiCheckboxCircleFill,
   RiArrowRightSLine,
@@ -222,12 +221,27 @@ function SidebarInner({ collapsed, onToggle }) {
   };
 
   const activeUser = profile || user;
-  const userName = activeUser?.first_name
-    ? `${activeUser.first_name} ${activeUser.last_name || ''}`.trim()
-    : 'Super Admin';
-  const userEmail = activeUser?.email || 'admin@kairamakeover.salontime.co.in';
-  const userInitials = activeUser ? getInitials(activeUser.first_name, activeUser.last_name) : 'SA';
-  const branchName = activeUser?.branch_name || activeUser?.business_name || 'Kaira Makeover';
+  const fullName = [activeUser?.first_name, activeUser?.last_name].filter(Boolean).join(' ').trim();
+  const userName = fullName || activeUser?.name || 'Rahul Arora';
+  const userInitials = (activeUser?.first_name || activeUser?.last_name)
+    ? getInitials(activeUser.first_name, activeUser.last_name)
+    : 'SA';
+
+  const getRoleLabel = (role) => {
+    switch (role) {
+      case 'super_admin':
+      case 'admin':
+        return 'Owner Account';
+      case 'manager':
+        return 'Manager Account';
+      case 'receptionist':
+        return 'Receptionist Account';
+      case 'staff':
+        return 'Staff Account';
+      default:
+        return 'Owner Account';
+    }
+  };
 
   return (
     <aside
@@ -284,95 +298,44 @@ function SidebarInner({ collapsed, onToggle }) {
         )}
       </div>
 
-      {/* --- Admin Profile Card --- */}
+      {/* --- User Account Profile Card (Matching User Reference Image) --- */}
       {!collapsed ? (
         <div className="px-3 py-1.5 shrink-0">
-          <div className="relative overflow-hidden rounded-2xl p-3 bg-gradient-to-br from-[#231026] via-[#161224] to-[#0D101C] border border-[#E91E63]/25 hover:border-[#E91E63]/40 shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-all group">
-            {user?.role !== 'manager' ? (
-              <Link href="/settings" className="flex items-center gap-2.5">
-                {/* Circular Pink Gradient Avatar */}
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] via-[#F43F5E] to-[#FB7185] flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_12px_rgba(233,30,99,0.35)] shrink-0 ring-2 ring-white/10">
-                  {userInitials}
-                </div>
+          <Link
+            href={user?.role !== 'manager' ? '/settings' : '/staff'}
+            className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-gradient-to-r from-[#210F24]/90 via-[#161022]/90 to-[#0F101B]/90 border border-[#E91E63]/30 hover:border-[#E91E63]/50 shadow-[0_4px_16px_rgba(0,0,0,0.4)] transition-all group cursor-pointer"
+          >
+            {/* Circular Pink Gradient Avatar with soft glow */}
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] via-[#F43F5E] to-[#FB7185] flex items-center justify-center text-white font-bold text-xs shadow-[0_0_14px_rgba(233,30,99,0.45)] ring-2 ring-white/10 shrink-0">
+              {userInitials || 'SA'}
+            </div>
 
-                {/* User Name & Verified Icon & Email */}
-                <div className="overflow-hidden flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-white text-[13.5px] truncate group-hover:text-pink-100 transition-colors">
-                      {userName}
-                    </span>
-                    <RiCheckboxCircleFill className="text-[#E91E63] text-xs shrink-0" />
-                  </div>
-                  <div className="text-[11px] text-slate-400 truncate mt-0.5">
-                    {userEmail}
-                  </div>
-                </div>
-
-                {/* Right Chevron on Profile Card */}
-                <RiArrowRightSLine className="text-pink-400/80 text-lg shrink-0 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            ) : (
-              <div className="flex items-center gap-2.5">
-                {/* Circular Blue Gradient Avatar for Manager */}
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_12px_rgba(59,130,246,0.35)] shrink-0 ring-2 ring-white/10">
-                  {userInitials}
-                </div>
-
-                {/* User Name & Verified Icon & Email */}
-                <div className="overflow-hidden flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-white text-[13.5px] truncate">
-                      {userName}
-                    </span>
-                    <RiCheckboxCircleFill className="text-blue-400 text-xs shrink-0" />
-                  </div>
-                  <div className="text-[11px] text-slate-400 truncate mt-0.5">
-                    {userEmail}
-                  </div>
-                </div>
+            {/* User Name & Verified Icon & Role Type (NO email, NO branch text) */}
+            <div className="overflow-hidden flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-white text-[13.5px] truncate group-hover:text-pink-100 transition-colors">
+                  {userName}
+                </span>
+                <RiCheckboxCircleFill className="text-[#E91E63] text-xs shrink-0" />
               </div>
-            )}
-
-            {/* Account Role Badge & Branch Pill */}
-            <div className="mt-2 flex flex-col gap-1.5 items-center">
-              <div
-                className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border text-[10.5px] font-bold shadow-inner ${
-                  user?.role === 'manager'
-                    ? 'bg-blue-950/70 border-blue-500/40 text-blue-300'
-                    : 'bg-pink-950/60 border-[#E91E63]/40 text-pink-300'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${user?.role === 'manager' ? 'bg-blue-400' : 'bg-[#E91E63]'}`}></span>
-                <span className="capitalize">{user?.role === 'manager' ? 'Manager Account' : 'Admin Account'}</span>
-              </div>
-
-              <div
-                className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#0A0D17]/85 border border-white/10 text-slate-400 text-[10px] font-semibold"
-              >
-                <RiStore2Line className="text-[#E91E63] text-xs shrink-0" />
-                <span className="truncate max-w-[140px]">{branchName}</span>
+              <div className="text-[11.5px] text-slate-400 font-medium truncate mt-0.5">
+                {getRoleLabel(activeUser?.role)}
               </div>
             </div>
-          </div>
+
+            {/* Right Chevron on Profile Card */}
+            <RiArrowRightSLine className="text-pink-400/80 text-lg shrink-0 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
         </div>
       ) : (
         <div className="px-3 py-2 flex flex-col items-center shrink-0">
-          {user?.role !== 'manager' ? (
-            <Link
-              href="/settings"
-              className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] via-[#F43F5E] to-[#FB7185] flex items-center justify-center text-white font-bold text-xs shadow-[0_4px_12px_rgba(233,30,99,0.35)] ring-2 ring-white/10 hover:scale-105 transition-transform"
-              title={`${userName} (${userEmail})`}
-            >
-              {userInitials}
-            </Link>
-          ) : (
-            <div
-              className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white font-bold text-xs shadow-[0_4px_12px_rgba(59,130,246,0.35)] ring-2 ring-white/10"
-              title={`${userName} (${userEmail})`}
-            >
-              {userInitials}
-            </div>
-          )}
+          <Link
+            href={user?.role !== 'manager' ? '/settings' : '/staff'}
+            className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#E91E63] via-[#F43F5E] to-[#FB7185] flex items-center justify-center text-white font-bold text-xs shadow-[0_0_14px_rgba(233,30,99,0.45)] ring-2 ring-white/10 hover:scale-105 transition-transform"
+            title={`${userName} (${getRoleLabel(activeUser?.role)})`}
+          >
+            {userInitials || 'SA'}
+          </Link>
         </div>
       )}
 

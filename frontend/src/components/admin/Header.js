@@ -3,7 +3,7 @@
 import { format } from 'date-fns';
 import { 
   RiMenuLine, RiSearchLine, RiNotification3Line, RiMapPinLine, 
-  RiSettings4Line, RiSunLine, RiMoonLine, RiCheckDoubleLine
+  RiSunLine, RiMoonLine, RiCheckDoubleLine
 } from 'react-icons/ri';
 import { useTheme } from '@/context/ThemeContext';
 import { useNotification } from '@/context/NotificationContext';
@@ -11,7 +11,6 @@ import GlobalSearch from '@/components/admin/GlobalSearch';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { getInitials } from '@/lib/utils';
 
 export default function Header({ onToggleSidebar }) {
   const { user } = useAuth();
@@ -154,28 +153,6 @@ export default function Header({ onToggleSidebar }) {
             <RiMapPinLine className="text-blue-500" />
             <span>{branchName}</span>
           </div>
-        )}
-
-        {/* User Profile in Header */}
-        {user && (
-          <div className="flex items-center gap-2 pl-1">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border ${
-              user.role === 'manager' 
-                ? 'bg-blue-500/15 text-blue-600 border-blue-500/30' 
-                : 'bg-pink-500/15 text-[#E91E63] border-[#E91E63]/30'
-            }`}>
-              {getInitials(user?.first_name, user?.last_name) || 'U'}
-            </div>
-            <span className="hidden sm:inline text-xs font-bold text-slate-800 dark:text-slate-100 max-w-[130px] truncate" title={user.email}>
-              {user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.email?.split('@')[0]}
-            </span>
-          </div>
-        )}
-
-        {!isManager && (
-          <Link href="/settings" className="text-xl text-admin-text-secondary p-2 rounded-full hover:text-admin-text hover:bg-admin-surface-light hover:rotate-45 transition-all duration-150" aria-label="Settings">
-            <RiSettings4Line />
-          </Link>
         )}
       </div>
     </header>
