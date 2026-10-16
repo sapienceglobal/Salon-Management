@@ -746,8 +746,9 @@ export default function UserManagementPage() {
       </div>
 
       {/* ========================================================
-          5. ROLE PERMISSIONS QUICK REFERENCE ACCORDION / GUIDE
+          5. ROLE PERMISSIONS QUICK REFERENCE ACCORDION / GUIDE (COMMENTED OUT TEMPORARILY)
          ======================================================== */}
+      {/* 
       <div className="bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 rounded-2xl p-5 sm:p-6 shadow-xs">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center text-lg shrink-0">
@@ -764,7 +765,6 @@ export default function UserManagementPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-          {/* Admin Role */}
           <div className="p-4 rounded-xl border border-purple-100 dark:border-purple-900/30 bg-purple-50/50 dark:bg-purple-950/20">
             <div className="flex items-center gap-2 text-purple-800 dark:text-purple-300 font-bold text-xs uppercase tracking-wider mb-2">
               <RiShieldStarLine className="text-base text-purple-600" />
@@ -780,7 +780,6 @@ export default function UserManagementPage() {
             </ul>
           </div>
 
-          {/* Manager Role */}
           <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-950/20">
             <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300 font-bold text-xs uppercase tracking-wider mb-2">
               <RiUserSettingsLine className="text-base text-blue-600" />
@@ -796,7 +795,6 @@ export default function UserManagementPage() {
             </ul>
           </div>
 
-          {/* Receptionist Role */}
           <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/20">
             <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs uppercase tracking-wider mb-2">
               <RiUserLine className="text-base text-amber-600" />
@@ -813,6 +811,7 @@ export default function UserManagementPage() {
           </div>
         </div>
       </div>
+      */}
 
       {/* ========================================================
           6. ADD / EDIT USER MODAL POPUP
