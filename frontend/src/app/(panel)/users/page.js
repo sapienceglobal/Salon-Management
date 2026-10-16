@@ -38,6 +38,8 @@ import {
   RiCloseCircleLine,
   RiLockUnlockLine,
   RiFilter3Line,
+  RiUserStarLine,
+  RiCalendarCheckLine,
 } from 'react-icons/ri';
 
 const emptySubscribe = () => () => {};
