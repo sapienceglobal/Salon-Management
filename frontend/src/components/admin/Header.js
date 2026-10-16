@@ -13,8 +13,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Header({ onToggleSidebar }) {
-  const { user } = useAuth();
-  const isManager = user?.role === 'manager';
+  const { user, isManager } = useAuth();
   const today = format(new Date(), 'EEE, d MMM yyyy');
   const { isDark, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotification();

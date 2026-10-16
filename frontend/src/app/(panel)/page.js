@@ -111,7 +111,7 @@ const ChartTooltip = ({ active, payload, label }) => {
    ============================================= */
 export default function DashboardPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, canViewFinancials } = useAuth();
   const [greeting, setGreeting] = useState('');
 
   useEffect(() => {
@@ -200,10 +200,13 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  const isManager = user?.role === 'manager';
+  const userRole = (user?.role || '').toLowerCase().trim();
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+  const isManager = userRole === 'manager' || !canViewFinancials;
+  const canViewRevenue = Boolean(canViewFinancials);
 
   const fetchRevenueData = useCallback(async () => {
-    if (user?.role === 'manager') return;
+    if (!canViewRevenue) return;
     setRevenueLoading(true);
     try {
       const today = new Date();
@@ -247,11 +250,13 @@ export default function DashboardPage() {
     } finally {
       setRevenueLoading(false);
     }
-  }, [user?.role, revenueDateRange, customStartDate, customEndDate]);
+  }, [canViewRevenue, revenueDateRange, customStartDate, customEndDate]);
 
   useEffect(() => {
-    fetchRevenueData();
-  }, [fetchRevenueData]);
+    if (canViewRevenue) {
+      fetchRevenueData();
+    }
+  }, [canViewRevenue, fetchRevenueData]);
 
 
   // Derived stat cards from real data
@@ -274,15 +279,7 @@ export default function DashboardPage() {
       color: 'bg-accent-blue/15 text-accent-blue',
       href: '/customers'
     },
-    ...(isManager ? [{
-      icon: RiWalkLine,
-      label: "Today's Walk-ins",
-      value: summary?.today?.appointments?.walk_in ?? 0,
-      trend: `${summary?.today?.appointments?.total ?? 0} total bookings`,
-      up: true,
-      color: 'bg-accent-green/15 text-accent-green',
-      href: '/appointments'
-    }] : [{
+    ...(canViewRevenue ? [{
       icon: RiMoneyDollarCircleLine,
       label: "Today's Revenue",
       value: formatCurrency(summary?.today?.revenue ?? 0),
@@ -290,6 +287,14 @@ export default function DashboardPage() {
       up: summary?.trends?.today_revenue?.is_up,
       color: 'bg-accent-green/15 text-accent-green',
       href: '/billing'
+    }] : [{
+      icon: RiWalkLine,
+      label: "Today's Walk-ins",
+      value: summary?.today?.appointments?.walk_in ?? 0,
+      trend: `${summary?.today?.appointments?.total ?? 0} total bookings`,
+      up: true,
+      color: 'bg-accent-green/15 text-accent-green',
+      href: '/appointments'
     }]),
     {
       icon: RiTeamLine,
@@ -425,10 +430,10 @@ export default function DashboardPage() {
       </div>
 
       {/* ====== Row 3: Appointments Table + Revenue Chart ====== */}
-      <div className={`grid grid-cols-1 ${!isManager ? 'lg:grid-cols-2' : ''} gap-5 mb-6`}>
+      <div className={`grid grid-cols-1 ${canViewRevenue ? 'lg:grid-cols-2' : ''} gap-5 mb-6`}>
 
         {/* Today's Appointments */}
-        <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
+        <div className={`bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards] ${!canViewRevenue ? 'w-full' : ''}`}>
           <div className="flex items-center justify-between px-5 py-[18px] border-b border-admin-border">
             <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Today&apos;s Appointments</span>
             <Link href="/appointments" className="text-sm text-brand font-medium flex items-center gap-1 cursor-pointer hover:text-brand-light transition-colors">View All <RiArrowRightSLine /></Link>
@@ -480,7 +485,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Revenue Overview (Admin Only) */}
-        {!isManager && (
+        {canViewRevenue && (
           <div className="bg-admin-card border border-admin-border rounded-2xl overflow-hidden animate-[fadeIn_0.5s_ease_forwards]">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-[18px] border-b border-admin-border gap-3">
               <span className="text-[0.95rem] font-bold text-slate-900 dark:text-white">Revenue Overview</span>

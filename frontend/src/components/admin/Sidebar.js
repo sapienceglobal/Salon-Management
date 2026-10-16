@@ -221,6 +221,8 @@ function SidebarInner({ collapsed, onToggle }) {
   };
 
   const activeUser = profile || user;
+  const activeRole = (activeUser?.role || user?.role || '').toLowerCase().trim();
+  const isManagerAccount = activeRole === 'manager';
   const fullName = [activeUser?.first_name, activeUser?.last_name].filter(Boolean).join(' ').trim();
   const userName = fullName || activeUser?.name || 'Rahul Arora';
   const userInitials = (
@@ -230,8 +232,8 @@ function SidebarInner({ collapsed, onToggle }) {
   ) || activeUser?.first_name?.[0]?.toUpperCase() || activeUser?.email?.[0]?.toUpperCase() || 'SA';
 
   const getRoleLabel = (userObj) => {
-    const role = userObj?.role;
-    const email = (userObj?.email || '').toLowerCase();
+    const role = (userObj?.role || '').toLowerCase().trim();
+    const email = (userObj?.email || '').toLowerCase().trim();
 
     // Primary Owner Account
     if (role === 'super_admin' || email === 'kairamakeuppalace@gmail.com') {
@@ -311,7 +313,7 @@ function SidebarInner({ collapsed, onToggle }) {
       {!collapsed ? (
         <div className="px-3 py-1.5 shrink-0">
           <Link
-            href={user?.role !== 'manager' ? '/settings' : '/staff'}
+            href={!isManagerAccount ? '/settings' : '/staff'}
             className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-gradient-to-r from-[#210F24]/90 via-[#161022]/90 to-[#0F101B]/90 border border-[#E91E63]/30 hover:border-[#E91E63]/50 shadow-[0_4px_16px_rgba(0,0,0,0.4)] transition-all group cursor-pointer"
           >
             {/* User Avatar: photo if uploaded, otherwise capital initials in glowing gradient circle */}
@@ -357,7 +359,7 @@ function SidebarInner({ collapsed, onToggle }) {
       ) : (
         <div className="px-3 py-2 flex flex-col items-center shrink-0">
           <Link
-            href={user?.role !== 'manager' ? '/settings' : '/staff'}
+            href={!isManagerAccount ? '/settings' : '/staff'}
             className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 hover:scale-105 transition-transform"
             title={`${userName} (${getRoleLabel(activeUser)})`}
           >
@@ -389,8 +391,8 @@ function SidebarInner({ collapsed, onToggle }) {
       {/* --- Grouped Navigation Items (Scrollable) --- */}
       <nav className="flex-1 px-2.5 py-1 overflow-y-auto no-scrollbar flex flex-col">
         {NAV_GROUPS.map((group) => {
-          // If logged-in user is manager, hide billing, invoices, expenses, and financial reports
-          if (user?.role === 'manager') {
+          // If logged-in user is manager or non-admin, hide billing, invoices, expenses, and financial reports
+          if (isManagerAccount || (activeRole && !['super_admin', 'admin'].includes(activeRole))) {
             const allowedItems = group.items.filter(
               (item) => !['/billing', '/expenses', '/reports', '/users'].includes(item.href)
             );
@@ -647,7 +649,7 @@ function SidebarInner({ collapsed, onToggle }) {
       {/* --- Bottom Footer (Settings & Logout Only) --- */}
       <div className="border-t border-white/[0.08] p-3 shrink-0 bg-[#090D16]/95 backdrop-blur-sm">
         {!collapsed ? (
-          user?.role !== 'manager' ? (
+          !isManagerAccount ? (
             <div className="grid grid-cols-2 gap-2">
               {/* Settings */}
               <Link
@@ -683,7 +685,7 @@ function SidebarInner({ collapsed, onToggle }) {
           )
         ) : (
           <div className="flex flex-col items-center gap-2">
-            {user?.role !== 'manager' && (
+            {!isManagerAccount && (
               <Link
                 href="/settings"
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all"

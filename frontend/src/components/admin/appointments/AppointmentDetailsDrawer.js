@@ -28,7 +28,7 @@ const STATUS_CONFIG = {
 
 export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment, onEdit, onStatusUpdate, businessSettings }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isManager } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [error, setError] = useState(null);
@@ -362,7 +362,7 @@ export default function AppointmentDetailsDrawer({ isOpen, onClose, appointment,
             <RiEdit2Line className="text-base" /> Edit
           </button>
           
-          {user?.role !== 'manager' && (
+          {!isManager && (
             <button 
               type="button"
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#E91E63] hover:bg-[#D81B60] text-white text-[14px] font-bold shadow-lg shadow-[#E91E63]/25 hover:shadow-[#E91E63]/35 transition-all cursor-pointer"

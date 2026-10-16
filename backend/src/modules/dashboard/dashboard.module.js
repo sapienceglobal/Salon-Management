@@ -485,7 +485,8 @@ router.get('/summary', asyncHandler(async (req, res) => {
   const summary = await dashboardService.getSummary(businessId, req.query.startDate, req.query.endDate);
   
   // If user is manager or non-admin, sanitize financial figures
-  if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+  const userRole = (req.user?.role || '').toLowerCase().trim();
+  if (userRole !== 'admin' && userRole !== 'super_admin') {
     if (summary?.today) summary.today.revenue = 0;
     if (summary?.trends?.today_revenue) summary.trends.today_revenue = { value: 0, is_up: false };
     if (summary?.monthly_revenue) summary.monthly_revenue = 0;

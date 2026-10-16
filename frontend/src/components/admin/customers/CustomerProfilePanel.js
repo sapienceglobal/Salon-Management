@@ -33,8 +33,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit, onDelete }) {
   const router = useRouter();
-  const { user } = useAuth();
-  const isManager = user?.role === 'manager';
+  const { user, isManager } = useAuth();
   const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState('appointments');
   const [mounted, setMounted] = useState(false);

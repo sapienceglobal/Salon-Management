@@ -18,9 +18,10 @@ export const authorize = (...allowedRoles) => {
       return next(ApiError.unauthorized('Authentication required'));
     }
 
-    const userRole = req.user.role;
+    const userRole = (req.user?.role || '').toLowerCase().trim();
+    const normalizedAllowed = allowedRoles.map((r) => (r || '').toLowerCase().trim());
 
-    if (!allowedRoles.includes(userRole)) {
+    if (!normalizedAllowed.includes(userRole)) {
       return next(
         ApiError.forbidden(
           `Access denied. Required role(s): ${allowedRoles.join(', ')}. Your role: ${userRole}`
