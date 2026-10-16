@@ -587,7 +587,7 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                   </div>
                 </div>
 
-                {/* Row 3: Salon Designation & Calendar Color Tag */}
+                {/* Row 3: Salon Role & Commission Profile */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
@@ -626,31 +626,23 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Calendar Schedule Color Tag
+                      Commission Profile
                     </label>
-                    <div className="p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.02]">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {CALENDAR_COLORS.map((c) => (
-                          <button
-                            key={c.hex}
-                            type="button"
-                            title={c.label}
-                            onClick={() => setFormData((prev) => ({ ...prev, staff_color: c.hex }))}
-                            className={`w-6 h-6 rounded-full transition-transform cursor-pointer flex items-center justify-center shrink-0 ${
-                              formData.staff_color === c.hex ? 'scale-110 ring-2 ring-offset-2 ring-[#E91E63]' : 'hover:scale-105'
-                            }`}
-                            style={{ backgroundColor: c.hex }}
-                          >
-                            {formData.staff_color === c.hex && (
-                              <RiCheckLine className="text-white text-xs drop-shadow" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="text-[11px] text-gray-400 mt-1.5">
-                        Color tag for appointment schedule grid &amp; bookings.
-                      </p>
-                    </div>
+                    <select
+                      value={formData.commission_profile_id}
+                      onChange={(e) => setFormData({ ...formData, commission_profile_id: e.target.value })}
+                      className="w-full bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-[#E91E63] cursor-pointer font-medium"
+                    >
+                      <option value="">No Commission</option>
+                      {commissionProfiles.map((profile) => (
+                        <option key={profile.id} value={profile.id}>
+                          {profile.name} ({profile.type === 'percentage' ? `${profile.value}%` : `₹${profile.value}`})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-gray-400 mt-2">
+                      Automatic earnings calculation on completed services.
+                    </p>
                   </div>
                 </div>
 
@@ -687,39 +679,19 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                   </div>
                 </div>
 
-                {/* Row 5: Specializations & Commission Profile */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Specializations
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.specializations}
-                      onChange={(e) => setFormData({ ...formData, specializations: e.target.value })}
-                      placeholder="Hair Cut, Keratin, Makeup"
-                      className="w-full bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-[#E91E63] font-medium"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">Separate by commas</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Commission Profile
-                    </label>
-                    <select
-                      value={formData.commission_profile_id}
-                      onChange={(e) => setFormData({ ...formData, commission_profile_id: e.target.value })}
-                      className="w-full bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:border-[#E91E63] cursor-pointer font-medium"
-                    >
-                      <option value="">No Commission</option>
-                      {commissionProfiles.map((profile) => (
-                        <option key={profile.id} value={profile.id}>
-                          {profile.name} ({profile.type === 'percentage' ? `${profile.value}%` : `₹${profile.value}`})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Row 5: Specializations / Skills */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                    Specializations &amp; Skills
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.specializations}
+                    onChange={(e) => setFormData({ ...formData, specializations: e.target.value })}
+                    placeholder="e.g. Hair Cut, Keratin, Balayage, Bridal Makeup, Facials"
+                    className="w-full bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-[#E91E63] font-medium"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Separate skills by commas</p>
                 </div>
 
                 {/* Row 6: Bio / Notes */}
@@ -1157,55 +1129,75 @@ export default function StaffFormModal({ isOpen, onClose, onSuccess, initialData
                   )}
                 </div>
 
-                {/* Card 2: Additional Preferences & Calendar Badge */}
+                {/* Card 2: Calendar & Shift Settings */}
                 <div className="bg-gray-50/70 dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 rounded-2xl p-4 flex flex-col gap-3.5">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-pink-100 dark:bg-pink-950/50 text-[#E91E63] flex items-center justify-center text-lg shrink-0">
                       <RiSettings4Line />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-gray-900 dark:text-white">Additional Preferences</h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Calendar badge & scheduling preferences.</p>
+                      <h3 className="font-bold text-sm text-gray-900 dark:text-white">Calendar &amp; Shift Settings</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Appointment color tag &amp; work schedule.</p>
                     </div>
                   </div>
 
                   {/* Calendar Badge Color */}
-                  <div className="flex items-center justify-between gap-3">
-                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Calendar Color</label>
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex items-center gap-1.5 bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-xl px-2.5 py-1">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        Calendar Schedule Color
+                      </label>
+                      <div className="flex items-center gap-1.5 bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-lg px-2 py-0.5">
                         <input
                           type="color"
                           value={formData.staff_color}
                           onChange={(e) => setFormData({ ...formData, staff_color: e.target.value })}
-                          className="w-5 h-5 rounded cursor-pointer border-0 p-0 bg-transparent"
+                          className="w-4 h-4 rounded cursor-pointer border-0 p-0 bg-transparent"
                         />
-                        <input
-                          type="text"
-                          value={formData.staff_color}
-                          onChange={(e) => setFormData({ ...formData, staff_color: e.target.value })}
-                          className="w-18 bg-transparent border-0 text-sm font-mono font-semibold text-gray-800 dark:text-gray-200 outline-none uppercase"
-                        />
+                        <span className="text-[11px] font-mono font-bold text-gray-700 dark:text-gray-300 uppercase">
+                          {formData.staff_color}
+                        </span>
                       </div>
-                      <RiInformationLine className="text-gray-400 text-sm" title="Color badge in appointment schedule grid" />
                     </div>
+                    {/* Quick Swatches */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {CALENDAR_COLORS.map((c) => (
+                        <button
+                          key={c.hex}
+                          type="button"
+                          title={c.label}
+                          onClick={() => setFormData((prev) => ({ ...prev, staff_color: c.hex }))}
+                          className={`w-6 h-6 rounded-full transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                            formData.staff_color.toLowerCase() === c.hex.toLowerCase()
+                              ? 'scale-110 ring-2 ring-offset-2 ring-[#E91E63]'
+                              : 'opacity-70 hover:opacity-100 hover:scale-105'
+                          }`}
+                          style={{ backgroundColor: c.hex }}
+                        >
+                          {formData.staff_color.toLowerCase() === c.hex.toLowerCase() && (
+                            <RiCheckLine className="text-white text-xs drop-shadow" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      Used to identify this staff member on the booking schedule grid.
+                    </p>
                   </div>
 
                   {/* Shift Schedule */}
-                  <div className="flex items-center justify-between gap-3">
-                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Working Shift</label>
-                    <div className="flex items-center gap-1.5">
-                      <select
-                        value={formData.shift_schedule}
-                        onChange={(e) => setFormData({ ...formData, shift_schedule: e.target.value })}
-                        className="bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-sm text-gray-900 dark:text-white outline-none focus:border-[#E91E63] cursor-pointer font-medium"
-                      >
-                        <option value="full_time">Full-time (10 AM - 8 PM)</option>
-                        <option value="morning">Morning (9 AM - 4 PM)</option>
-                        <option value="evening">Evening (1 PM - 9 PM)</option>
-                        <option value="flexible">Part-time / Flexible</option>
-                      </select>
-                    </div>
+                  <div className="flex items-center justify-between gap-3 pt-1 border-t border-gray-100 dark:border-white/5">
+                    <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Working Shift</label>
+                    <select
+                      value={formData.shift_schedule}
+                      onChange={(e) => setFormData({ ...formData, shift_schedule: e.target.value })}
+                      className="bg-white dark:bg-[#121224] border border-gray-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs text-gray-900 dark:text-white outline-none focus:border-[#E91E63] cursor-pointer font-medium"
+                    >
+                      <option value="full_time">Full-time (10 AM - 8 PM)</option>
+                      <option value="morning">Morning (9 AM - 4 PM)</option>
+                      <option value="evening">Evening (1 PM - 9 PM)</option>
+                      <option value="flexible">Part-time / Flexible</option>
+                    </select>
                   </div>
                 </div>
               </div>
