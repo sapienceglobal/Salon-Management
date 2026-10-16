@@ -33,7 +33,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit, onDelete }) {
   const router = useRouter();
-  const { user, isManager } = useAuth();
+  const { user, isManager, canDelete } = useAuth();
   const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState('appointments');
   const [mounted, setMounted] = useState(false);
@@ -138,24 +138,26 @@ export default function CustomerProfilePanel({ customer, isOpen, onClose, onEdit
                 >
                   <RiEdit2Line className="text-xl" />
                 </button>
-                <button 
-                  onClick={async () => {
-                    const isConfirmed = await confirm({
-                      title: 'Mark Inactive',
-                      message: 'Are you sure you want to mark this customer as inactive?',
-                      confirmText: 'Mark Inactive'
-                    });
-                    if (isConfirmed) {
-                      onClose();
-                      if (onDelete) {
-                        onDelete(customer.id);
+                {canDelete && Boolean(onDelete) && (
+                  <button 
+                    onClick={async () => {
+                      const isConfirmed = await confirm({
+                        title: 'Mark Inactive',
+                        message: 'Are you sure you want to mark this customer as inactive?',
+                        confirmText: 'Mark Inactive'
+                      });
+                      if (isConfirmed) {
+                        onClose();
+                        if (onDelete) {
+                          onDelete(customer.id);
+                        }
                       }
-                    }
-                  }}
-                  className="px-3 py-1.5 rounded-xl transition-colors text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 cursor-pointer"
-                >
-                  Mark Inactive
-                </button>
+                    }}
+                    className="px-3 py-1.5 rounded-xl transition-colors text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 cursor-pointer"
+                  >
+                    Mark Inactive
+                  </button>
+                )}
                 <button 
                   onClick={onClose} 
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer ml-1"

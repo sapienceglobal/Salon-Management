@@ -7,6 +7,7 @@ import StaffListView from '@/components/admin/staff/StaffListView';
 import StaffProfileView from '@/components/admin/staff/StaffProfileView';
 import StaffFormModal from '@/components/admin/StaffFormModal';
 import { useConfirm } from '@/context/ConfirmContext';
+import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 
 // Curated fallback avatars to make sure staff profiles look complete and polished
@@ -23,6 +24,7 @@ const FALLBACK_AVATARS = [
 
 export default function StaffPage() {
   const { confirm } = useConfirm();
+  const { canDelete } = useAuth();
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -157,6 +159,10 @@ export default function StaffPage() {
   // Delete Staff
   const handleDeleteStaff = async (e, id) => {
     if (e && e.stopPropagation) e.stopPropagation();
+    if (!canDelete) {
+      toast.error('You do not have permission to delete staff members.');
+      return;
+    }
     const isConfirmed = await confirm({
       title: 'Delete Staff Member',
       message: 'Are you sure you want to permanently delete this staff member? This will remove them completely from the salon staff directory and cannot be undone.',
@@ -187,7 +193,7 @@ export default function StaffPage() {
           onBack={handleBackToList}
           onEditStaff={openEditForm}
           onToggleStatus={handleToggleStaffStatus}
-          onDeleteStaff={handleDeleteStaff}
+          onDeleteStaff={canDelete ? handleDeleteStaff : null}
         />
       ) : (
         /* Image 1: Complete Staff List Table & KPI Cards View */
@@ -197,7 +203,7 @@ export default function StaffPage() {
           onAddStaff={openAddForm}
           onViewProfile={(staff) => handleViewProfile(staff, 'overview')}
           onEditStaff={openEditForm}
-          onDeleteStaff={handleDeleteStaff}
+          onDeleteStaff={canDelete ? handleDeleteStaff : null}
           onToggleStatus={handleToggleStaffStatus}
           onRefresh={fetchStaff}
         />

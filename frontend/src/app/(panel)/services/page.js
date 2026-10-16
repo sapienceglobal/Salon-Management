@@ -42,10 +42,12 @@ import ServiceFormModal from '@/components/admin/ServiceFormModal';
 import BulkActionBar from '@/components/admin/common/BulkActionBar';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import { useConfirm } from '@/context/ConfirmContext';
+import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function ServicesPage() {
   const { confirm } = useConfirm();
+  const { canDelete } = useAuth();
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
   const [activeCategoryId, setActiveCategoryId] = useState(null);
@@ -139,6 +141,10 @@ export default function ServicesPage() {
 
   const handleDeleteCategory = async (id, e) => {
     e.stopPropagation();
+    if (!canDelete) {
+      toast.error('You do not have permission to delete categories.');
+      return;
+    }
     const isConfirmed = await confirm({
       title: 'Delete Category',
       message: 'Are you sure you want to delete this category? All its services will also be deleted.',
@@ -156,6 +162,10 @@ export default function ServicesPage() {
   };
 
   const handleDeleteService = async (id) => {
+    if (!canDelete) {
+      toast.error('You do not have permission to delete services.');
+      return;
+    }
     const isConfirmed = await confirm({
       title: 'Delete Service',
       message: 'Are you sure you want to delete this service?',
@@ -284,7 +294,7 @@ export default function ServicesPage() {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
+    if (!canDelete || selectedIds.length === 0) return;
     const ok = await confirm({
       title: 'Delete Selected Services',
       message: `Are you sure you want to permanently delete ${selectedIds.length} service${selectedIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
@@ -552,13 +562,15 @@ export default function ServicesPage() {
                         >
                           <RiEdit2Line className="text-sm" />
                         </button>
-                        <button
-                          onClick={(e) => handleDeleteCategory(cat.id, e)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                          title="Delete Category"
-                        >
-                          <RiDeleteBin6Line className="text-sm" />
-                        </button>
+                        {canDelete && (
+                          <button
+                            onClick={(e) => handleDeleteCategory(cat.id, e)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                            title="Delete Category"
+                          >
+                            <RiDeleteBin6Line className="text-sm" />
+                          </button>
+                        )}
                       </div>
 
                       {/* Chevron Arrow */}
@@ -913,13 +925,15 @@ export default function ServicesPage() {
                                 <RiFileCopyLine className="text-base" />
                               </button>
 
-                              <button
-                                onClick={() => handleDeleteService(svc.id)}
-                                className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-transform hover:scale-110 cursor-pointer"
-                                title="Delete Service"
-                              >
-                                <RiDeleteBin6Line className="text-base" />
-                              </button>
+                              {canDelete && (
+                                <button
+                                  onClick={() => handleDeleteService(svc.id)}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-transform hover:scale-110 cursor-pointer"
+                                  title="Delete Service"
+                                >
+                                  <RiDeleteBin6Line className="text-base" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1028,13 +1042,15 @@ export default function ServicesPage() {
                       >
                         <RiEdit2Line />
                       </button>
-                      <button
-                        onClick={() => handleDeleteService(svc.id)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
-                        title="Delete"
-                      >
-                        <RiDeleteBin6Line />
-                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDeleteService(svc.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
+                          title="Delete"
+                        >
+                          <RiDeleteBin6Line />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1096,13 +1112,17 @@ export default function ServicesPage() {
             onClick: handleExportSelected,
             variant: 'default',
           },
-          {
-            label: 'Delete',
-            icon: RiDeleteBin6Line,
-            onClick: handleBulkDelete,
-            variant: 'danger',
-            loading: bulkLoading,
-          },
+          ...(canDelete
+            ? [
+                {
+                  label: 'Delete',
+                  icon: RiDeleteBin6Line,
+                  onClick: handleBulkDelete,
+                  variant: 'danger',
+                  loading: bulkLoading,
+                },
+              ]
+            : []),
         ]}
       />
     </div>

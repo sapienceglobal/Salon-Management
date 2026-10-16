@@ -684,7 +684,7 @@ router.use(authenticate, businessScope());
 router.get('/stats', getLeadStats);
 router.get('/dashboard-analytics', getDashboardAnalytics);
 router.get('/', getLeads);
-router.post('/bulk-delete', bulkDeleteLeads);
+router.post('/bulk-delete', authorize('super_admin', 'admin', 'manager'), bulkDeleteLeads);
 router.post('/bulk-status', bulkStatusLeads);
 router.post('/bulk-assign', bulkAssignLeads);
 router.get('/:id', validate({ params: idParam }), getLead);
@@ -721,7 +721,7 @@ router.put('/:id', validate({ params: idParam, body: z.object({
   follow_up_date: z.string().optional().nullable(),
   notes: z.string().max(2000).optional(),
 }) }), updateLead);
-router.delete('/:id', validate({ params: idParam }), deleteLead);
+router.delete('/:id', authorize('super_admin', 'admin', 'manager'), validate({ params: idParam }), deleteLead);
 router.post('/:id/assign', validate({ params: idParam }), assignLead);
 router.post('/:id/convert', validate({ params: idParam }), convertLead);
 

@@ -99,9 +99,13 @@ export function AuthProvider({ children }) {
   const isSuperAdmin = role === 'super_admin';
   const isSystemAdmin = role === 'admin' || isSuperAdmin;
   const isManager = role === 'manager';
+  const isReceptionist = role === 'receptionist';
+  const isStaff = role === 'staff';
   const isCustomer = user && role === 'customer';
   // Financial privacy: Only root admin/super_admin can view revenue/billing
-  const canViewFinancials = Boolean(user && isSystemAdmin && !isManager);
+  const canViewFinancials = Boolean(user && isSystemAdmin && !['manager', 'receptionist', 'staff'].includes(role));
+  // Delete permissions: Receptionists and Staff are strictly barred from deleting records
+  const canDelete = Boolean(user && !['receptionist', 'staff'].includes(role));
 
   const value = {
     user,
@@ -115,8 +119,11 @@ export function AuthProvider({ children }) {
     isSuperAdmin,
     isSystemAdmin,
     isManager,
+    isReceptionist,
+    isStaff,
     isCustomer,
     canViewFinancials,
+    canDelete,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

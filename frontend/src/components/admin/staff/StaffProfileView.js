@@ -48,6 +48,7 @@ import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useConfirm } from '@/context/ConfirmContext';
+import { useAuth } from '@/context/AuthContext';
 
 // Helper for time conversions
 const formatTime12 = (timeStr) => {
@@ -95,6 +96,7 @@ export default function StaffProfileView({
   initialTab = 'overview',
 }) {
   const { confirm } = useConfirm();
+  const { canDelete } = useAuth();
   const [activeTab, setActiveTab] = useState(initialTab);
 
   // 100% Real API State
@@ -520,6 +522,10 @@ export default function StaffProfileView({
 
   // Delete staff document
   const handleDeleteDocument = async (docId, docName) => {
+    if (!canDelete) {
+      toast.error('You do not have permission to delete documents.');
+      return;
+    }
     const isOk = await confirm({
       title: 'Delete Document',
       message: `Are you sure you want to delete "${docName}"? This action cannot be undone.`,
@@ -634,7 +640,7 @@ export default function StaffProfileView({
               </button>
 
               {/* Delete Staff Button */}
-              {onDeleteStaff && (
+              {canDelete && Boolean(onDeleteStaff) && (
                 <button
                   type="button"
                   onClick={(e) => onDeleteStaff(e, staff.id)}
@@ -2042,14 +2048,16 @@ export default function StaffProfileView({
                           >
                             <RiDownload2Line className="text-base" />
                           </a>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteDocument(doc.id, doc.document_name)}
-                            className="p-2 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 border border-transparent hover:border-rose-200 dark:hover:border-rose-500/20 transition-all cursor-pointer"
-                            title="Delete document"
-                          >
-                            <RiDeleteBin6Line className="text-base" />
-                          </button>
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDocument(doc.id, doc.document_name)}
+                              className="p-2 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 border border-transparent hover:border-rose-200 dark:hover:border-rose-500/20 transition-all cursor-pointer"
+                              title="Delete document"
+                            >
+                              <RiDeleteBin6Line className="text-base" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     );

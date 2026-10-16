@@ -13,10 +13,12 @@ import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import BulkActionBar from '@/components/admin/common/BulkActionBar';
 import { useConfirm } from '@/context/ConfirmContext';
+import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function InventoryPage() {
   const { confirm } = useConfirm();
+  const { canDelete } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -208,7 +210,7 @@ export default function InventoryPage() {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
+    if (!canDelete || selectedIds.length === 0) return;
     const ok = await confirm({
       title: 'Delete Selected Products',
       message: `Are you sure you want to permanently delete ${selectedIds.length} product${selectedIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
@@ -520,13 +522,17 @@ export default function InventoryPage() {
             onClick: handleExportSelected,
             variant: 'default',
           },
-          {
-            label: 'Delete',
-            icon: RiDeleteBin6Line,
-            onClick: handleBulkDelete,
-            variant: 'danger',
-            loading: bulkLoading,
-          },
+          ...(canDelete
+            ? [
+                {
+                  label: 'Delete',
+                  icon: RiDeleteBin6Line,
+                  onClick: handleBulkDelete,
+                  variant: 'danger',
+                  loading: bulkLoading,
+                },
+              ]
+            : []),
         ]}
       />
     </div>

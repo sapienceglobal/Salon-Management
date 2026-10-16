@@ -28,8 +28,8 @@ import {
 } from 'react-icons/ri';
 import { getImageUrl } from '@/lib/utils';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
-import BulkActionBar from '@/components/admin/common/BulkActionBar';
 import { useConfirm } from '@/context/ConfirmContext';
+import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -74,6 +74,7 @@ export default function StaffListView({
   onRefresh,
 }) {
   const { confirm } = useConfirm();
+  const { canDelete, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All Roles');
   const [statusFilter, setStatusFilter] = useState('All Status');
@@ -205,7 +206,7 @@ export default function StaffListView({
   };
 
   const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
+    if (!canDelete || !onDeleteStaff || selectedIds.length === 0) return;
     const isOk = await confirm({
       title: 'Delete Selected Staff Members',
       message: `Are you sure you want to delete ${selectedIds.length} staff member${selectedIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
@@ -584,14 +585,16 @@ export default function StaffListView({
                           </button>
 
                           {/* Trash / Delete Button */}
-                          <button
-                            type="button"
-                            title="Delete Staff"
-                            onClick={(e) => onDeleteStaff(e, staff.id)}
-                            className="p-1.5 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <RiDeleteBinLine className="text-base" />
-                          </button>
+                          {canDelete && Boolean(onDeleteStaff) && (
+                            <button
+                              type="button"
+                              title="Delete Staff"
+                              onClick={(e) => onDeleteStaff(e, staff.id)}
+                              className="p-1.5 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <RiDeleteBinLine className="text-base" />
+                            </button>
+                          )}
 
                           {/* 3-dots Menu */}
                           <div className="relative">
@@ -636,24 +639,32 @@ export default function StaffListView({
                                   <span className={`w-2 h-2 rounded-full ${staff.is_active ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
                                   <span>{staff.is_active ? 'Mark Inactive' : 'Mark Active'}</span>
                                 </button>
-                                <div className="my-1 border-t border-gray-100 dark:border-white/5" />
-                                <Link
-                                  href={`/users?search=${encodeURIComponent(staff.email || staff.first_name || '')}`}
-                                  onClick={() => setActiveMenuId(null)}
-                                  className="w-full text-left px-3.5 py-2 hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 text-gray-700 dark:text-gray-200"
-                                >
-                                  <RiUserSettingsLine className="text-sm text-gray-400" />
-                                  <span>Manage User Login ↗</span>
-                                </Link>
-                                <div className="my-1 border-t border-gray-100 dark:border-white/5" />
-                                <button
-                                  type="button"
-                                  onClick={(e) => { setActiveMenuId(null); onDeleteStaff(e, staff.id); }}
-                                  className="w-full text-left px-3.5 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600 dark:text-rose-400 flex items-center gap-2 font-medium"
-                                >
-                                  <RiDeleteBinLine className="text-sm" />
-                                  <span>Delete Staff</span>
-                                </button>
+                                {!['manager', 'receptionist', 'staff'].includes(user?.role) && (
+                                  <>
+                                    <div className="my-1 border-t border-gray-100 dark:border-white/5" />
+                                    <Link
+                                      href={`/users?search=${encodeURIComponent(staff.email || staff.first_name || '')}`}
+                                      onClick={() => setActiveMenuId(null)}
+                                      className="w-full text-left px-3.5 py-2 hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2 text-gray-700 dark:text-gray-200"
+                                    >
+                                      <RiUserSettingsLine className="text-sm text-gray-400" />
+                                      <span>Manage User Login ↗</span>
+                                    </Link>
+                                  </>
+                                )}
+                                {canDelete && Boolean(onDeleteStaff) && (
+                                  <>
+                                    <div className="my-1 border-t border-gray-100 dark:border-white/5" />
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { setActiveMenuId(null); onDeleteStaff(e, staff.id); }}
+                                      className="w-full text-left px-3.5 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600 dark:text-rose-400 flex items-center gap-2 font-medium"
+                                    >
+                                      <RiDeleteBinLine className="text-sm" />
+                                      <span>Delete Staff</span>
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
@@ -754,13 +765,17 @@ export default function StaffListView({
             onClick: handleExportSelected,
             variant: 'default',
           },
-          {
-            label: 'Delete',
-            icon: RiDeleteBin6Line,
-            onClick: handleBulkDelete,
-            variant: 'danger',
-            loading: bulkLoading,
-          },
+          ...(canDelete && Boolean(onDeleteStaff)
+            ? [
+                {
+                  label: 'Delete',
+                  icon: RiDeleteBin6Line,
+                  onClick: handleBulkDelete,
+                  variant: 'danger',
+                  loading: bulkLoading,
+                },
+              ]
+            : []),
         ]}
       />
     </div>

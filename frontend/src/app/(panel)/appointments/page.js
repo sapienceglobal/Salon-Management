@@ -96,7 +96,7 @@ const PAYMENT_STYLES = {
 };
 
 export default function AppointmentsPage() {
-  const { user } = useAuth();
+  const { user, canDelete } = useAuth();
   const { confirm } = useConfirm();
 
   // State
@@ -334,12 +334,13 @@ export default function AppointmentsPage() {
   };
 
   const handleDeleteClick = (apt) => {
+    if (!canDelete) return;
     setItemToDelete(apt);
     setIsDeleteModalOpen(true);
   };
 
   const confirmDelete = async () => {
-    if (!itemToDelete) return;
+    if (!canDelete || !itemToDelete) return;
     try {
       await api.delete(`/appointments/${itemToDelete.id}`);
       setIsDeleteModalOpen(false);
@@ -433,7 +434,7 @@ export default function AppointmentsPage() {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
+    if (!canDelete || selectedIds.length === 0) return;
     const ok = await confirm({
       title: 'Delete Selected Appointments',
       message: `Are you sure you want to permanently delete ${selectedIds.length} appointment${selectedIds.length > 1 ? 's' : ''}?`,
@@ -1067,8 +1068,9 @@ export default function AppointmentsPage() {
             onSelectAll={handleSelectAll}
             onToggleSelect={handleToggleSelect}
             onEdit={handleEdit}
-            onDelete={handleDeleteClick}
+            onDelete={canDelete ? handleDeleteClick : null}
             onViewDetails={setSelectedViewAppointment}
+            canDelete={canDelete}
           />
         </div>
       </div>
@@ -1187,13 +1189,13 @@ export default function AppointmentsPage() {
             onClick: handleExportSelected,
             variant: 'default',
           },
-          {
+          ...(canDelete ? [{
             label: 'Delete',
             icon: RiDeleteBinLine,
             onClick: handleBulkDelete,
             variant: 'danger',
             loading: bulkLoading,
-          },
+          }] : []),
         ]}
       />
     </div>
@@ -1203,7 +1205,7 @@ export default function AppointmentsPage() {
 /* =============================================
    APPOINTMENTS TABLE — tabbed table
    ============================================= */
-function AppointmentsTable({ appointments, selectedIds = [], onSelectAll, onToggleSelect, onEdit, onDelete, onViewDetails }) {
+function AppointmentsTable({ appointments, selectedIds = [], onSelectAll, onToggleSelect, onEdit, onDelete, onViewDetails, canDelete }) {
   if (appointments.length === 0) {
     return (
       <div className="p-12 text-center text-xs text-gray-400 font-medium">
@@ -1335,13 +1337,15 @@ function AppointmentsTable({ appointments, selectedIds = [], onSelectAll, onTogg
                     >
                       <RiMoreFill className="text-sm" />
                     </button>
-                    <button
-                      onClick={() => onDelete(appt)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                      title="Delete"
-                    >
-                      <RiDeleteBinLine className="text-sm" />
-                    </button>
+                    {canDelete && onDelete && (
+                      <button
+                        onClick={() => onDelete(appt)}
+                        className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                        title="Delete"
+                      >
+                        <RiDeleteBinLine className="text-sm" />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

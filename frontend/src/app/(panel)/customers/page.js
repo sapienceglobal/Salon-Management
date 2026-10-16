@@ -38,6 +38,7 @@ import TableScrollContainer from '@/components/admin/common/TableScrollContainer
 import BulkActionBar from '@/components/admin/common/BulkActionBar';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import { useConfirm } from '@/context/ConfirmContext';
+import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 
 const ALPHABETS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -65,6 +66,7 @@ function MiniBars({ color = 'pink', heights = [30, 45, 60, 80, 100] }) {
 }
 
 export default function CustomersPage() {
+  const { user, canDelete } = useAuth();
   const { confirm } = useConfirm();
   const [customers, setCustomers] = useState([]);
   const [meta, setMeta] = useState({ total: 7, page: 1, limit: 20, totalPages: 1 });
@@ -286,7 +288,7 @@ export default function CustomersPage() {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
+    if (!canDelete || selectedIds.length === 0) return;
     const isOk = await confirm({
       title: 'Delete Selected Customers',
       message: `Are you sure you want to permanently delete ${selectedIds.length} customer${selectedIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
@@ -1060,7 +1062,7 @@ export default function CustomersPage() {
           setCustomerToEdit(customer);
           setIsAddModalOpen(true);
         }}
-        onDelete={async (id) => {
+        onDelete={canDelete ? async (id) => {
           try {
             await api.delete(`/customers/${id}`);
             setSelectedCustomer(null);
@@ -1070,7 +1072,7 @@ export default function CustomersPage() {
             console.error(err);
             toast.error('Failed to update customer status');
           }
-        }}
+        } : null}
       />
 
       {/* Floating Bulk Action Bar */}
@@ -1100,13 +1102,13 @@ export default function CustomersPage() {
             onClick: handleExportSelected,
             variant: 'default',
           },
-          {
+          ...(canDelete ? [{
             label: 'Delete',
             icon: RiDeleteBin6Line,
             onClick: handleBulkDelete,
             variant: 'danger',
             loading: bulkLoading,
-          },
+          }] : []),
         ]}
       />
       </div>

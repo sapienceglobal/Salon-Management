@@ -10,11 +10,13 @@ import {
 import PackageFormModal from '@/components/admin/packages/PackageFormModal';
 import MembershipFormModal from '@/components/admin/packages/MembershipFormModal';
 import { useConfirm } from '@/context/ConfirmContext';
+import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 
 export default function PackagesMembershipsPage() {
   const { confirm } = useConfirm();
+  const { canDelete } = useAuth();
   const [activeTab, setActiveTab] = useState('packages'); // 'packages' or 'memberships'
   
   const [packages, setPackages] = useState([]);
@@ -74,6 +76,10 @@ export default function PackagesMembershipsPage() {
 
   // DELETE Handlers (Assuming endpoints exist; adapt if not)
   const handleDeletePackage = async (id) => {
+    if (!canDelete) {
+      toast.error('You do not have permission to delete packages.');
+      return;
+    }
     const isConfirmed = await confirm({
       title: 'Delete Package',
       message: 'Are you sure you want to delete this package?',
@@ -90,6 +96,10 @@ export default function PackagesMembershipsPage() {
   };
 
   const handleDeleteMembership = async (id) => {
+    if (!canDelete) {
+      toast.error('You do not have permission to delete memberships.');
+      return;
+    }
     const isConfirmed = await confirm({
       title: 'Delete Membership',
       message: 'Are you sure you want to delete this VIP membership?',
@@ -173,7 +183,9 @@ export default function PackagesMembershipsPage() {
                     <h3 className="font-bold text-lg leading-tight">{pkg.name}</h3>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => { setPkgToEdit(pkg); setIsPkgModalOpen(true); }} className="p-1.5 text-admin-text-secondary hover:text-brand bg-admin-surface-light rounded transition-colors" title="Edit"><RiEdit2Line /></button>
-                      <button onClick={() => handleDeletePackage(pkg.id)} className="p-1.5 text-admin-text-secondary hover:text-accent-red bg-admin-surface-light rounded transition-colors" title="Delete"><RiDeleteBin7Line /></button>
+                      {canDelete && (
+                        <button onClick={() => handleDeletePackage(pkg.id)} className="p-1.5 text-admin-text-secondary hover:text-accent-red bg-admin-surface-light rounded transition-colors" title="Delete"><RiDeleteBin7Line /></button>
+                      )}
                     </div>
                   </div>
                   
@@ -258,7 +270,9 @@ export default function PackagesMembershipsPage() {
                     </h3>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => { setMemToEdit(mem); setIsMemModalOpen(true); }} className="p-1.5 text-admin-text-secondary hover:text-brand bg-admin-surface-light rounded transition-colors" title="Edit"><RiEdit2Line /></button>
-                      <button onClick={() => handleDeleteMembership(mem.id)} className="p-1.5 text-admin-text-secondary hover:text-accent-red bg-admin-surface-light rounded transition-colors" title="Delete"><RiDeleteBin7Line /></button>
+                      {canDelete && (
+                        <button onClick={() => handleDeleteMembership(mem.id)} className="p-1.5 text-admin-text-secondary hover:text-accent-red bg-admin-surface-light rounded transition-colors" title="Delete"><RiDeleteBin7Line /></button>
+                      )}
                     </div>
                   </div>
                   

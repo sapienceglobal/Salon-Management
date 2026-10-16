@@ -372,7 +372,7 @@ function LeadsContent() {
   const actionParam = searchParams.get('action') || '';
   const initialFollowUp = searchParams.get('follow_up') || 'all';
 
-  const { user } = useAuth();
+  const { user, canDelete } = useAuth();
   const { markAllAsRead } = useNotification();
   const { confirm } = useConfirm();
 
@@ -751,7 +751,7 @@ function LeadsContent() {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedLeadIds.size === 0) return;
+    if (!canDelete || selectedLeadIds.size === 0) return;
     const isOk = await confirm({
       title: 'Delete Selected Leads',
       message: `Are you sure you want to permanently delete ${selectedLeadIds.size} lead${selectedLeadIds.size > 1 ? 's' : ''}? This action cannot be undone.`,
@@ -829,7 +829,17 @@ function LeadsContent() {
 
   // Delete Lead Handler
   const handleDeleteLead = async (leadId) => {
-    if (!confirm('Are you sure you want to delete this lead?')) return;
+    if (!canDelete) {
+      toast.error('You do not have permission to delete leads.');
+      return;
+    }
+    const isOk = await confirm({
+      title: 'Delete Lead',
+      message: 'Are you sure you want to permanently delete this lead? This action cannot be undone.',
+      confirmText: 'Delete Permanently',
+      type: 'danger',
+    });
+    if (!isOk) return;
     try {
       await api.delete(`/leads/${leadId}`);
       toast.success('Lead deleted successfully');
@@ -890,7 +900,7 @@ function LeadsContent() {
           onViewLead={(lead) => setViewingLead(lead)}
           onConvertLead={(lead) => setConvertingLead(lead)}
           onAssignLead={(lead) => setAssigningLead(lead)}
-          onDeleteLead={(id) => handleDeleteLead(id)}
+          onDeleteLead={canDelete ? (id) => handleDeleteLead(id) : null}
           onRefresh={() => {
             fetchLeads();
             fetchStats();
@@ -910,7 +920,7 @@ function LeadsContent() {
           onViewLead={(lead) => setViewingLead(lead)}
           onConvertLead={(lead) => setConvertingLead(lead)}
           onAssignLead={(lead) => setAssigningLead(lead)}
-          onDeleteLead={(id) => handleDeleteLead(id)}
+          onDeleteLead={canDelete ? (id) => handleDeleteLead(id) : null}
           onExportCSV={handleExportCSV}
           onRefresh={() => {
             fetchLeads();
@@ -1694,19 +1704,23 @@ function LeadsContent() {
                                   <span>Convert to Customer</span>
                                 </button>
 
-                                <div className="h-[1px] bg-slate-100 dark:bg-white/5 my-1.5" />
+                                {canDelete && (
+                                  <>
+                                    <div className="h-[1px] bg-slate-100 dark:bg-white/5 my-1.5" />
 
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveMenuId(null);
-                                    handleDeleteLead(lead.id);
-                                  }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-                                >
-                                  <RiDeleteBinLine className="text-base text-rose-400" />
-                                  <span>Delete Lead</span>
-                                </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveMenuId(null);
+                                        handleDeleteLead(lead.id);
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                                    >
+                                      <RiDeleteBinLine className="text-base text-rose-400" />
+                                      <span>Delete Lead</span>
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1905,10 +1919,10 @@ function LeadsContent() {
           setViewingLead(null);
           setConvertingLead(lead);
         }}
-        onDeleteLead={(id) => {
+        onDeleteLead={canDelete ? (id) => {
           setViewingLead(null);
           handleDeleteLead(id);
-        }}
+        } : null}
       />
 
       {/* Floating Bulk Action Bar */}
@@ -1924,13 +1938,17 @@ function LeadsContent() {
             onClick: handleExportSelected,
             variant: 'default',
           },
-          {
-            label: 'Delete',
-            icon: RiDeleteBinLine,
-            onClick: handleBulkDelete,
-            variant: 'danger',
-            loading: bulkLoading,
-          },
+          ...(canDelete
+            ? [
+                {
+                  label: 'Delete',
+                  icon: RiDeleteBinLine,
+                  onClick: handleBulkDelete,
+                  variant: 'danger',
+                  loading: bulkLoading,
+                },
+              ]
+            : []),
         ]}
       >
         {/* Quick Status Changer Dropdown */}

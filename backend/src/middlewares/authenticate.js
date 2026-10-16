@@ -23,6 +23,19 @@ export const authenticate = (req, res, next) => {
 
     // Attach user to request
     req.user = user;
+
+    // Strict industry-level RBAC: Receptionists are strictly prohibited from deleting any records or data across the system
+    const role = (user.role || '').toLowerCase().trim();
+    if (role === 'receptionist') {
+      const isDeleteMethod = req.method === 'DELETE';
+      const isDeleteUrl = (req.originalUrl || req.url || '').toLowerCase().includes('delete');
+      if (isDeleteMethod || isDeleteUrl) {
+        return next(
+          ApiError.forbidden('Receptionist accounts are strictly prohibited from deleting any records or data.')
+        );
+      }
+    }
+
     next();
   })(req, res, next);
 };
