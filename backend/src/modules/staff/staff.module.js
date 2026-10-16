@@ -75,7 +75,9 @@ class StaffService {
     }
 
     const list = await query.select(
-      'sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role', 'u.avatar_url', 'u.is_active',
+      'sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role',
+      db.raw('COALESCE(NULLIF(u.avatar_url, ""), NULLIF(sm.avatar_url, "")) as avatar_url'),
+      'u.is_active',
       'cp.name as commission_profile_name', 'cp.type as commission_profile_type', 'cp.value as commission_profile_value'
     );
 
@@ -91,7 +93,9 @@ class StaffService {
       .leftJoin('commission_profiles as cp', 'sm.commission_profile_id', 'cp.id')
       .where({ 'sm.id': id, 'sm.business_id': businessId })
       .select(
-        'sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role', 'u.avatar_url', 'u.is_active',
+        'sm.*', 'u.first_name', 'u.last_name', 'u.email', 'u.phone', 'u.role',
+        db.raw('COALESCE(NULLIF(u.avatar_url, ""), NULLIF(sm.avatar_url, "")) as avatar_url'),
+        'u.is_active',
         'cp.name as commission_profile_name', 'cp.type as commission_profile_type', 'cp.value as commission_profile_value'
       )
       .first();
@@ -118,11 +122,11 @@ class StaffService {
     delete staffData.role;
     delete staffData.password;
     delete staffData.image;
-    delete staffData.avatar_url;
 
     const [id] = await db('staff_members').insert({
       ...cleanObject(staffData),
       specializations: specs.length > 0 ? JSON.stringify(specs) : null,
+      avatar_url: data.avatar_url || null,
       business_id: businessId,
     });
 
@@ -162,7 +166,6 @@ class StaffService {
     delete staffData.role;
     delete staffData.password;
     delete staffData.image;
-    delete staffData.avatar_url;
 
     await db('staff_members').where({ id, business_id: businessId }).update({ ...cleanObject(staffData), updated_at: db.fn.now() });
     return this.getById(id, businessId);

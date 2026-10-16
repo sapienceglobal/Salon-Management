@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import api from '@/lib/api';
 import { 
   RiStore2Line, RiSettings3Line, RiMoneyDollarCircleLine, 
-  RiUserSettingsLine, RiGroupLine, RiNotification3Line, RiHomeGearLine
+  RiGroupLine, RiNotification3Line, RiHomeGearLine
 } from 'react-icons/ri';
 
 // Tab Components (We will create these next)
@@ -13,7 +13,6 @@ import GeneralSettingsTab from '@/components/admin/settings/GeneralSettingsTab';
 import OperationsTab from '@/components/admin/settings/OperationsTab';
 import BillingTaxTab from '@/components/admin/settings/BillingTaxTab';
 import RoomsTab from '@/components/admin/settings/RoomsTab';
-import UsersTab from '@/components/admin/settings/UsersTab';
 import CommissionsTab from '@/components/admin/settings/CommissionsTab';
 import NotificationsTab from '@/components/admin/settings/NotificationsTab';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
@@ -65,7 +64,6 @@ export default function SettingsPage() {
     { id: 'general', label: 'Business Profile', icon: RiStore2Line },
     { id: 'operations', label: 'Operations', icon: RiSettings3Line },
     { id: 'billing', label: 'Billing & Tax', icon: RiMoneyDollarCircleLine },
-    { id: 'users', label: 'Staff & Roles', icon: RiUserSettingsLine },
     { id: 'commissions', label: 'Commissions', icon: RiGroupLine },
     { id: 'rooms', label: 'Service Rooms', icon: RiHomeGearLine },
     { id: 'notifications', label: 'Notifications', icon: RiNotification3Line },
@@ -132,7 +130,6 @@ export default function SettingsPage() {
           {activeTab === 'general' && <GeneralSettingsTab business={business} onUpdate={fetchSettings} />}
           {activeTab === 'operations' && <OperationsTab settings={settings} onUpdate={fetchSettings} />}
           {activeTab === 'billing' && <BillingTaxTab settings={settings} onUpdate={fetchSettings} />}
-          {activeTab === 'users' && <UsersTab />}
           {activeTab === 'commissions' && <CommissionsTab />}
           {activeTab === 'rooms' && <RoomsTab />}
           {activeTab === 'notifications' && <NotificationsTab />}

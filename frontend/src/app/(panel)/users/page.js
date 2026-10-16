@@ -11,6 +11,7 @@ import { useScrollLock } from '@/hooks/useScrollLock';
 import PageHeaderGradient from '@/components/admin/common/PageHeaderGradient';
 import TableScrollContainer from '@/components/admin/common/TableScrollContainer';
 import AccessDenied from '@/components/admin/common/AccessDenied';
+import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import {
   RiAddLine,
   RiSearchLine,
@@ -591,7 +592,6 @@ export default function UserManagementPage() {
                 filteredUsers.map((u, idx) => {
                   const isCurrent = Number(u.id) === Number(currentUser?.id);
                   const fullName = `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'User';
-                  const initial = u.first_name ? u.first_name.charAt(0).toUpperCase() : 'U';
 
                   return (
                     <tr
@@ -606,17 +606,14 @@ export default function UserManagementPage() {
                       {/* User Profile */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          {u.avatar_url ? (
-                            <img
-                              src={u.avatar_url}
-                              alt={fullName}
-                              className="w-10 h-10 rounded-xl object-cover shrink-0 ring-1 ring-slate-200 dark:ring-white/10"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#E91E63] to-[#FB7185] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
-                              {initial}
-                            </div>
-                          )}
+                          <VisualAvatar
+                            type="staff"
+                            image={u.avatar_url}
+                            color={u.color_code}
+                            name={fullName}
+                            size="md"
+                            shape="rounded"
+                          />
 
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">

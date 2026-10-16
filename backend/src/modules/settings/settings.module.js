@@ -81,10 +81,24 @@ class SettingsService {
 
   // Users management
   async getUsers(businessId) {
-    return db('users')
-      .where({ business_id: businessId })
-      .select('id', 'email', 'first_name', 'last_name', 'phone', 'role', 'avatar_url', 'is_active', 'last_login_at', 'created_at')
-      .orderBy('created_at', 'desc');
+    return db('users as u')
+      .leftJoin('staff_members as sm', 'u.id', 'sm.user_id')
+      .where('u.business_id', businessId)
+      .select(
+        'u.id',
+        'u.email',
+        'u.first_name',
+        'u.last_name',
+        'u.phone',
+        'u.role',
+        db.raw('COALESCE(NULLIF(u.avatar_url, ""), NULLIF(sm.avatar_url, "")) as avatar_url'),
+        'u.is_active',
+        'u.last_login_at',
+        'u.created_at',
+        'sm.designation',
+        'sm.color_code'
+      )
+      .orderBy('u.created_at', 'desc');
   }
   async createUser(businessId, data) {
     const existing = await db('users').where({ email: data.email }).first();
