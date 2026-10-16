@@ -44,6 +44,7 @@ import {
   RiCalendarCheckLine,
   RiCameraLine,
   RiUpload2Line,
+  RiErrorWarningLine,
 } from 'react-icons/ri';
 
 const emptySubscribe = () => () => {};
@@ -79,8 +80,20 @@ export default function UserManagementPage() {
   const fileInputRef = useRef(null);
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useScrollLock(isModalOpen);
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
 
   // Fetch users from API
   const fetchUsers = useCallback(async (isRefresh = false) => {
@@ -131,6 +144,7 @@ export default function UserManagementPage() {
     setEditingUser(null);
     setSelectedFile(null);
     setPreviewUrl('');
+    setFieldErrors({});
     if (fileInputRef.current) fileInputRef.current.value = '';
     setFormData({
       first_name: '',
@@ -149,6 +163,7 @@ export default function UserManagementPage() {
     setEditingUser(targetUser);
     setSelectedFile(null);
     setPreviewUrl(targetUser.avatar_url || '');
+    setFieldErrors({});
     if (fileInputRef.current) fileInputRef.current.value = '';
     setFormData({
       first_name: targetUser.first_name || '',
@@ -167,6 +182,7 @@ export default function UserManagementPage() {
     setEditingUser(null);
     setSelectedFile(null);
     setPreviewUrl('');
+    setFieldErrors({});
   };
 
   // Generate strong random password
@@ -177,26 +193,73 @@ export default function UserManagementPage() {
       generated += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setFormData((prev) => ({ ...prev, password: generated }));
+    if (fieldErrors.password) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.password;
+        return next;
+      });
+    }
     setShowPassword(true);
     toast.success('Generated temporary password');
+  };
+
+  // Validate form fields
+  const validateForm = () => {
+    const errs = {};
+    const firstName = formData.first_name?.trim() || '';
+    const email = formData.email?.trim() || '';
+    const phone = formData.phone?.trim() || '';
+    const password = formData.password || '';
+
+    if (!firstName) {
+      errs.first_name = 'First name is required';
+    } else if (firstName.length < 2) {
+      errs.first_name = 'First name must be at least 2 characters';
+    }
+
+    if (!email) {
+      errs.email = 'Email address is required';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        errs.email = 'Please enter a valid email address';
+      }
+    }
+
+    if (phone) {
+      const cleanPhone = phone.replace(/[\s\-\+\(\)]/g, '');
+      if (cleanPhone.length < 10 || cleanPhone.length > 13) {
+        errs.phone = 'Please enter a valid 10-digit mobile number';
+      }
+    }
+
+    if (!editingUser) {
+      if (!password) {
+        errs.password = 'Temporary login password is required';
+      } else if (password.length < 8) {
+        errs.password = 'Password must be at least 8 characters long';
+      }
+    } else if (password && password.length < 8) {
+      errs.password = 'Password must be at least 8 characters long';
+    }
+
+    return errs;
   };
 
   // Submit Add or Edit User
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.first_name.trim()) {
-      return toast.error('Please enter first name');
+    const errs = validateForm();
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      const firstField = Object.keys(errs)[0];
+      toast.error(errs[firstField]);
+      return;
     }
 
-    if (!editingUser) {
-      if (!formData.email.trim()) return toast.error('Please enter a valid email address');
-      if (!formData.password || formData.password.length < 8) {
-        return toast.error('Password must be at least 8 characters');
-      }
-    } else if (formData.password && formData.password.length < 8) {
-      return toast.error('Password must be at least 8 characters');
-    }
+    setFieldErrors({});
 
     setSubmitting(true);
     try {
@@ -391,8 +454,12 @@ export default function UserManagementPage() {
     );
   }
 
-  const inputClass =
-    'w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 focus:border-[#E91E63] focus:ring-2 focus:ring-[#E91E63]/20 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 outline-none transition-all';
+  const getInputClass = (fieldName) =>
+    `w-full bg-slate-50 dark:bg-white/5 border ${
+      fieldErrors[fieldName]
+        ? 'border-red-400 dark:border-red-500/80 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+        : 'border-slate-200 dark:border-white/10 focus:border-[#E91E63] focus:ring-2 focus:ring-[#E91E63]/20'
+    } rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 outline-none transition-all`;
   const labelClass = 'block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5';
 
   return (
@@ -406,17 +473,6 @@ export default function UserManagementPage() {
         {/* Top Header Bar */}
         <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            {/* Breadcrumb */}
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
-              <Link href="/" className="hover:text-slate-800 dark:hover:text-white transition-colors">
-                Dashboard
-              </Link>
-              <span>/</span>
-              <span className="text-slate-600 dark:text-slate-300 font-semibold">Salon Operations</span>
-              <span>&gt;</span>
-              <span className="text-[#E91E63] font-bold">User Management</span>
-            </div>
-
             {/* Title & Subtitle */}
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-heading">
               User Management
@@ -921,7 +977,7 @@ export default function UserManagementPage() {
 
             {/* Modal Body */}
             <div className="overflow-y-auto flex-1 min-h-0 px-5 sm:px-8 py-5 sm:py-6 custom-scrollbar">
-              <form id="user-management-form" onSubmit={handleSubmit} className="space-y-4">
+              <form id="user-management-form" onSubmit={handleSubmit} noValidate className="space-y-4">
                 {/* Notice Box */}
                 <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 p-3.5 rounded-xl text-xs border border-blue-200 dark:border-blue-900/40 flex items-start gap-2.5">
                   <RiInformationLine className="text-base text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
@@ -996,12 +1052,17 @@ export default function UserManagementPage() {
                     </label>
                     <input
                       type="text"
-                      required
                       value={formData.first_name}
-                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                      onChange={(e) => handleInputChange('first_name', e.target.value)}
                       placeholder="e.g. Adarsh"
-                      className={inputClass}
+                      className={getInputClass('first_name')}
                     />
+                    {fieldErrors.first_name && (
+                      <p className="text-red-500 text-xs font-medium mt-1.5 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                        <RiErrorWarningLine className="shrink-0 text-sm" />
+                        <span>{fieldErrors.first_name}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -1009,9 +1070,9 @@ export default function UserManagementPage() {
                     <input
                       type="text"
                       value={formData.last_name}
-                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                      onChange={(e) => handleInputChange('last_name', e.target.value)}
                       placeholder="e.g. Sharma"
-                      className={inputClass}
+                      className={getInputClass('last_name')}
                     />
                   </div>
                 </div>
@@ -1023,17 +1084,21 @@ export default function UserManagementPage() {
                   </label>
                   <input
                     type="email"
-                    required
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
                     placeholder="user@salondomain.com"
-                    className={inputClass}
+                    className={getInputClass('email')}
                   />
-                  {editingUser && (
+                  {fieldErrors.email ? (
+                    <p className="text-red-500 text-xs font-medium mt-1.5 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <RiErrorWarningLine className="shrink-0 text-sm" />
+                      <span>{fieldErrors.email}</span>
+                    </p>
+                  ) : editingUser ? (
                     <p className="text-[11px] text-slate-400 mt-1">
                       Changing email will update the login username for this account.
                     </p>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Phone */}
@@ -1042,10 +1107,16 @@ export default function UserManagementPage() {
                   <input
                     type="tel"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
                     placeholder="10-digit mobile number"
-                    className={inputClass}
+                    className={getInputClass('phone')}
                   />
+                  {fieldErrors.phone && (
+                    <p className="text-red-500 text-xs font-medium mt-1.5 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <RiErrorWarningLine className="shrink-0 text-sm" />
+                      <span>{fieldErrors.phone}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Role Select */}
@@ -1060,10 +1131,9 @@ export default function UserManagementPage() {
                     </div>
                   ) : (
                     <select
-                      required
                       value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                      className={inputClass}
+                      onChange={(e) => handleInputChange('role', e.target.value)}
+                      className={getInputClass('role')}
                     >
                       <option value="admin">Administrator (Full System &amp; Financial Control)</option>
                       <option value="manager">Manager (Salon Operations &amp; Inventory)</option>
@@ -1093,12 +1163,10 @@ export default function UserManagementPage() {
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
-                      required={!editingUser}
                       value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      minLength={formData.password ? 8 : undefined}
+                      onChange={(e) => handleInputChange('password', e.target.value)}
                       placeholder={editingUser ? 'Leave blank to keep current password' : 'Minimum 8 characters'}
-                      className={`${inputClass} pr-10`}
+                      className={`${getInputClass('password')} pr-10`}
                     />
 
                     <button
@@ -1109,11 +1177,16 @@ export default function UserManagementPage() {
                       {showPassword ? <RiEyeOffLine className="text-base" /> : <RiEyeLine className="text-base" />}
                     </button>
                   </div>
-                  {editingUser && (
+                  {fieldErrors.password ? (
+                    <p className="text-red-500 text-xs font-medium mt-1.5 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <RiErrorWarningLine className="shrink-0 text-sm" />
+                      <span>{fieldErrors.password}</span>
+                    </p>
+                  ) : editingUser ? (
                     <p className="text-[11px] text-slate-400 mt-1">
                       Only fill this field if you want to reset the user&apos;s login password.
                     </p>
-                  )}
+                  ) : null}
                 </div>
               </form>
             </div>
