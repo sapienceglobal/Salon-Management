@@ -223,7 +223,8 @@ class AuthService {
    * Forgot password — send OTP email.
    */
   async forgotPassword(email) {
-    const user = await db('users').where({ email, is_active: true }).first();
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const user = await db('users').where({ email: normalizedEmail, is_active: true }).first();
 
     // Don't reveal whether the email exists (security)
     if (!user) {
@@ -245,28 +246,32 @@ class AuthService {
     // Send email
     try {
       await sendEmail({
-        to: email,
-        subject: 'Salon360 — Password Reset OTP',
+        to: normalizedEmail,
+        subject: 'Kaira Makeover — Password Reset Verification Code',
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #E91E63; text-align: center;">SalonTime</h2>
-            <h3 style="color: #333;">Password Reset Verification</h3>
-            <p>Hi ${user.first_name},</p>
-            <p>You recently requested to reset your password for your SalonTime account. Use the OTP below to complete the process.</p>
-            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; text-align: center; margin: 30px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1A1A2E;">
-                ${otp}
-              </span>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border: 1px solid #f0f0f0; border-radius: 16px;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h2 style="color: #E91E63; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Kaira Makeover</h2>
+              <p style="color: #666; font-size: 13px; margin-top: 4px;">Salon & Academy Management Portal</p>
             </div>
-            <p>This OTP is valid for <strong>15 minutes</strong>. Do not share this code with anyone.</p>
-            <p style="color: #666; font-size: 14px;">If you didn't request this, please ignore this email. Your password will remain unchanged.</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-            <p style="color: #999; font-size: 12px; text-align: center;">SalonTime — Salon Management Platform</p>
+            <div style="background: #FFF5F8; border: 1px solid #FFE4EC; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
+              <h3 style="color: #1A1A2E; margin: 0 0 8px; font-size: 18px;">Password Reset Verification Code</h3>
+              <p style="color: #555; font-size: 14px; margin: 0 0 16px;">Hi ${user.first_name || 'Admin'}, use the 6-digit verification code below to reset your password.</p>
+              <div style="display: inline-block; background: #ffffff; border: 2px dashed #E91E63; border-radius: 12px; padding: 12px 28px;">
+                <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #E91E63; font-family: monospace;">
+                  ${otp}
+                </span>
+              </div>
+              <p style="color: #888; font-size: 12px; margin: 16px 0 0;">This code is valid for <strong>15 minutes</strong>.</p>
+            </div>
+            <p style="color: #666; font-size: 13px; line-height: 1.5;">If you did not request this password reset, please ignore this email or contact support. Your password remains completely safe.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+            <p style="color: #aaa; font-size: 11px; text-align: center; margin: 0;">&copy; ${new Date().getFullYear()} Kaira Makeover. All rights reserved.</p>
           </div>
         `,
       });
 
-      logger.info(`Password reset OTP sent to ${email}`);
+      logger.info(`Password reset OTP sent to ${normalizedEmail}`);
     } catch (error) {
       // Reset the token if email fails
       await db('users').where({ id: user.id }).update({
@@ -282,16 +287,15 @@ class AuthService {
    * Verify OTP
    */
   async verifyOtp(email, otp) {
-    const user = await db('users').where({ email, is_active: true }).first();
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const otpHash = hashToken(String(otp).trim());
+
+    const user = await db('users')
+      .where({ email: normalizedEmail, is_active: true, password_reset_token: otpHash })
+      .where('password_reset_expires', '>', new Date())
+      .first();
+
     if (!user) {
-      throw ApiError.badRequest('Invalid email or OTP');
-    }
-
-    const otpHash = hashToken(otp);
-
-    const isValid = user.password_reset_token === otpHash && user.password_reset_expires > new Date();
-
-    if (!isValid) {
       throw ApiError.badRequest('Invalid or expired OTP');
     }
 
@@ -302,11 +306,12 @@ class AuthService {
    * Reset password using OTP from email.
    */
   async resetPassword(email, token, newPassword) {
-    const tokenHash = hashToken(token);
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const tokenHash = hashToken(String(token).trim());
 
     // Find user with valid, non-expired token and matching email
     const user = await db('users')
-      .where({ email, password_reset_token: tokenHash })
+      .where({ email: normalizedEmail, password_reset_token: tokenHash, is_active: true })
       .where('password_reset_expires', '>', new Date())
       .first();
 

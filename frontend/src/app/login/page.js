@@ -193,7 +193,7 @@ function LoginFormContent() {
     e.preventDefault();
     setForgotError('');
 
-    const trimmedEmail = forgotEmail.trim();
+    const trimmedEmail = forgotEmail.trim().toLowerCase();
     if (!trimmedEmail) {
       setForgotError('Please enter your email address');
       if (forgotEmailInputRef.current) forgotEmailInputRef.current.focus();
@@ -286,7 +286,7 @@ function LoginFormContent() {
 
     try {
       await api.post('/auth/verify-otp', { 
-        email: forgotEmail.trim(), 
+        email: forgotEmail.trim().toLowerCase(), 
         otp: fullOtp 
       });
       toast.success('Code verified successfully!');
@@ -306,7 +306,7 @@ function LoginFormContent() {
     setForgotLoading(true);
 
     try {
-      await api.post('/auth/forgot-password', { email: forgotEmail.trim() });
+      await api.post('/auth/forgot-password', { email: forgotEmail.trim().toLowerCase() });
       toast.success('New verification code sent to your email!');
       setResendCooldown(45);
       setOtpDigits(['', '', '', '', '', '']);
@@ -319,13 +319,13 @@ function LoginFormContent() {
     }
   };
 
-  // Password Requirements (Matching Image 2 exactly)
+  // Password Requirements (Matching backend password policy & reference designs)
+  const hasUpper = /[A-Z]/.test(forgotNewPassword);
+  const hasLower = /[a-z]/.test(forgotNewPassword);
+  const hasNumber = /[0-9]/.test(forgotNewPassword);
+  const hasSpecial = /[^A-Za-z0-9]/.test(forgotNewPassword);
   const reqLength = forgotNewPassword.length >= 8;
-  const reqMix = (
-    /[a-zA-Z]/.test(forgotNewPassword) && 
-    /[0-9]/.test(forgotNewPassword) && 
-    /[^a-zA-Z0-9]/.test(forgotNewPassword)
-  );
+  const reqMix = hasUpper && hasLower && hasNumber && hasSpecial;
   const reqMatch = forgotNewPassword.length > 0 && forgotNewPassword === forgotConfirmPassword;
 
   // Forgot Password: Step 3 - Reset Password
@@ -334,16 +334,31 @@ function LoginFormContent() {
     setForgotError('');
 
     if (!reqLength) {
-      setForgotError('Password must be at least 8 characters');
+      setForgotError('Password must be at least 8 characters long');
       return;
     }
 
-    if (!reqMix) {
-      setForgotError('Password must include a mix of letters, numbers and symbols');
+    if (!hasUpper) {
+      setForgotError('Password must contain at least one uppercase letter (A-Z)');
       return;
     }
 
-    if (forgotNewPassword !== forgotConfirmPassword) {
+    if (!hasLower) {
+      setForgotError('Password must contain at least one lowercase letter (a-z)');
+      return;
+    }
+
+    if (!hasNumber) {
+      setForgotError('Password must contain at least one number (0-9)');
+      return;
+    }
+
+    if (!hasSpecial) {
+      setForgotError('Password must contain at least one special character (!@#$%^&*...)');
+      return;
+    }
+
+    if (!reqMatch) {
       setForgotError('Passwords do not match');
       return;
     }
@@ -352,8 +367,8 @@ function LoginFormContent() {
 
     try {
       await api.post('/auth/reset-password', { 
-        email: forgotEmail.trim(), 
-        token: otpDigits.join(''), 
+        email: forgotEmail.trim().toLowerCase(), 
+        token: otpDigits.join('').trim(), 
         password: forgotNewPassword 
       });
       toast.success('Password reset successfully!');
