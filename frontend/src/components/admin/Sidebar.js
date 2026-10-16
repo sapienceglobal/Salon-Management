@@ -229,11 +229,18 @@ function SidebarInner({ collapsed, onToggle }) {
       : (activeUser?.name ? getInitials(activeUser.name) : '')
   ) || activeUser?.first_name?.[0]?.toUpperCase() || activeUser?.email?.[0]?.toUpperCase() || 'SA';
 
-  const getRoleLabel = (role) => {
+  const getRoleLabel = (userObj) => {
+    const role = userObj?.role;
+    const email = (userObj?.email || '').toLowerCase();
+
+    // Primary Owner Account
+    if (role === 'super_admin' || email === 'kairamakeuppalace@gmail.com') {
+      return 'Owner Account';
+    }
+
     switch (role) {
-      case 'super_admin':
       case 'admin':
-        return 'Owner Account';
+        return 'Admin Account';
       case 'manager':
         return 'Manager Account';
       case 'receptionist':
@@ -241,7 +248,7 @@ function SidebarInner({ collapsed, onToggle }) {
       case 'staff':
         return 'Staff Account';
       default:
-        return 'Owner Account';
+        return 'Admin Account';
     }
   };
 
@@ -339,7 +346,7 @@ function SidebarInner({ collapsed, onToggle }) {
                 <RiCheckboxCircleFill className="text-[#E91E63] text-xs shrink-0" />
               </div>
               <div className="text-[11.5px] text-slate-400 font-medium truncate mt-0.5">
-                {getRoleLabel(activeUser?.role)}
+                {getRoleLabel(activeUser)}
               </div>
             </div>
 
@@ -352,7 +359,7 @@ function SidebarInner({ collapsed, onToggle }) {
           <Link
             href={user?.role !== 'manager' ? '/settings' : '/staff'}
             className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 hover:scale-105 transition-transform"
-            title={`${userName} (${getRoleLabel(activeUser?.role)})`}
+            title={`${userName} (${getRoleLabel(activeUser)})`}
           >
             {activeUser?.avatar_url ? (
               <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-white/20 shadow-[0_0_14px_rgba(233,30,99,0.45)] ring-2 ring-[#E91E63]/30">

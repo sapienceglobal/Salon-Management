@@ -139,6 +139,14 @@ class SettingsService {
     if (data.avatar_url === null) {
       updatePayload.avatar_url = null;
     }
+    if (data.email && data.email.toLowerCase().trim() !== user.email.toLowerCase().trim()) {
+      const existing = await db('users')
+        .whereRaw('LOWER(email) = ?', [data.email.toLowerCase().trim()])
+        .whereNot({ id: userId })
+        .first();
+      if (existing) throw ApiError.conflict('Email address is already in use by another account');
+      updatePayload.email = data.email.toLowerCase().trim();
+    }
     if (data.password && typeof data.password === 'string' && data.password.trim().length >= 8) {
       const bcrypt = (await import('bcryptjs')).default;
       updatePayload.password_hash = await bcrypt.hash(data.password.trim(), 12);
@@ -243,8 +251,9 @@ router.post('/users', singleImage('image'), validate({ body: z.object({
   ApiResponse.created('User created', user).send(res);
 }));
 router.put('/users/:id', singleImage('image'), validate({ params: idParam, body: z.object({
+  email: z.string().email().optional(),
   first_name: z.string().min(1).max(100).optional(), last_name: z.string().max(100).optional().nullable(),
-  phone: z.string().max(20).optional().nullable(), role: z.enum(['admin', 'manager', 'staff', 'receptionist']).optional(), is_active: z.coerce.boolean().optional(),
+  phone: z.string().max(20).optional().nullable(), role: z.enum(['super_admin', 'admin', 'manager', 'staff', 'receptionist']).optional(), is_active: z.coerce.boolean().optional(),
   password: z.string().min(8).optional(),
   avatar_url: z.string().max(500).optional().nullable(),
 }) }), asyncHandler(async (req, res) => {

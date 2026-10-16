@@ -12,6 +12,7 @@
     "migrate:make": "knex migrate:make --knexfile knexfile.js",
     "seed": "knex seed:run --knexfile knexfile.js",
     "reset-password": "node src/scripts/resetPassword.js",
+    "update-owner": "node src/scripts/updateOwnerAccount.js",
     "test": "node --experimental-vm-modules node_modules/.bin/jest --detectOpenHandles --forceExit"
   },
   "keywords": [

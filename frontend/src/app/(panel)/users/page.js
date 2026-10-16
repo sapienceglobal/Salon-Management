@@ -205,6 +205,7 @@ export default function UserManagementPage() {
         const fd = new FormData();
         fd.append('first_name', formData.first_name.trim());
         if (formData.last_name?.trim()) fd.append('last_name', formData.last_name.trim());
+        if (formData.email?.trim()) fd.append('email', formData.email.trim().toLowerCase());
         if (formData.phone?.trim()) fd.append('phone', formData.phone.trim());
         fd.append('role', formData.role);
         fd.append('image', selectedFile);
@@ -218,7 +219,6 @@ export default function UserManagementPage() {
           });
           toast.success('User updated successfully');
         } else {
-          fd.append('email', formData.email.trim().toLowerCase());
           fd.append('password', formData.password.trim());
           await api.post('/settings/users', fd, {
             headers: { 'Content-Type': 'multipart/form-data' },
@@ -230,6 +230,7 @@ export default function UserManagementPage() {
         const payload = {
           first_name: formData.first_name.trim(),
           last_name: formData.last_name.trim() || undefined,
+          email: formData.email.trim().toLowerCase(),
           phone: formData.phone.trim() || undefined,
           role: formData.role,
           avatar_url: previewUrl || null,
@@ -334,14 +335,24 @@ export default function UserManagementPage() {
   }, [users]);
 
   // Role Badge Helper with clean icons and styling
-  const renderRoleBadge = (role) => {
+  const renderRoleBadge = (role, email) => {
     const r = (role || 'staff').toLowerCase();
+    const em = (email || '').toLowerCase();
+
+    if (r === 'super_admin' || em === 'kairamakeuppalace@gmail.com') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-pink-50 text-[#E91E63] dark:bg-pink-950/40 dark:text-pink-300 border border-pink-200 dark:border-pink-800/40">
+          <RiShieldStarLine className="text-[#E91E63] text-sm" />
+          <span>Owner (Primary)</span>
+        </span>
+      );
+    }
+
     switch (r) {
-      case 'super_admin':
       case 'admin':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800/40">
-            <RiShieldStarLine className="text-purple-600 dark:text-purple-400 text-sm" />
+            <RiShieldCheckLine className="text-purple-600 dark:text-purple-400 text-sm" />
             <span>Administrator</span>
           </span>
         );
@@ -692,7 +703,7 @@ export default function UserManagementPage() {
                       </td>
 
                       {/* Role & Access Badge */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">{renderRoleBadge(u.role)}</td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">{renderRoleBadge(u.role, u.email)}</td>
 
                       {/* Contact Phone */}
                       <td className="py-3.5 px-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">
@@ -749,23 +760,19 @@ export default function UserManagementPage() {
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 whitespace-nowrap text-right">
-                        {isCurrent ? (
-                          <span className="text-xs font-bold px-3 py-1 rounded-xl bg-pink-50 dark:bg-pink-950/30 text-[#E91E63] border border-pink-200 dark:border-pink-900/40 select-none">
-                            Primary Account
-                          </span>
-                        ) : (
-                          <div className="flex items-center justify-end gap-1.5">
-                            {/* Edit Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(u)}
-                              className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-[#E91E63] hover:bg-pink-50 dark:hover:bg-pink-950/40 rounded-lg border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
-                              title="Edit user details"
-                            >
-                              <RiEditLine className="text-base" />
-                            </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Edit Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(u)}
+                            className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-[#E91E63] hover:bg-pink-50 dark:hover:bg-pink-950/40 rounded-lg border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
+                            title="Edit user details & photo"
+                          >
+                            <RiEditLine className="text-base" />
+                          </button>
 
-                            {/* Toggle Enable/Disable Button */}
+                          {/* Toggle Enable/Disable Button */}
+                          {!isCurrent ? (
                             <button
                               type="button"
                               onClick={() => handleToggleStatus(u)}
@@ -777,8 +784,14 @@ export default function UserManagementPage() {
                             >
                               {u.is_active !== false ? 'Disable' : 'Enable'}
                             </button>
+                          ) : (
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-pink-50 dark:bg-pink-950/30 text-[#E91E63] border border-pink-200 dark:border-pink-900/40 select-none ml-1">
+                              Primary
+                            </span>
+                          )}
 
-                            {/* Delete User Button */}
+                          {/* Delete User Button */}
+                          {!isCurrent && (
                             <button
                               type="button"
                               onClick={() => handleDeleteUser(u)}
@@ -787,8 +800,8 @@ export default function UserManagementPage() {
                             >
                               <RiDeleteBinLine className="text-base" />
                             </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1011,14 +1024,15 @@ export default function UserManagementPage() {
                   <input
                     type="email"
                     required
-                    disabled={Boolean(editingUser)}
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="user@salondomain.com"
-                    className={`${inputClass} ${editingUser ? 'opacity-70 bg-slate-100 dark:bg-white/10 cursor-not-allowed' : ''}`}
+                    className={inputClass}
                   />
                   {editingUser && (
-                    <p className="text-[11px] text-slate-400 mt-1">Email address cannot be changed once created.</p>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Changing email will update the login username for this account.
+                    </p>
                   )}
                 </div>
 
@@ -1039,17 +1053,24 @@ export default function UserManagementPage() {
                   <label className={labelClass}>
                     System Access Role <span className="text-[#E91E63]">*</span>
                   </label>
-                  <select
-                    required
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className={inputClass}
-                  >
-                    <option value="admin">Administrator (Full System &amp; Financial Control)</option>
-                    <option value="manager">Manager (Salon Operations &amp; Inventory)</option>
-                    <option value="receptionist">Receptionist (Front Desk &amp; Appointments)</option>
-                    <option value="staff">Staff (Basic Service Access)</option>
-                  </select>
+                  {editingUser?.role === 'super_admin' ? (
+                    <div className="p-3 rounded-xl bg-pink-50 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-900/40 text-xs font-bold text-[#E91E63] flex items-center gap-2">
+                      <RiShieldStarLine className="text-base shrink-0" />
+                      <span>Owner / Super Admin (Root account role cannot be changed)</span>
+                    </div>
+                  ) : (
+                    <select
+                      required
+                      value={formData.role}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                      className={inputClass}
+                    >
+                      <option value="admin">Administrator (Full System &amp; Financial Control)</option>
+                      <option value="manager">Manager (Salon Operations &amp; Inventory)</option>
+                      <option value="receptionist">Receptionist (Front Desk &amp; Appointments)</option>
+                      <option value="staff">Staff (Basic Service Access)</option>
+                    </select>
+                  )}
                 </div>
 
                 {/* Password Field */}
