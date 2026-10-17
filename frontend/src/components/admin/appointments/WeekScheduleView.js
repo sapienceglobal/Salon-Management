@@ -23,8 +23,6 @@ import {
   RiWalkLine,
   RiShieldCheckLine,
   RiArrowRightLine,
-  RiArrowLeftSLine,
-  RiArrowRightSLine,
 } from 'react-icons/ri';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import { formatCurrency, formatTime } from '@/lib/utils';
@@ -100,9 +98,6 @@ export default function WeekScheduleView({
   onAppointmentClick,
   onSlotClick,
   onDayClick,
-  onPrevWeek,
-  onNextWeek,
-  onToday,
 }) {
   // 1. Calculate the 7 days of the current week (Monday to Sunday)
   const weekStart = useMemo(
@@ -117,11 +112,6 @@ export default function WeekScheduleView({
     () => eachDayOfInterval({ start: weekStart, end: weekEnd }),
     [weekStart, weekEnd]
   );
-
-  const isCurrentWeek = useMemo(() => {
-    const todayWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    return isSameDay(todayWeekStart, weekStart);
-  }, [weekStart]);
 
   // 2. Filter appointments by status, search, cancelled, staff, and service
   const filteredAppointments = useMemo(() => {
@@ -248,59 +238,15 @@ export default function WeekScheduleView({
               <h3 className="text-sm sm:text-base font-extrabold text-gray-900 dark:text-white tracking-tight">
                 Week Schedule
               </h3>
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-200/80 dark:bg-white/10 text-gray-700 dark:text-gray-300">
+                {format(weekStart, 'd MMM')} – {format(weekEnd, 'd MMM yyyy')}
+              </span>
             </div>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
               7-Day Staff & Customer Booking Overview (Monday to Sunday)
             </p>
           </div>
         </div>
-
-        {/* Dynamic Previous / Next Week Navigation Control */}
-        {(onPrevWeek || onNextWeek) && (
-          <div className="flex items-center gap-1.5 bg-white dark:bg-[#161626] border border-gray-200/80 dark:border-white/10 p-1 rounded-2xl shadow-xs">
-            {onPrevWeek && (
-              <button
-                type="button"
-                onClick={onPrevWeek}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all flex items-center gap-1 cursor-pointer"
-                title="Previous Week"
-              >
-                <RiArrowLeftSLine className="text-base" />
-                <span className="hidden sm:inline">Prev</span>
-              </button>
-            )}
-
-            <div className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 flex items-center gap-2 text-xs font-bold text-gray-800 dark:text-gray-200">
-              <RiCalendarLine className="text-[#E91E63] text-sm shrink-0" />
-              <span>
-                {format(weekStart, 'd MMM')} – {format(weekEnd, 'd MMM yyyy')}
-              </span>
-            </div>
-
-            {onNextWeek && (
-              <button
-                type="button"
-                onClick={onNextWeek}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all flex items-center gap-1 cursor-pointer"
-                title="Next Week"
-              >
-                <span className="hidden sm:inline">Next</span>
-                <RiArrowRightSLine className="text-base" />
-              </button>
-            )}
-
-            {!isCurrentWeek && onToday && (
-              <button
-                type="button"
-                onClick={onToday}
-                className="ml-1 px-3 py-1.5 text-xs font-extrabold rounded-xl bg-pink-50 text-[#E91E63] dark:bg-[#E91E63]/10 dark:text-pink-300 border border-pink-200 dark:border-pink-500/20 hover:bg-pink-100 dark:hover:bg-[#E91E63]/20 transition-all cursor-pointer shadow-2xs"
-                title="Jump to Current Week"
-              >
-                This Week
-              </button>
-            )}
-          </div>
-        )}
 
         {/* Quick Week Metrics */}
         <div className="flex items-center gap-3 sm:gap-4 text-xs font-semibold">

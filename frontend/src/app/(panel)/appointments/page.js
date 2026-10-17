@@ -326,6 +326,17 @@ export default function AppointmentsPage() {
     return appointments;
   }, [viewMode, appointments, weekAppointments, monthAppointments]);
 
+  const isCurrentPeriod = useMemo(() => {
+    if (viewMode === 'Day') return isToday(currentDate);
+    if (viewMode === 'Week') {
+      const todayWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+      const currentWeekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+      return isSameDay(todayWeekStart, currentWeekStart);
+    }
+    if (viewMode === 'Month') return isSameMonth(new Date(), currentDate);
+    return false;
+  }, [viewMode, currentDate]);
+
   const handleCalendarSelect = (date) => {
     setCurrentDate(date);
   };
@@ -698,15 +709,15 @@ export default function AppointmentsPage() {
       {/* ========================================================
           2. CONTROLS TOOLBAR (View Switcher + Date Nav + Filters + Search)
          ======================================================== */}
-      <div className="px-6 flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="px-6 flex flex-col xl:flex-row xl:items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
           {/* Day / Week / Month Switch */}
-          <div className="flex items-center bg-white dark:bg-[#1a1a2e] border border-gray-200/80 dark:border-white/10 p-1 rounded-2xl shadow-xs">
+          <div className="flex items-center bg-white dark:bg-[#1a1a2e] border border-gray-200/80 dark:border-white/10 p-1 rounded-2xl shadow-xs shrink-0">
             {['Day', 'Week', 'Month'].map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                className={`px-3.5 sm:px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   viewMode === mode
                     ? 'bg-[#E91E63] text-white shadow-md shadow-[#E91E63]/25 scale-[1.02]'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -718,20 +729,20 @@ export default function AppointmentsPage() {
           </div>
 
           {/* Unified Dynamic Date Nav Stepper (Day, Week, Month Adaptive) */}
-          <div className="flex items-center gap-1.5 bg-white dark:bg-[#1a1a2e] border border-gray-200/80 dark:border-white/10 p-1 rounded-2xl shadow-xs">
+          <div className="flex items-center gap-1 bg-white dark:bg-[#1a1a2e] border border-gray-200/80 dark:border-white/10 p-1 rounded-2xl shadow-xs shrink-0">
             <button
               type="button"
               onClick={() => handleDateChange(-1)}
-              className="p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all cursor-pointer"
               title={viewMode === 'Week' ? 'Previous week' : viewMode === 'Month' ? 'Previous month' : 'Previous day'}
             >
               <RiArrowLeftSLine className="text-base" />
             </button>
 
             {/* Clickable Date Range Label with Hidden HTML5 Date Picker for Quick Jumps */}
-            <label className="relative px-3.5 py-1.5 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 flex items-center gap-2 text-xs font-bold text-gray-800 dark:text-gray-200 cursor-pointer hover:border-pink-300 dark:hover:border-pink-500/30 transition-all select-none">
+            <label className="relative px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 flex items-center justify-center gap-1.5 text-xs font-bold text-gray-800 dark:text-gray-200 cursor-pointer hover:border-pink-300 dark:hover:border-pink-500/30 transition-all select-none min-w-[145px] sm:min-w-[170px] text-center">
               <RiCalendarLine className="text-[#E91E63] text-sm shrink-0" />
-              <span>
+              <span className="truncate">
                 {viewMode === 'Day' && format(currentDate, 'EEE, d MMM yyyy')}
                 {viewMode === 'Week' &&
                   `${format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'd MMM')} – ${format(
@@ -757,34 +768,36 @@ export default function AppointmentsPage() {
             <button
               type="button"
               onClick={() => handleDateChange(1)}
-              className="p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all cursor-pointer"
               title={viewMode === 'Week' ? 'Next week' : viewMode === 'Month' ? 'Next month' : 'Next day'}
             >
               <RiArrowRightSLine className="text-base" />
             </button>
 
-            {/* Jump to Today / This Week / This Month */}
-            {((viewMode === 'Day' && !isToday(currentDate)) ||
-              (viewMode === 'Week' && !isSameDay(startOfWeek(new Date(), { weekStartsOn: 1 }), startOfWeek(currentDate, { weekStartsOn: 1 }))) ||
-              (viewMode === 'Month' && !isSameMonth(new Date(), currentDate))) && (
-              <button
-                type="button"
-                onClick={() => setCurrentDate(new Date())}
-                className="ml-1 px-3 py-1.5 text-xs font-extrabold rounded-xl bg-pink-50 text-[#E91E63] dark:bg-[#E91E63]/10 dark:text-pink-300 border border-pink-200 dark:border-pink-500/20 hover:bg-pink-100 dark:hover:bg-[#E91E63]/20 transition-all cursor-pointer shadow-2xs"
-                title={viewMode === 'Week' ? 'Jump to Current Week' : viewMode === 'Month' ? 'Jump to Current Month' : 'Jump to Today'}
-              >
-                {viewMode === 'Week' ? 'This Week' : viewMode === 'Month' ? 'This Month' : 'Today'}
-              </button>
-            )}
+            {/* Jump to Today / This Week / This Month — Permanently mounted with fixed dimensions to prevent UI shift */}
+            <button
+              type="button"
+              disabled={isCurrentPeriod}
+              onClick={() => setCurrentDate(new Date())}
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all select-none min-w-[74px] sm:min-w-[80px] text-center border ${
+                isCurrentPeriod
+                  ? 'opacity-35 text-gray-400 dark:text-gray-600 border-transparent bg-transparent cursor-default pointer-events-none'
+                  : 'bg-pink-50 text-[#E91E63] dark:bg-[#E91E63]/10 dark:text-pink-300 border-pink-200 dark:border-pink-500/20 hover:bg-pink-100 dark:hover:bg-[#E91E63]/20 cursor-pointer shadow-2xs'
+              }`}
+              title={isCurrentPeriod ? 'Viewing current schedule' : viewMode === 'Week' ? 'Jump to Current Week' : viewMode === 'Month' ? 'Jump to Current Month' : 'Jump to Today'}
+            >
+              {viewMode === 'Week' ? 'This Week' : viewMode === 'Month' ? 'This Month' : 'Today'}
+            </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Right Filter & Search Cluster */}
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap sm:flex-nowrap">
           {/* Staff Filter Dropdown */}
           <select
             value={selectedStaff}
             onChange={(e) => setSelectedStaff(e.target.value)}
-            className="bg-white dark:bg-[#1a1a2e] border border-gray-200/80 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 outline-none focus:border-[#E91E63] shadow-xs cursor-pointer"
+            className="bg-white dark:bg-[#1a1a2e] border border-gray-200/80 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 outline-none focus:border-[#E91E63] shadow-xs cursor-pointer max-w-[130px] sm:max-w-[145px] truncate"
           >
             <option value="">All Staff</option>
             {staffList.map((st) => (
@@ -798,7 +811,7 @@ export default function AppointmentsPage() {
           <select
             value={selectedService}
             onChange={(e) => setSelectedService(e.target.value)}
-            className="bg-white dark:bg-[#1a1a2e] border border-gray-200/80 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 outline-none focus:border-[#E91E63] shadow-xs cursor-pointer"
+            className="bg-white dark:bg-[#1a1a2e] border border-gray-200/80 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 outline-none focus:border-[#E91E63] shadow-xs cursor-pointer max-w-[130px] sm:max-w-[145px] truncate"
           >
             <option value="">All Services</option>
             {servicesList.map((sv) => (
@@ -809,7 +822,7 @@ export default function AppointmentsPage() {
           </select>
 
           {/* Search Input */}
-          <div className="relative min-w-[200px] sm:min-w-[230px]">
+          <div className="relative w-44 sm:w-52 lg:w-56">
             <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
             <input
               type="text"
@@ -887,9 +900,6 @@ export default function AppointmentsPage() {
               statusFilter={statusFilter}
               showCancelled={showCancelled}
               currentDate={currentDate}
-              onPrevDay={() => handleDateChange(-1)}
-              onNextDay={() => handleDateChange(1)}
-              onToday={() => setCurrentDate(new Date())}
               onAppointmentClick={(appt) => setSelectedViewAppointment(appt)}
               onSlotClick={({ staff, hour }) => {
                 const hourStr = String(hour).padStart(2, '0') + ':00:00';
@@ -915,9 +925,6 @@ export default function AppointmentsPage() {
               searchQuery={searchQuery}
               selectedStaff={selectedStaff}
               selectedService={selectedService}
-              onPrevWeek={() => handleDateChange(-1)}
-              onNextWeek={() => handleDateChange(1)}
-              onToday={() => setCurrentDate(new Date())}
               onAppointmentClick={(appt) => setSelectedViewAppointment(appt)}
               onDayClick={(day) => {
                 setCurrentDate(day);
@@ -947,9 +954,6 @@ export default function AppointmentsPage() {
               searchQuery={searchQuery}
               selectedStaff={selectedStaff}
               selectedService={selectedService}
-              onPrevMonth={() => handleDateChange(-1)}
-              onNextMonth={() => handleDateChange(1)}
-              onToday={() => setCurrentDate(new Date())}
               onAppointmentClick={(appt) => setSelectedViewAppointment(appt)}
               onDayClick={(day) => {
                 setCurrentDate(day);
