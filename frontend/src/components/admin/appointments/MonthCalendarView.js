@@ -23,6 +23,8 @@ import {
   RiWalkLine,
   RiAlertLine,
   RiSparklingFill,
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
 } from 'react-icons/ri';
 import VisualAvatar from '@/components/admin/common/VisualAvatar';
 import { formatCurrency, formatTime } from '@/lib/utils';
@@ -90,8 +92,15 @@ export default function MonthCalendarView({
   onAppointmentClick,
   onSlotClick,
   onDayClick,
+  onPrevMonth,
+  onNextMonth,
+  onToday,
 }) {
   const [selectedDayModal, setSelectedDayModal] = useState(null);
+
+  const isCurrentMonth = useMemo(() => {
+    return isSameMonth(new Date(), currentDate);
+  }, [currentDate]);
 
   // 1. Month boundaries and 7x5 / 7x6 grid calculation
   const monthStart = useMemo(() => startOfMonth(currentDate), [currentDate]);
@@ -233,15 +242,57 @@ export default function MonthCalendarView({
               <h3 className="text-sm sm:text-base font-extrabold text-gray-900 dark:text-white tracking-tight">
                 Month Calendar
               </h3>
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-200/80 dark:bg-white/10 text-gray-700 dark:text-gray-300">
-                {format(currentDate, 'MMMM yyyy')}
-              </span>
             </div>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
               Full Month Salon Booking Schedule & Workload Distribution
             </p>
           </div>
         </div>
+
+        {/* Dynamic Previous / Next Month Navigation Control */}
+        {(onPrevMonth || onNextMonth) && (
+          <div className="flex items-center gap-1.5 bg-white dark:bg-[#161626] border border-gray-200/80 dark:border-white/10 p-1 rounded-2xl shadow-xs">
+            {onPrevMonth && (
+              <button
+                type="button"
+                onClick={onPrevMonth}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all flex items-center gap-1 cursor-pointer"
+                title="Previous Month"
+              >
+                <RiArrowLeftSLine className="text-base" />
+                <span className="hidden sm:inline">Prev</span>
+              </button>
+            )}
+
+            <div className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 flex items-center gap-2 text-xs font-bold text-gray-800 dark:text-gray-200">
+              <RiCalendarLine className="text-[#E91E63] text-sm shrink-0" />
+              <span>{format(currentDate, 'MMMM yyyy')}</span>
+            </div>
+
+            {onNextMonth && (
+              <button
+                type="button"
+                onClick={onNextMonth}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all flex items-center gap-1 cursor-pointer"
+                title="Next Month"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <RiArrowRightSLine className="text-base" />
+              </button>
+            )}
+
+            {!isCurrentMonth && onToday && (
+              <button
+                type="button"
+                onClick={onToday}
+                className="ml-1 px-3 py-1.5 text-xs font-extrabold rounded-xl bg-pink-50 text-[#E91E63] dark:bg-[#E91E63]/10 dark:text-pink-300 border border-pink-200 dark:border-pink-500/20 hover:bg-pink-100 dark:hover:bg-[#E91E63]/20 transition-all cursor-pointer shadow-2xs"
+                title="Jump to Current Month"
+              >
+                This Month
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Quick Month Metrics */}
         <div className="flex items-center gap-3 sm:gap-4 text-xs font-semibold">
