@@ -29,8 +29,9 @@ export default function SettingsPage() {
   const fetchSettings = useCallback(async () => {
     try {
       const res = await api.get('/settings');
-      setBusiness(res.data?.business || null);
-      setSettings(res.data?.settings || null);
+      const payload = res?.data?.business !== undefined ? res.data : (res?.data || res || {});
+      setBusiness(payload?.business || res?.business || null);
+      setSettings(payload?.settings || res?.settings || null);
     } catch (err) {
       console.error('Failed to fetch settings', err);
       toast.error('Failed to load settings');
@@ -44,8 +45,9 @@ export default function SettingsPage() {
     api.get('/settings')
       .then((res) => {
         if (!ignore) {
-          setBusiness(res.data?.business || null);
-          setSettings(res.data?.settings || null);
+          const payload = res?.data?.business !== undefined ? res.data : (res?.data || res || {});
+          setBusiness(payload?.business || res?.business || null);
+          setSettings(payload?.settings || res?.settings || null);
         }
       })
       .catch((err) => {

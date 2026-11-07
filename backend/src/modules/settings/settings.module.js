@@ -200,10 +200,17 @@ router.use(authenticate, businessScope(), authorize('super_admin', 'admin'));
 // Business & Settings
 router.get('/', asyncHandler(async (req, res) => { ApiResponse.ok('Settings', await settingsService.get(req.user.business_id)).send(res); }));
 router.put('/business', validate({ body: z.object({
-  name: z.string().min(1).max(255).optional(), address: z.string().max(1000).optional(), city: z.string().max(100).optional(),
-  state: z.string().max(100).optional(), pincode: z.string().max(10).optional(), phone: z.string().max(20).optional(),
-  email: z.string().email().optional(), gst_number: z.string().max(20).optional().nullable(),
-  currency: z.string().max(10).optional(), timezone: z.string().max(50).optional(), logo_url: z.string().max(500).optional().nullable(),
+  name: z.string().min(1).max(255).optional(),
+  address: z.string().max(1000).optional().nullable(),
+  city: z.string().max(100).optional().nullable(),
+  state: z.string().max(100).optional().nullable(),
+  pincode: z.string().max(10).optional().nullable(),
+  phone: z.string().max(20).optional().nullable(),
+  email: z.string().email().optional().nullable(),
+  gst_number: z.string().max(20).optional().nullable(),
+  currency: z.string().max(10).optional(),
+  timezone: z.string().max(50).optional(),
+  logo_url: z.string().max(500).optional().nullable(),
 }) }), asyncHandler(async (req, res) => { ApiResponse.ok('Business updated', await settingsService.updateBusiness(req.user.business_id, req.body)).send(res); }));
 router.put(['/config', '/business-settings'], validate({ body: z.object({
   tax_enabled: z.boolean().optional(), default_cgst: z.number().min(0).max(100).optional(), default_sgst: z.number().min(0).max(100).optional(),
