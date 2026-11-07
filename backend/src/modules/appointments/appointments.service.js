@@ -192,7 +192,7 @@ class AppointmentService {
     }
 
     const business = await db('businesses').where({ id: businessId }).first() || {};
-    const businessName = business.name || 'Kaira Makeover';
+    const businessName = business.name || 'RAHairStylist';
     const businessPhone = business.phone || '+919876543210';
     const businessAddress = business.address ? `${business.address}${business.city ? `, ${business.city}` : ''}` : 'Salon & Spa Studio';
 

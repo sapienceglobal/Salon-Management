@@ -4,7 +4,7 @@ import { env } from '../config/env.js';
 
 async function resetPassword() {
   const newPassword = process.argv[2] || process.env.ADMIN_PASSWORD || 'LuxeAdmin@2026!';
-  const adminEmail = process.argv[3] || process.env.ADMIN_EMAIL || 'admin@kairamakeover.salontime.co.in';
+  const adminEmail = process.argv[3] || process.env.ADMIN_EMAIL || 'admin@rahairstylist.salontime.co.in';
 
   if (!newPassword || newPassword.length < 6) {
     console.error('❌ Password must be at least 6 characters long.');

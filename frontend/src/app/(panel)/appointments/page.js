@@ -246,7 +246,7 @@ export default function AppointmentsPage() {
         setBusinessSettings({
           ...(sData.settings || {}),
           ...(sData.business || {}),
-          business_name: sData.business?.name || sData.settings?.business_name || 'Kaira Makeover'
+          business_name: sData.business?.name || sData.settings?.business_name || 'RAHairStylist'
         });
       }
     } catch (err) {

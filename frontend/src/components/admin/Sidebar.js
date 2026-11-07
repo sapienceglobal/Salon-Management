@@ -238,7 +238,7 @@ function SidebarInner({ collapsed, onToggle }) {
     const email = (userObj?.email || '').toLowerCase().trim();
 
     // Primary Owner Account
-    if (role === 'super_admin' || email === 'kairamakeuppalace@gmail.com') {
+    if (role === 'super_admin' || email === 'admin@rahairstylist.salontime.co.in' || email === 'rahairstylist.salontime.co.in') {
       return 'Owner Account';
     }
 

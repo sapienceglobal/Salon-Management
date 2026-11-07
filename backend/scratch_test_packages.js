@@ -10,7 +10,7 @@ async function test() {
       method: 'POST',
       headers: { ...defaultHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: 'admin@kairamakeover.salontime.co.in',
+        email: 'admin@rahairstylist.salontime.co.in',
         password: 'LuxeAdmin@2026!'
       })
     });

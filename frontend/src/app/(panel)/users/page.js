@@ -402,7 +402,7 @@ export default function UserManagementPage() {
     const r = (role || 'staff').toLowerCase();
     const em = (email || '').toLowerCase();
 
-    if (r === 'super_admin' || em === 'kairamakeuppalace@gmail.com') {
+    if (r === 'super_admin' || em === 'admin@rahairstylist.salontime.co.in' || em === 'rahairstylist.salontime.co.in') {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-pink-50 text-[#E91E63] dark:bg-pink-950/40 dark:text-pink-300 border border-pink-200 dark:border-pink-800/40">
           <RiShieldStarLine className="text-[#E91E63] text-sm" />

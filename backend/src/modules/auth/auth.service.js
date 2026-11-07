@@ -247,11 +247,11 @@ class AuthService {
     try {
       await sendEmail({
         to: normalizedEmail,
-        subject: 'Kaira Makeover — Password Reset Verification Code',
+        subject: 'RAHairStylist — Password Reset Verification Code',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border: 1px solid #f0f0f0; border-radius: 16px;">
             <div style="text-align: center; margin-bottom: 24px;">
-              <h2 style="color: #E91E63; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Kaira Makeover</h2>
+              <h2 style="color: #E91E63; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">RAHairStylist</h2>
               <p style="color: #666; font-size: 13px; margin-top: 4px;">Salon & Academy Management Portal</p>
             </div>
             <div style="background: #FFF5F8; border: 1px solid #FFE4EC; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
@@ -266,7 +266,7 @@ class AuthService {
             </div>
             <p style="color: #666; font-size: 13px; line-height: 1.5;">If you did not request this password reset, please ignore this email or contact support. Your password remains completely safe.</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-            <p style="color: #aaa; font-size: 11px; text-align: center; margin: 0;">&copy; ${new Date().getFullYear()} Kaira Makeover. All rights reserved.</p>
+            <p style="color: #aaa; font-size: 11px; text-align: center; margin: 0;">&copy; ${new Date().getFullYear()} RAHairStylist. All rights reserved.</p>
           </div>
         `,
       });

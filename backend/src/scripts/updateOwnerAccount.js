@@ -1,14 +1,14 @@
 import { db } from '../config/database.js';
 
 /**
- * Script to safely update the primary owner account to kairamakeuppalace@gmail.com
+ * Script to safely update the primary owner account to admin@rahairstylist.salontime.co.in
  * and ensure its role is super_admin (Owner Account).
  *
  * Usage:
  *   node src/scripts/updateOwnerAccount.js [optional_email]
  */
 async function updateOwner() {
-  const targetEmail = (process.argv[2] || 'kairamakeuppalace@gmail.com').toLowerCase().trim();
+  const targetEmail = (process.argv[2] || 'admin@rahairstylist.salontime.co.in').toLowerCase().trim();
   console.log(`\n🔍 Searching for primary system account to set as Owner...`);
 
   try {

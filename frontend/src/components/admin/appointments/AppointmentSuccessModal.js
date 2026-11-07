@@ -36,7 +36,7 @@ export function formatWhatsAppPhone(phone) {
 }
 
 export function generateAppointmentMessage(data) {
-  const businessName = data.business_name || 'Kaira Makeover';
+  const businessName = data.business_name || 'RAHairStylist';
   const customerName = data.customer_name || 'Valued Client';
   const staffName = data.staff_name || 'Assigned Stylist';
   const serviceNames = data.service_name || 'Salon Services';
@@ -86,7 +86,7 @@ export default function AppointmentSuccessModal({
   const totalAmount = parseFloat(appointment?.total_price || appointment?.service_price || 0);
   const servicesList = appointment?.services || (appointment?.service_name ? [{ name: appointment?.service_name, price: totalAmount }] : []);
 
-  const businessName = businessSettings?.business_name || businessSettings?.name || 'Kaira Makeover';
+  const businessName = businessSettings?.business_name || businessSettings?.name || 'RAHairStylist';
   const businessPhone = businessSettings?.phone || '+919876543210';
   const businessAddress = businessSettings?.address
     ? `${businessSettings.address}${businessSettings.city ? `, ${businessSettings.city}` : ''}`
