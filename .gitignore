@@ -48,6 +48,10 @@ coverage/
 .vercel
 .nyc_output
 
-# Flutter app
-flutter_salon/
+# Flutter app build artifacts
+flutter_salon/build/
+flutter_salon/.dart_tool/
+flutter_salon/android/.gradle/
+flutter_salon/android/key.properties
+flutter_salon/android/app/*.jks
 backend/src/config/firebase-admin.json

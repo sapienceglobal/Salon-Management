@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "731254904481",
+    "project_id": "salon-time-9295b",
+    "storage_bucket": "salon-time-9295b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:731254904481:android:594bb5ea20328ec51b82e0",
+        "android_client_info": {
+          "package_name": "com.example.flutter_salon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnJZwDnZWls9KnIfPVYJuY2rwt117QllA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:731254904481:android:baae13873e58618e1b82e0",
+        "android_client_info": {
+          "package_name": "com.salontime.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnJZwDnZWls9KnIfPVYJuY2rwt117QllA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
