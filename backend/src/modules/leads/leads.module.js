@@ -27,7 +27,7 @@ class LeadService {
       base.where('l.status', query.status);
     }
     if (query.source && query.source !== 'all') {
-      base.where('l.source', query.source);
+      base.where('l.source', 'like', `%${query.source}%`);
     }
     if (query.service && query.service !== 'all') {
       base.whereRaw('JSON_SEARCH(l.interested_services, "one", ?) IS NOT NULL OR l.interested_services LIKE ?', [
@@ -336,10 +336,13 @@ class LeadService {
     const sourceColors = {
       Website: '#2563EB',
       Instagram: '#9333EA',
+      'Instagram Ad': '#9333EA',
       'Walk-in': '#F97316',
       Referral: '#EC4899',
       'Google Ads': '#14B8A6',
       Facebook: '#6366F1',
+      'Facebook Ad': '#6366F1',
+      WhatsApp: '#22C55E',
       'Phone Call': '#0284C7',
       Other: '#64748B',
     };

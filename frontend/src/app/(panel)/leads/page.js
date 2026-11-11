@@ -546,9 +546,18 @@ function LeadsContent() {
     socket.emit('join_business_room', user.business_id);
     socket.on('new_lead', (newLead) => {
       setLeads((prev) => {
-        if (prev.some((l) => l.id === newLead.id)) return prev;
+        const exists = prev.some((l) => l.id === newLead.id);
+        if (exists) {
+          return prev.map((l) => (l.id === newLead.id ? { ...l, ...newLead } : l));
+        }
         return [newLead, ...prev];
       });
+      fetchStats();
+    });
+    socket.on('lead_updated', (updatedLead) => {
+      setLeads((prev) =>
+        prev.map((l) => (l.id === updatedLead.id ? { ...l, ...updatedLead } : l))
+      );
       fetchStats();
     });
 
@@ -628,7 +637,7 @@ function LeadsContent() {
         }
       }
       if (sourceFilter !== 'all') {
-        if ((lead.source || '').toLowerCase() !== sourceFilter.toLowerCase()) return false;
+        if (!(lead.source || '').toLowerCase().includes(sourceFilter.toLowerCase())) return false;
       }
       if (serviceFilter !== 'all') {
         let servs = [];
@@ -1253,11 +1262,12 @@ function LeadsContent() {
               className="w-full appearance-none pl-3.5 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-[#E91E63]/20 focus:border-[#E91E63] cursor-pointer"
             >
               <option value="all">All Sources</option>
-              <option value="Instagram">Instagram</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Facebook">Facebook / FB Ad</option>
+              <option value="Instagram">Instagram / IG Ad</option>
               <option value="Website">Website</option>
               <option value="Google Ads">Google Ads</option>
               <option value="Walk-in">Walk-in</option>
-              <option value="Facebook">Facebook</option>
               <option value="Referral">Referral</option>
               <option value="Phone">Phone</option>
             </select>

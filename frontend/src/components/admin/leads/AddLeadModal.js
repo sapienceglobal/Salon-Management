@@ -308,6 +308,9 @@ export default function AddLeadModal({
                   onChange={(e) => setFormData({ ...formData, source: e.target.value })}
                   className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl pl-10 pr-3.5 py-2.5 text-sm font-medium text-gray-800 dark:text-gray-100 outline-none focus:border-[#E91E63] transition-colors cursor-pointer appearance-none"
                 >
+                  <option value="WhatsApp">WhatsApp</option>
+                  <option value="Facebook Ad">Facebook Ad</option>
+                  <option value="Instagram Ad">Instagram Ad</option>
                   <option value="Instagram">Instagram</option>
                   <option value="Website">Website</option>
                   <option value="Google Ads">Google Ads</option>
